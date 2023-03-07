@@ -8,6 +8,7 @@ message Read_Struct{
     uint64 key = 1;
     optional string value = 2;
     optional uint64 timestamp = 3;
+    optional int32 table_id = 4;
 }
 
 message Write_Struct {
@@ -15,27 +16,10 @@ message Write_Struct {
     string value = 2;
 }
 
-enum TxnType {
-    TATP_GET_SUBSCRIBER_DATA = 0;
-    TATP_GET_NEW_DESTINATION = 1;
-    TATP_GET_ACCESS_DATA = 2;
-    TATP_UPDATE_SUBSCRIBER_DATA = 3;
-    TATP_UPDATE_LOCATION = 4;
-    TATP_INSERT_CALL_FORWARDING = 5;
-    YCSB = 6;
-
-}
-
 enum TxnOP {
-    ReadOnly = 0;
-    Prepare = 1;
-    Accept = 2;
-    Commit = 3;
-    ReadOnlyRes = 4;
-    PrepareRes = 5;
-    AcceptRes = 6;
-    CommitRes = 7;
-    Abort = 8;
+    Execute = 0;
+    Commit = 1;
+    Abort = 2;
 }
 
 
@@ -43,13 +27,24 @@ message Msg {
     uint64 txn_id = 1;
     repeated common.Read_Struct read_set = 2;
     repeated common.Write_Struct write_set = 3;
-    common.TxnOP op = 5;
-    uint32 from = 6;
-    uint64 timestamp = 7;
-    uint64 maxts = 8;
-    optional common.TxnType txn_type = 9;
+    common.TxnOP op = 4;
+    uint32 from = 5;
+    optional uint64 commit_ts = 6;
 }
 
-service ClientService {
+
+
+message Echo {
+
+}
+
+message TS{
+    uint64 ts = 1;
+}
+service DataService {
     rpc Propose(stream Msg) returns (stream Msg) {} 
+}
+service CtoService {
+    rpc get_start_ts(Echo) returns(TS) {}
+    rpc get_commit_ts(Echo) returns(TS) {}
 }

@@ -1,12 +1,15 @@
+use common::txn::DtxCoordinator;
+use std::{env, sync::Arc};
+use tokio::sync::RwLock;
 
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+    let local_ts = Arc::new(RwLock::new(0));
+    let client_num = 100;
+    for i in 0..100 {
 
-struct Client {
-    id: i32,
-    txn_id: u64,
-}
-
-impl Client {
-    pub async fn run_transaction(&mut self) {
-        
+        // let dtx_coordinator = DtxCoordinator::new();
     }
+    Ok(())
 }
