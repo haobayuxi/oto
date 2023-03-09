@@ -1,10 +1,13 @@
 use rpc::common::Msg;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+use crate::data::Data;
+
 pub struct Executor {
     pub id: i32,
     pub sender: UnboundedSender<Msg>,
     pub recv: UnboundedReceiver<Msg>,
+    data: Data,
 }
 
 impl Executor {

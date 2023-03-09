@@ -1,8 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use common::{f64_rand, u64_rand};
 use serde::{Deserialize, Serialize};
-
-use crate::ycsb::{f64_rand, u64_rand};
 
 pub static mut SUBSCRIBER_FIELDS: Vec<&str> = Vec::new();
 pub static mut ACCESS_INFO_FIELDS: Vec<&str> = Vec::new();

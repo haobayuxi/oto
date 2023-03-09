@@ -3,20 +3,25 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use common::Tuple;
 use tokio::sync::RwLock;
 
-pub struct MicroDb {
-    pub store: HashMap<u64, Arc<RwLock<String>>>,
-}
-
-impl MicroDb {
-    pub fn new() -> Self {
-        Self {
-            store: HashMap::new(),
-        }
+pub fn init_micro_db() -> HashMap<i32, HashMap<u64, RwLock<Tuple>>> {
+    let value: Vec<char> = vec!['a'; 40];
+    let mut write_value = String::from("");
+    write_value.extend(value.iter());
+    let mut tables = HashMap::new();
+    let mut table = HashMap::new();
+    for i in 0..100 {
+        table.insert(
+            i,
+            RwLock::new(Tuple {
+                lock_txn_id: 0,
+                ts: 0,
+                data: write_value.clone(),
+            }),
+        );
     }
-
-    // pub fn get(&self, key: u64) -> String {
-    //     // self.store.g
-    // }
+    tables.insert(0, table);
+    tables
 }

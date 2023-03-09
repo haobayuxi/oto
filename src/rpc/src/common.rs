@@ -2,19 +2,21 @@
 pub struct ReadStruct {
     #[prost(uint64, tag = "1")]
     pub key: u64,
-    #[prost(string, optional, tag = "2")]
+    #[prost(int32, tag = "2")]
+    pub table_id: i32,
+    #[prost(string, optional, tag = "3")]
     pub value: ::core::option::Option<::prost::alloc::string::String>,
-    #[prost(uint64, optional, tag = "3")]
+    #[prost(uint64, optional, tag = "4")]
     pub timestamp: ::core::option::Option<u64>,
-    #[prost(int32, optional, tag = "4")]
-    pub table_id: ::core::option::Option<i32>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct WriteStruct {
     #[prost(uint64, tag = "1")]
     pub key: u64,
-    #[prost(string, tag = "2")]
-    pub value: ::prost::alloc::string::String,
+    #[prost(int32, tag = "2")]
+    pub table_id: i32,
+    #[prost(string, optional, tag = "3")]
+    pub value: ::core::option::Option<::prost::alloc::string::String>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Msg {
@@ -28,7 +30,9 @@ pub struct Msg {
     pub op: i32,
     #[prost(uint32, tag = "5")]
     pub from: u32,
-    #[prost(uint64, optional, tag = "6")]
+    #[prost(bool, tag = "6")]
+    pub success: bool,
+    #[prost(uint64, optional, tag = "7")]
     pub commit_ts: ::core::option::Option<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -42,8 +46,9 @@ pub struct Ts {
 #[repr(i32)]
 pub enum TxnOp {
     Execute = 0,
-    Commit = 1,
-    Abort = 2,
+    Validate = 1,
+    Commit = 2,
+    Abort = 3,
 }
 #[doc = r" Generated client implementations."]
 pub mod data_service_client {
@@ -78,10 +83,10 @@ pub mod data_service_client {
             let inner = tonic::client::Grpc::with_interceptor(inner, interceptor);
             Self { inner }
         }
-        pub async fn propose(
+        pub async fn communication(
             &mut self,
-            request: impl tonic::IntoStreamingRequest<Message = super::Msg>,
-        ) -> Result<tonic::Response<tonic::codec::Streaming<super::Msg>>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::Msg>,
+        ) -> Result<tonic::Response<super::Msg>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -89,10 +94,8 @@ pub mod data_service_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/common.DataService/Propose");
-            self.inner
-                .streaming(request.into_streaming_request(), path, codec)
-                .await
+            let path = http::uri::PathAndQuery::from_static("/common.DataService/communication");
+            self.inner.unary(request.into_request(), path, codec).await
         }
     }
     impl<T: Clone> Clone for DataServiceClient<T> {
@@ -190,15 +193,10 @@ pub mod data_service_server {
     #[doc = "Generated trait containing gRPC methods that should be implemented for use with DataServiceServer."]
     #[async_trait]
     pub trait DataService: Send + Sync + 'static {
-        #[doc = "Server streaming response type for the Propose method."]
-        type ProposeStream: futures_core::Stream<Item = Result<super::Msg, tonic::Status>>
-            + Send
-            + Sync
-            + 'static;
-        async fn propose(
+        async fn communication(
             &self,
-            request: tonic::Request<tonic::Streaming<super::Msg>>,
-        ) -> Result<tonic::Response<Self::ProposeStream>, tonic::Status>;
+            request: tonic::Request<super::Msg>,
+        ) -> Result<tonic::Response<super::Msg>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct DataServiceServer<T: DataService> {
@@ -232,35 +230,30 @@ pub mod data_service_server {
         fn call(&mut self, req: http::Request<B>) -> Self::Future {
             let inner = self.inner.clone();
             match req.uri().path() {
-                "/common.DataService/Propose" => {
+                "/common.DataService/communication" => {
                     #[allow(non_camel_case_types)]
-                    struct ProposeSvc<T: DataService>(pub Arc<T>);
-                    impl<T: DataService> tonic::server::StreamingService<super::Msg> for ProposeSvc<T> {
+                    struct communicationSvc<T: DataService>(pub Arc<T>);
+                    impl<T: DataService> tonic::server::UnaryService<super::Msg> for communicationSvc<T> {
                         type Response = super::Msg;
-                        type ResponseStream = T::ProposeStream;
-                        type Future =
-                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
-                        fn call(
-                            &mut self,
-                            request: tonic::Request<tonic::Streaming<super::Msg>>,
-                        ) -> Self::Future {
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(&mut self, request: tonic::Request<super::Msg>) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).propose(request).await };
+                            let fut = async move { (*inner).communication(request).await };
                             Box::pin(fut)
                         }
                     }
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let interceptor = inner.1;
+                        let interceptor = inner.1.clone();
                         let inner = inner.0;
-                        let method = ProposeSvc(inner);
+                        let method = communicationSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = if let Some(interceptor) = interceptor {
                             tonic::server::Grpc::with_interceptor(codec, interceptor)
                         } else {
                             tonic::server::Grpc::new(codec)
                         };
-                        let res = grpc.streaming(method, req).await;
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)
