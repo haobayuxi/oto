@@ -29,7 +29,6 @@ message Msg {
     repeated common.Read_Struct read_set = 2;
     repeated common.Write_Struct write_set = 3;
     common.TxnOP op = 4;
-    uint32 from = 5;
     bool success = 6;
     optional uint64 commit_ts = 7;
 }

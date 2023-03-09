@@ -28,8 +28,6 @@ pub struct Msg {
     pub write_set: ::prost::alloc::vec::Vec<WriteStruct>,
     #[prost(enumeration = "TxnOp", tag = "4")]
     pub op: i32,
-    #[prost(uint32, tag = "5")]
-    pub from: u32,
     #[prost(bool, tag = "6")]
     pub success: bool,
     #[prost(uint64, optional, tag = "7")]

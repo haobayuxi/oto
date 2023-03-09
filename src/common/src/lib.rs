@@ -8,6 +8,11 @@ pub struct Tuple {
     pub data: String,
 }
 
+pub struct Config {
+    pub server_addr: String,
+    pub executor_num: i32,
+}
+
 pub fn u64_rand(lower_bound: u64, upper_bound: u64) -> u64 {
     let mut rng = rand::thread_rng();
     rng.gen_range(lower_bound, upper_bound + 1)

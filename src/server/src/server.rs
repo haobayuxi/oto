@@ -1,11 +1,12 @@
 use std::{collections::HashMap, env, sync::Arc};
 
+use common::Config;
 use rpc::common::{
     data_service_server::{DataService, DataServiceServer},
     Msg,
 };
 use tokio::sync::{
-    mpsc::UnboundedSender,
+    mpsc::{unbounded_channel, UnboundedSender},
     oneshot::{self, Sender as OneShotSender},
 };
 use tonic::{transport::Server, Request, Response, Status};
@@ -57,6 +58,40 @@ impl DataService for RpcServer {
         self.sender.get(&executor_id).unwrap().send(coor_msg);
         let reply = receiver.await.unwrap();
         Ok(Response::new(reply))
+    }
+}
+
+struct DataServer {
+    server_id: i32,
+    executor_num: i32,
+    executor_senders: HashMap<i32, UnboundedSender<CoordnatorMsg>>,
+}
+
+impl DataServer {
+    pub fn new() -> Self {}
+
+    async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
+        // start server for client to connect
+        let mut listen_ip = config.server_addr;
+        listen_ip = convert_ip_addr(listen_ip, false);
+        println!("server listen ip {}", listen_ip);
+        let server = RpcServer::new(listen_ip, sender);
+        tokio::spawn(async move {
+            run_rpc_server(server).await;
+        });
+    }
+
+    fn init_executors(&mut self, config: Config) {
+        // self.executor_num = config.executor_num;
+        self.executor_num = config.executor_num;
+        for i in 0..self.executor_num {
+            let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
+            self.executor_senders.insert(i, sender);
+            let mut exec = Executor::new(i, self.server_id, receiver, indexs.clone());
+            tokio::spawn(async move {
+                exec.run().await;
+            });
+        }
     }
 }
 
