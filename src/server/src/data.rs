@@ -31,7 +31,38 @@ impl Data {
         Self { txn_type, tables }
     }
 
-    pub async fn get_read(&mut self, read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) {
+    pub async fn validate_read_set(
+        &mut self,
+        read_set: Vec<ReadStruct>,
+    ) -> (bool, Vec<ReadStruct>) {
+        let mut result = Vec::new();
+        for iter in read_set {
+            let guard = self
+                .tables
+                .get_mut(&iter.table_id)
+                .unwrap()
+                .get_mut(&iter.key)
+                .unwrap()
+                .read()
+                .await;
+
+            if guard.lock_txn_id != 0 {
+                // has been locked
+                return (false, result);
+            }
+            // insert into result
+            let read_struct = ReadStruct {
+                key: iter.key,
+                table_id: iter.table_id,
+                value: None,
+                timestamp: Some(guard.ts),
+            };
+            result.push(read_struct);
+        }
+        (true, result)
+    }
+
+    pub async fn get_read_set(&mut self, read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) {
         let mut result = Vec::new();
         for iter in read_set {
             let guard = self
@@ -59,21 +90,53 @@ impl Data {
         (true, result)
     }
 
-    pub async fn lock(&mut self, write_set: WriteStruct) -> bool {
-        let table_id = 0;
-        let key = 0;
-        let tuple = self
-            .tables
-            .get_mut(&table_id)
-            .unwrap()
-            .get_mut(&key)
-            .unwrap();
-        let write_guard = tuple.write().await;
-        if write_guard.lock_txn_id != 0 {
-            return false;
+    pub async fn lock_write_set(&mut self, write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
+        for iter in write_set.iter() {
+            let mut guard = self
+                .tables
+                .get_mut(&iter.table_id)
+                .unwrap()
+                .get_mut(&iter.key)
+                .unwrap()
+                .write()
+                .await;
+            if guard.lock_txn_id == 0 {
+                guard.lock_txn_id = txn_id;
+            } else {
+                return false;
+            }
         }
         true
     }
 
-    pub fn update_and_release(&mut self) {}
+    pub async fn update_and_release_locks(&mut self, write_set: Vec<WriteStruct>) {
+        for iter in write_set.iter() {
+            let mut guard = self
+                .tables
+                .get_mut(&iter.table_id)
+                .unwrap()
+                .get_mut(&iter.key)
+                .unwrap()
+                .write()
+                .await;
+            guard.lock_txn_id = 0;
+            guard.data = iter.value.clone().unwrap();
+        }
+    }
+
+    pub async fn releass_locks(&mut self, write_set: Vec<WriteStruct>, txn_id: u64) {
+        for iter in write_set.iter() {
+            let mut guard = self
+                .tables
+                .get_mut(&iter.table_id)
+                .unwrap()
+                .get_mut(&iter.key)
+                .unwrap()
+                .write()
+                .await;
+            if guard.lock_txn_id == txn_id {
+                guard.lock_txn_id = 0;
+            }
+        }
+    }
 }
