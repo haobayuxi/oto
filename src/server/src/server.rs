@@ -1,6 +1,7 @@
 use std::{collections::HashMap, env, sync::Arc};
 
-use common::Config;
+use common::{Config, CoordnatorMsg};
+use memory_server::{data::DbType, executor::Executor};
 use rpc::common::{
     data_service_server::{DataService, DataServiceServer},
     Msg,
@@ -11,15 +12,6 @@ use tokio::sync::{
 };
 use tonic::{transport::Server, Request, Response, Status};
 
-use crate::{
-    data::{Data, DbType},
-    executor::Executor,
-};
-
-pub struct CoordnatorMsg {
-    pub msg: Msg,
-    pub call_back: OneShotSender<Msg>,
-}
 pub struct RpcServer {
     executor_num: u64,
     addr_to_listen: String,
@@ -68,12 +60,12 @@ impl DataService for RpcServer {
 
 struct DataServer {
     server_id: i32,
-    executor_num: i32,
-    executor_senders: HashMap<i32, UnboundedSender<CoordnatorMsg>>,
+    executor_num: u64,
+    executor_senders: HashMap<u64, UnboundedSender<CoordnatorMsg>>,
 }
 
 impl DataServer {
-    pub fn new(server_id: i32, executor_num: i32) -> Self {
+    pub fn new(server_id: i32, executor_num: u64) -> Self {
         Self {
             server_id,
             executor_num,
@@ -81,12 +73,15 @@ impl DataServer {
         }
     }
 
-    async fn init_rpc(&mut self, config: Config, sender: UnboundedSender<Msg>) {
+    async fn init_rpc(
+        &mut self,
+        config: Config,
+        executor_senders: Arc<HashMap<u64, UnboundedSender<CoordnatorMsg>>>,
+    ) {
         // start server for client to connect
-        let mut listen_ip = config.server_addr;
-        listen_ip = convert_ip_addr(listen_ip, false);
+        let listen_ip = config.server_addr;
         println!("server listen ip {}", listen_ip);
-        let server = RpcServer::new(listen_ip, sender);
+        let server = RpcServer::new(config.executor_num, listen_ip, executor_senders);
         tokio::spawn(async move {
             run_rpc_server(server).await;
         });
@@ -94,12 +89,11 @@ impl DataServer {
 
     fn init_executors(&mut self, config: Config, db_type: DbType) {
         // self.executor_num = config.executor_num;
-        let data = Data::new(db_type);
         self.executor_num = config.executor_num;
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(i, self.server_id, receiver, data.clone());
+            let mut exec = Executor::new(i, receiver);
             tokio::spawn(async move {
                 exec.run().await;
             });

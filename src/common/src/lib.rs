@@ -1,7 +1,10 @@
 pub mod txn;
 
 use rand::*;
+use rpc::common::Msg;
+use tokio::sync::oneshot::Sender as OneShotSender;
 
+#[derive(Clone)]
 pub struct Tuple {
     pub lock_txn_id: u64, // 0 state for no lock
     pub ts: u64,
@@ -10,7 +13,16 @@ pub struct Tuple {
 
 pub struct Config {
     pub server_addr: String,
-    pub executor_num: i32,
+    pub executor_num: u64,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            server_addr: "166.111.69.11".to_string(),
+            executor_num: 20,
+        }
+    }
 }
 
 pub fn u64_rand(lower_bound: u64, upper_bound: u64) -> u64 {
@@ -24,4 +36,9 @@ pub fn f64_rand(lower_bound: f64, upper_bound: f64, precision: f64) -> f64 {
         (upper_bound / precision) as u64 + 1,
     ) as f64
         * precision
+}
+
+pub struct CoordnatorMsg {
+    pub msg: Msg,
+    pub call_back: OneShotSender<Msg>,
 }

@@ -20,6 +20,8 @@ pub struct DtxCoordinator {
     commit_ts: u64,
     pub read_set: Vec<ReadStruct>,
     pub write_set: Vec<WriteStruct>,
+    read_to_execute: Vec<ReadStruct>,
+    write_to_execute: Vec<WriteStruct>,
     cto_client: CtoServiceClient<Channel>,
     data_client: DataServiceClient<Channel>,
 }
@@ -42,6 +44,8 @@ impl DtxCoordinator {
             write_set: Vec::new(),
             cto_client,
             data_client,
+            read_to_execute: Vec::new(),
+            write_to_execute: Vec::new(),
         }
     }
     pub async fn tx_begin(&mut self) {
@@ -50,6 +54,8 @@ impl DtxCoordinator {
         self.txn_id += 1;
         self.read_set.clear();
         self.write_set.clear();
+        self.read_to_execute.clone();
+        self.write_to_execute.clone();
         self.start_ts = 0;
         match self.dtx_type {
             DtxType::oto => {
@@ -66,20 +72,28 @@ impl DtxCoordinator {
     }
 
     pub async fn tx_exe(&mut self) -> bool {
-        if (self.read_set.is_empty() && self.write_set.is_empty()) {
+        if self.read_to_execute.is_empty() && self.write_to_execute.is_empty() {
             return true;
         }
-
-        match self.dtx_type {
-            DtxType::to => {}
-            DtxType::oto => {
-                // get read set
-            }
-            DtxType::occ => {
-                // get read set
-            }
-        }
-        true
+        let exe_msg = Msg {
+            txn_id: self.txn_id,
+            read_set: self.read_to_execute.clone(),
+            write_set: self.write_to_execute.clone(),
+            op: TxnOp::Execute.into(),
+            success: true,
+            commit_ts: None,
+        };
+        let reply = self
+            .data_client
+            .communication(exe_msg)
+            .await
+            .unwrap()
+            .into_inner();
+        self.read_set.extend(reply.read_set);
+        self.write_set.extend(reply.write_set);
+        self.read_to_execute.clear();
+        self.write_to_execute.clear();
+        return reply.success;
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
@@ -125,14 +139,23 @@ impl DtxCoordinator {
             .into_inner();
     }
 
-    pub fn add_to_read_set(&mut self, key: u64, table_id: i32) {
+    pub fn add_read_to_execute(&mut self, key: u64, table_id: i32) {
         let read_struct = ReadStruct {
             key,
             table_id,
             value: None,
             timestamp: None,
         };
-        self.read_set.push(read_struct);
+        self.read_to_execute.push(read_struct);
+    }
+
+    pub fn add_write_to_execute(&mut self, key: u64, table_id: i32, value: String) {
+        let write_struct = WriteStruct {
+            key,
+            table_id,
+            value: Some(value),
+        };
+        self.write_to_execute.push(write_struct);
     }
 
     async fn validate(&mut self) -> bool {
