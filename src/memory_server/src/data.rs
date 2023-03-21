@@ -2,10 +2,11 @@ use std::collections::HashMap;
 
 use common::Tuple;
 use rpc::common::{ReadStruct, WriteStruct};
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use workload::micro_db::init_micro_db;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize, Copy)]
 pub enum DbType {
     micro,
     tatp,
