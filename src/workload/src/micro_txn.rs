@@ -1,7 +1,11 @@
 use common::txn::DtxCoordinator;
 use rpc::common::{ReadStruct, WriteStruct};
 
-pub async fn micro_run_transactions() {}
+pub async fn micro_run_transactions() {
+    // init
+
+    // run transaction
+}
 
 async fn run_transacntion(
     coordinator: &mut DtxCoordinator,

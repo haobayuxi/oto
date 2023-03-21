@@ -6,6 +6,7 @@ use std::{any::Any, convert::TryInto, sync::Arc};
 use tokio::sync::RwLock;
 use tonic::transport::Channel;
 
+#[derive(PartialEq, Eq)]
 pub enum DtxType {
     oto,
     occ,
@@ -44,6 +45,12 @@ impl DtxCoordinator {
         }
     }
     pub async fn tx_begin(&mut self) {
+        // init coordinator
+        self.commit_ts = 0;
+        self.txn_id += 1;
+        self.read_set.clear();
+        self.write_set.clear();
+        self.start_ts = 0;
         match self.dtx_type {
             DtxType::oto => {
                 // get start ts from local
@@ -64,37 +71,45 @@ impl DtxCoordinator {
         }
 
         match self.dtx_type {
+            DtxType::to => {}
             DtxType::oto => {
                 // get read set
             }
-            DtxType::occ => {}
-            DtxType::to => {}
+            DtxType::occ => {
+                // get read set
+            }
         }
         true
     }
     pub async fn tx_commit(&mut self) -> bool {
-        let mut commit = Msg {
-            txn_id: self.txn_id,
-            read_set: Vec::new(),
-            write_set: self.write_set.clone(),
-            op: TxnOp::Commit.into(),
-            success: true,
-            commit_ts: Some(self.commit_ts),
-        };
-        let reply = self
-            .data_client
-            .communication(commit)
-            .await
-            .unwrap()
-            .into_inner();
-        return reply.success;
+        // validate
+        if self.validate().await {
+            let mut commit = Msg {
+                txn_id: self.txn_id,
+                read_set: Vec::new(),
+                write_set: self.write_set.clone(),
+                op: TxnOp::Commit.into(),
+                success: true,
+                commit_ts: Some(self.commit_ts),
+            };
+            let reply = self
+                .data_client
+                .communication(commit)
+                .await
+                .unwrap()
+                .into_inner();
+            return true;
+        } else {
+            self.tx_abort().await;
+            return false;
+        }
     }
 
     pub async fn tx_abort(&mut self) {
         if self.write_set.is_empty() {
             return;
         }
-        let mut abort = Msg {
+        let abort = Msg {
             txn_id: self.txn_id,
             read_set: Vec::new(),
             write_set: self.write_set.clone(),
@@ -120,15 +135,52 @@ impl DtxCoordinator {
         self.read_set.push(read_struct);
     }
 
-    pub async fn validate(&self) -> bool {
-        true
+    async fn validate(&mut self) -> bool {
+        match self.dtx_type {
+            DtxType::oto => {
+                return self.oto_validate().await;
+            }
+            DtxType::occ => {
+                if self.read_set.is_empty() {
+                    return true;
+                }
+                let vadilate_msg = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_set.clone(),
+                    write_set: Vec::new(),
+                    op: TxnOp::Validate.into(),
+                    success: true,
+                    commit_ts: None,
+                };
+                let reply = self
+                    .data_client
+                    .communication(vadilate_msg)
+                    .await
+                    .unwrap()
+                    .into_inner();
+                for i in 0..self.read_set.iter().len() {
+                    if self.read_set[i].timestamp() != reply.read_set[i].timestamp() {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            DtxType::to => return true,
+        }
     }
 
-    fn oto_validate(&self) -> bool {
+    async fn oto_validate(&self) -> bool {
+        let mut max_tx = self.start_ts;
         for iter in self.read_set.iter() {
             if iter.timestamp.unwrap() > self.start_ts {
-                return false;
+                max_tx = iter.timestamp.unwrap();
             }
+        }
+        if max_tx > self.start_ts {
+            // update local ts
+            let mut guard = self.local_ts.write().await;
+            *guard = max_tx;
+            return false;
         }
         true
     }

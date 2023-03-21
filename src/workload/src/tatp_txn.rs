@@ -1,8 +1,12 @@
+use common::txn::DtxCoordinator;
+
 pub async fn run_tatp_transactions() {}
 
 async fn run_transaction() {}
 
-async fn tx_get_subscriber_data() -> bool {
+async fn tx_get_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
+    coordinator.tx_begin().await;
+
     true
 }
 
