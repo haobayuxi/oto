@@ -125,12 +125,11 @@ impl DtxCoordinator {
                 success: true,
                 commit_ts: Some(self.commit_ts),
             };
-            let reply = self
-                .data_client
-                .communication(commit)
-                .await
-                .unwrap()
-                .into_inner();
+            let mut client = self.data_client.clone();
+            tokio::spawn(async move {
+                let reply = client.communication(commit).await.unwrap().into_inner();
+            });
+
             return true;
         } else {
             self.tx_abort().await;
@@ -150,12 +149,10 @@ impl DtxCoordinator {
             success: true,
             commit_ts: Some(self.commit_ts),
         };
-        let reply = self
-            .data_client
-            .communication(abort)
-            .await
-            .unwrap()
-            .into_inner();
+        let mut client = self.data_client.clone();
+        tokio::spawn(async move {
+            let reply = client.communication(abort).await.unwrap().into_inner();
+        });
     }
 
     pub fn add_read_to_execute(&mut self, key: u64, table_id: i32) {
