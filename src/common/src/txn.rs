@@ -108,15 +108,7 @@ impl DtxCoordinator {
             .await
             .unwrap()
             .into_inner();
-        for iter in reply.read_set.iter() {
-            println!("{},{}", iter.key, iter.timestamp.unwrap());
-            let a = iter.timestamp.unwrap();
-        }
         self.read_set.extend(reply.read_set);
-        for iter in self.read_set.iter() {
-            println!("{},{}", iter.key, iter.timestamp.unwrap());
-            let a = iter.timestamp.unwrap();
-        }
         self.write_set.extend(reply.write_set);
         self.read_to_execute.clear();
         self.write_to_execute.clear();

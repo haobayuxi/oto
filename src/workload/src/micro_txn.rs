@@ -22,7 +22,7 @@ pub async fn micro_run_transactions(
     }
     let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
     let throughput_result = TXNS_PER_CLIENT as f64 / total_end;
-    println!("throughput = {}", throughput_result);
+    // println!("throughput = {}", throughput_result);
     (latency_result, throughput_result)
     // write results to file
     // let latency_file_name = coordinator.id.to_string() + "latency.data";
