@@ -2,15 +2,30 @@ use rpc::common::{
     cto_service_client::CtoServiceClient, data_service_client::DataServiceClient, Echo, Msg,
     ReadStruct, TxnOp, WriteStruct,
 };
+use serde::Deserialize;
 use std::{any::Any, convert::TryInto, sync::Arc};
 use tokio::sync::RwLock;
+use tokio::time::sleep;
+use tokio::time::Duration;
 use tonic::transport::Channel;
 
-#[derive(PartialEq, Eq)]
-pub enum DtxType {
-    oto,
-    occ,
-    to,
+use crate::DtxType;
+
+async fn init_coordinator_rpc(
+    cto_ip: String,
+    data_ip: String,
+) -> (CtoServiceClient<Channel>, DataServiceClient<Channel>) {
+    loop {
+        match CtoServiceClient::connect(cto_ip.clone()).await {
+            Ok(cto_client) => loop {
+                match DataServiceClient::connect(data_ip.clone()).await {
+                    Ok(data_client) => return (cto_client, data_client),
+                    Err(_) => sleep(Duration::from_millis(10)).await,
+                }
+            },
+            Err(_) => sleep(Duration::from_millis(10)).await,
+        }
+    }
 }
 pub struct DtxCoordinator {
     pub id: u64,
@@ -28,19 +43,20 @@ pub struct DtxCoordinator {
 }
 
 impl DtxCoordinator {
-    pub fn new(
+    pub async fn new(
         id: u64,
         local_ts: Arc<RwLock<u64>>,
         dtx_type: DtxType,
-        txn_id: u64,
-        cto_client: CtoServiceClient<Channel>,
-        data_client: DataServiceClient<Channel>,
+        cto_ip: String,
+        data_ip: String,
     ) -> Self {
+        // init cto client & data client
+        let (cto_client, data_client) = init_coordinator_rpc(cto_ip, data_ip).await;
         Self {
             id,
             local_ts,
             dtx_type,
-            txn_id,
+            txn_id: id << 40,
             start_ts: 0,
             commit_ts: 0,
             read_set: Vec::new(),
@@ -57,8 +73,8 @@ impl DtxCoordinator {
         self.txn_id += 1;
         self.read_set.clear();
         self.write_set.clear();
-        self.read_to_execute.clone();
-        self.write_to_execute.clone();
+        self.read_to_execute.clear();
+        self.write_to_execute.clear();
         self.start_ts = 0;
         match self.dtx_type {
             DtxType::oto => {

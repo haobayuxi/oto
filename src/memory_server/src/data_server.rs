@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use common::{Config, CoordnatorMsg};
+use common::{Config, CoordnatorMsg, DbType};
 use rpc::common::{
     data_service_server::{DataService, DataServiceServer},
     Msg,
@@ -11,10 +11,7 @@ use tokio::sync::{
 };
 use tonic::{transport::Server, Request, Response, Status};
 
-use crate::{
-    data::{init_data, DbType},
-    executor::Executor,
-};
+use crate::{data::init_data, executor::Executor};
 
 pub struct RpcServer {
     executor_num: u64,

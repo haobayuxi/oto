@@ -1,5 +1,3 @@
-id : 0
-is_ycsb : true
-txns_per_client : 2000
-read_perc : 95
+db_type : micro
+dtx_type : oto
 zipf : 0.5

@@ -1,17 +1,10 @@
 use std::collections::HashMap;
 
-use common::Tuple;
+use common::{DbType, Tuple};
 use rpc::common::{ReadStruct, WriteStruct};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use workload::micro_db::init_micro_db;
-
-#[derive(Clone, Serialize, Deserialize, Copy)]
-pub enum DbType {
-    micro,
-    tatp,
-    smallbank,
-}
 
 pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
 

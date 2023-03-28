@@ -7,7 +7,7 @@ use common::{f64_rand, Tuple};
 use rpc::common::{ReadStruct, WriteStruct};
 use tokio::sync::RwLock;
 
-const MicroTableSize: i32 = 100000;
+const MicroTableSize: u64 = 100000;
 
 pub fn init_micro_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     let value: Vec<char> = vec!['a'; 40];
@@ -15,7 +15,7 @@ pub fn init_micro_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     write_value.extend(value.iter());
     let mut tables = Vec::new();
     let mut table = HashMap::new();
-    for i in 0..100 {
+    for i in 0..MicroTableSize {
         table.insert(
             i,
             RwLock::new(Tuple {
@@ -42,7 +42,7 @@ pub struct MicroQuery {
     denom: f64,
     write_value: String,
     req_per_query: i32,
-    table_size: i32,
+    table_size: u64,
     read_perc: i32,
     theta: f64,
     pub read_only: bool,
@@ -74,7 +74,7 @@ impl MicroQuery {
         for _ in 0..self.req_per_query {
             let op = f64_rand(0.0, 1.0, 0.01);
 
-            let key = self.zipf(self.table_size as u64, self.theta);
+            let key = self.zipf(self.table_size, self.theta);
 
             if keys.contains(&key) {
                 continue;
@@ -84,14 +84,14 @@ impl MicroQuery {
 
             if op * 100.0 <= self.read_perc as f64 {
                 read_set.push(ReadStruct {
-                    key: key as u64,
+                    key,
                     value: None,
                     timestamp: None,
                     table_id: 0,
                 });
             } else {
                 write_set.push(WriteStruct {
-                    key: key as u64,
+                    key,
                     value: Some(self.write_value.clone()),
                     table_id: 0,
                     // timestamp: None,

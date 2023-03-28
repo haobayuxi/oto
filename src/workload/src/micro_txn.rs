@@ -4,7 +4,10 @@ use tokio::{fs::OpenOptions, io::AsyncWriteExt, time::Instant};
 
 use crate::micro_db::MicroQuery;
 
-pub async fn micro_run_transactions(coordinator: &mut DtxCoordinator, theta: f64) {
+pub async fn micro_run_transactions(
+    coordinator: &mut DtxCoordinator,
+    theta: f64,
+) -> (Vec<u128>, f64) {
     // init workload
     let mut query = MicroQuery::new(theta, 4, 10);
     // run transaction
@@ -20,29 +23,30 @@ pub async fn micro_run_transactions(coordinator: &mut DtxCoordinator, theta: f64
     let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
     let throughput_result = TXNS_PER_CLIENT as f64 / total_end;
     println!("throughput = {}", throughput_result);
+    (latency_result, throughput_result)
     // write results to file
-    let latency_file_name = coordinator.id.to_string() + "latency.data";
-    let mut latency_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(latency_file_name)
-        .await
-        .unwrap();
-    for iter in latency_result {
-        latency_file.write(iter.to_string().as_bytes()).await;
-        latency_file.write("\n".as_bytes()).await;
-    }
-    let throughput_file_name = coordinator.id.to_string() + "throughput.data";
-    let mut throughput_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(throughput_file_name)
-        .await
-        .unwrap();
-    throughput_file
-        .write(throughput_result.to_string().as_bytes())
-        .await;
-    throughput_file.write("\n".as_bytes()).await;
+    // let latency_file_name = coordinator.id.to_string() + "latency.data";
+    // let mut latency_file = OpenOptions::new()
+    //     .create(true)
+    //     .write(true)
+    //     .open(latency_file_name)
+    //     .await
+    //     .unwrap();
+    // for iter in latency_result {
+    //     latency_file.write(iter.to_string().as_bytes()).await;
+    //     latency_file.write("\n".as_bytes()).await;
+    // }
+    // let throughput_file_name = coordinator.id.to_string() + "throughput.data";
+    // let mut throughput_file = OpenOptions::new()
+    //     .create(true)
+    //     .write(true)
+    //     .open(throughput_file_name)
+    //     .await
+    //     .unwrap();
+    // throughput_file
+    //     .write(throughput_result.to_string().as_bytes())
+    //     .await;
+    // throughput_file.write("\n".as_bytes()).await;
 }
 
 async fn run_transacntion(
