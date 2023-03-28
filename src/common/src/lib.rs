@@ -47,11 +47,15 @@ pub struct Config {
     pub client_num: u64,
 }
 
+// optane08 192.168.1.88
+// optane09 192.168.1.89
+// optane10 192.168.1.70
+
 impl Default for Config {
     fn default() -> Self {
         Self {
-            server_addr: "166.111.69.11:500001".to_string(),
-            cto_addr: "192.168.50.12:500001".to_string(),
+            server_addr: "192.168.1.89:100001".to_string(),
+            cto_addr: "192.168.1.70:100001".to_string(),
             executor_num: 20,
             client_num: 100,
         }
