@@ -50,7 +50,6 @@ struct CtoConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let f = std::fs::File::open("cto_config.yml").unwrap();
     // let client_config: CtoConfig = serde_yaml::from_reader(f).unwrap();
     let config = Config::default();
     let addr = config.cto_addr.parse().unwrap();
