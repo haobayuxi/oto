@@ -4,6 +4,13 @@ use rand::*;
 use rpc::common::Msg;
 use tokio::sync::oneshot::Sender as OneShotSender;
 
+pub static SUBSCRIBER: i32 = 0;
+pub static DERSTINATION: i32 = 1;
+pub static ACCESS_INFO: i32 = 2;
+pub static LOCATION: i32 = 3;
+
+pub static TXNS_PER_CLIENT: u64 = 1000;
+
 #[derive(Clone)]
 pub struct Tuple {
     pub lock_txn_id: u64, // 0 state for no lock

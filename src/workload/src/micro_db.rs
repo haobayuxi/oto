@@ -38,8 +38,6 @@ fn zeta(n: u64, theta: f64) -> f64 {
 }
 
 pub struct MicroQuery {
-    pub read_set: Vec<ReadStruct>,
-    pub write_set: Vec<WriteStruct>,
     zeta_2_theta: f64,
     denom: f64,
     write_value: String,
@@ -57,8 +55,6 @@ impl MicroQuery {
         let mut write_value = String::from("");
         write_value.extend(value.iter());
         Self {
-            read_set: Vec::new(),
-            write_set: Vec::new(),
             zeta_2_theta,
             denom: zeta(MicroTableSize as u64, theta),
             write_value,
@@ -70,10 +66,10 @@ impl MicroQuery {
         }
     }
 
-    pub fn generate(&mut self) {
+    pub fn generate(&mut self) -> (Vec<ReadStruct>, Vec<WriteStruct>) {
         self.read_only = true;
-        self.read_set.clear();
-        self.write_set.clear();
+        let mut read_set = Vec::new();
+        let mut write_set = Vec::new();
         let mut keys = Vec::new();
         for _ in 0..self.req_per_query {
             let op = f64_rand(0.0, 1.0, 0.01);
@@ -87,22 +83,23 @@ impl MicroQuery {
             }
 
             if op * 100.0 <= self.read_perc as f64 {
-                self.read_set.push(ReadStruct {
+                read_set.push(ReadStruct {
                     key: key as u64,
                     value: None,
                     timestamp: None,
-                    table_id: todo!(),
+                    table_id: 0,
                 });
             } else {
-                self.write_set.push(WriteStruct {
+                write_set.push(WriteStruct {
                     key: key as u64,
                     value: Some(self.write_value.clone()),
-                    table_id: todo!(),
+                    table_id: 0,
                     // timestamp: None,
                 });
                 self.read_only = false;
             }
         }
+        (read_set, write_set)
     }
 
     fn zipf(&self, n: u64, theta: f64) -> u64 {

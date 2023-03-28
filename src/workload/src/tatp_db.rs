@@ -265,13 +265,6 @@ pub enum TatpQuery {
     InsertCallForwarding(InsertCallForwardingQuery),
 }
 
-/**
- * subscriber: Arc<HashMap<u64, Subscriber>>,
-    access_info: Arc<HashMap<u64, AccessInfo>>,
-    special_facility: Arc<HashMap<u64, AccessInfo>>,
-    call_forwarding: Arc<HashMap<u64, CallForwarding>>,
-*/
-
 pub fn init_tatp_data() -> (
     Arc<HashMap<u64, Subscriber>>,
     Arc<HashMap<u64, AccessInfo>>,
@@ -326,6 +319,11 @@ pub fn init_tatp_data() -> (
         Arc::new(special_facility),
         Arc::new(call_forwarding),
     );
+}
+
+static SUBSCRIBER_ROWS: u64 = 100;
+pub fn get_sid() -> u64 {
+    return tatp_random(1, SUBSCRIBER_ROWS);
 }
 
 fn tatp_random(x: u64, y: u64) -> u64 {

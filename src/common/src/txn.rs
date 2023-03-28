@@ -13,6 +13,7 @@ pub enum DtxType {
     to,
 }
 pub struct DtxCoordinator {
+    pub id: u64,
     pub local_ts: Arc<RwLock<u64>>,
     pub dtx_type: DtxType,
     txn_id: u64,
@@ -28,6 +29,7 @@ pub struct DtxCoordinator {
 
 impl DtxCoordinator {
     pub fn new(
+        id: u64,
         local_ts: Arc<RwLock<u64>>,
         dtx_type: DtxType,
         txn_id: u64,
@@ -35,6 +37,7 @@ impl DtxCoordinator {
         data_client: DataServiceClient<Channel>,
     ) -> Self {
         Self {
+            id,
             local_ts,
             dtx_type,
             txn_id,

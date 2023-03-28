@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 struct ServerConfig {
     id: i32,
     db_type: String,
+    read_perc: u64,
+    zipf: f64,
 }
 
 #[tokio::main]

@@ -56,20 +56,24 @@ pub async fn get_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) 
     unsafe {
         for iter in read_set {
             let table = &mut DATA[iter.table_id as usize];
-            let guard = table.get_mut(&iter.key).unwrap().read().await;
-
-            if guard.lock_txn_id != 0 {
-                // has been locked
-                return (false, result);
+            match table.get_mut(&iter.key) {
+                Some(rwlock) => {
+                    let guard = rwlock.read().await;
+                    if guard.lock_txn_id != 0 {
+                        // has been locked
+                        return (false, result);
+                    }
+                    // insert into result
+                    let read_struct = ReadStruct {
+                        key: iter.key,
+                        table_id: iter.table_id,
+                        value: Some(guard.data.clone()),
+                        timestamp: Some(guard.ts),
+                    };
+                    result.push(read_struct);
+                }
+                None => return (false, result),
             }
-            // insert into result
-            let read_struct = ReadStruct {
-                key: iter.key,
-                table_id: iter.table_id,
-                value: Some(guard.data.clone()),
-                timestamp: Some(guard.ts),
-            };
-            result.push(read_struct);
         }
         (true, result)
     }
