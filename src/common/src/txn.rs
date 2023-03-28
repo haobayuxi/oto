@@ -109,9 +109,14 @@ impl DtxCoordinator {
             .unwrap()
             .into_inner();
         for iter in reply.read_set.iter() {
+            println!("{},{}", iter.key, iter.timestamp.unwrap());
             let a = iter.timestamp.unwrap();
         }
         self.read_set.extend(reply.read_set);
+        for iter in self.read_set.iter() {
+            println!("{},{}", iter.key, iter.timestamp.unwrap());
+            let a = iter.timestamp.unwrap();
+        }
         self.write_set.extend(reply.write_set);
         self.read_to_execute.clear();
         self.write_to_execute.clear();
@@ -217,8 +222,9 @@ impl DtxCoordinator {
     async fn oto_validate(&self) -> bool {
         let mut max_tx = self.start_ts;
         for iter in self.read_set.iter() {
-            if iter.timestamp.unwrap() > self.start_ts {
-                max_tx = iter.timestamp.unwrap();
+            let ts = iter.timestamp();
+            if ts > self.start_ts {
+                max_tx = ts;
             }
         }
         if max_tx > self.start_ts {

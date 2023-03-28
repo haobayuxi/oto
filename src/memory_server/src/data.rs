@@ -68,9 +68,6 @@ pub async fn get_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) 
                 None => return (false, result),
             }
         }
-        for iter in result.iter() {
-            let a = iter.timestamp.unwrap();
-        }
         (true, result)
     }
 }
