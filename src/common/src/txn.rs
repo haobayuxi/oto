@@ -90,9 +90,9 @@ impl DtxCoordinator {
         }
     }
 
-    pub async fn tx_exe(&mut self) -> bool {
+    pub async fn tx_exe(&mut self) -> (bool, Vec<ReadStruct>) {
         if self.read_to_execute.is_empty() && self.write_to_execute.is_empty() {
-            return true;
+            return (true, Vec::new());
         }
         let exe_msg = Msg {
             txn_id: self.txn_id,
@@ -108,27 +108,25 @@ impl DtxCoordinator {
             .await
             .unwrap()
             .into_inner();
-        self.read_set.extend(reply.read_set);
+        self.read_set.extend(reply.read_set.clone());
         self.write_set.extend(reply.write_set);
         self.read_to_execute.clear();
         self.write_to_execute.clear();
-        return reply.success;
+        return (reply.success, reply.read_set);
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
         if self.validate().await {
-            let mut commit = Msg {
+            let commit = Msg {
                 txn_id: self.txn_id,
                 read_set: Vec::new(),
-                write_set: self.write_set.clone(),
+                write_set: Vec::new(),
                 op: TxnOp::Commit.into(),
                 success: true,
                 commit_ts: Some(self.commit_ts),
             };
             let mut client = self.data_client.clone();
-            tokio::spawn(async move {
-                let reply = client.communication(commit).await.unwrap().into_inner();
-            });
+            let _ = client.communication(commit).await.unwrap().into_inner();
 
             return true;
         } else {
@@ -144,7 +142,7 @@ impl DtxCoordinator {
         let abort = Msg {
             txn_id: self.txn_id,
             read_set: Vec::new(),
-            write_set: self.write_set.clone(),
+            write_set: Vec::new(),
             op: TxnOp::Abort.into(),
             success: true,
             commit_ts: Some(self.commit_ts),

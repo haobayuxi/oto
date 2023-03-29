@@ -1,7 +1,20 @@
-use std::{collections::HashMap, sync::Arc};
-
-use common::{f64_rand, u64_rand};
+// use bincode;
+use common::{f64_rand, u64_rand, Tuple};
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::RwLock;
+
+pub fn sf_key(s_id: u64, sf_type: u64) -> u64 {
+    s_id << 4 + sf_type
+}
+
+pub fn cf_key(s_id: u64, sf_type: u64, start_time: u64) -> u64 {
+    (s_id << 4 + sf_type) << 6 + start_time
+}
+
+pub fn ai_key(s_id: u64, ai_type: u64) -> u64 {
+    s_id << 4 + ai_type
+}
 
 pub static mut SUBSCRIBER_FIELDS: Vec<&str> = Vec::new();
 pub static mut ACCESS_INFO_FIELDS: Vec<&str> = Vec::new();
@@ -165,10 +178,10 @@ pub struct AccessInfo {
 }
 
 impl AccessInfo {
-    pub fn new(s_id: u64) -> Self {
+    pub fn new(s_id: u64, ai_type: u64) -> Self {
         Self {
             s_id,
-            ai_type: rnd("ai_type") as u8,
+            ai_type: ai_type as u8,
             data1: rnd("data") as u8,
             data2: rnd("data") as u8,
             data3: "ABC".to_string(),
@@ -221,104 +234,92 @@ impl CallForwarding {
     }
 }
 
-#[derive(Default)]
-pub struct GetSubscriberDataQuery {
-    pub s_id: u64,
-}
+pub fn init_tatp_data() {
+    unsafe {
+        let mut subscriber: HashMap<u64, RwLock<Tuple>> = HashMap::new();
+        let mut access_info: HashMap<u64, RwLock<Tuple>> = HashMap::new();
+        let mut special_facility: HashMap<u64, RwLock<Tuple>> = HashMap::new();
+        let mut call_forwarding: HashMap<u64, RwLock<Tuple>> = HashMap::new();
 
-pub struct GetNewDestinationQuery {
-    pub s_id: u64,
-    pub sf_type: u8,
-    pub start_time: u8,
-    pub end_time: u8,
-}
+        let start_times = vec![0, 8, 16];
 
-pub struct GetAccessDataQuery {
-    pub s_id: u64,
-    pub ai_type: u8,
-}
-
-pub struct UpdateSubscriberDataQuery {
-    pub s_id: u64,
-    pub sf_type: u8,
-    pub data_a: u8,
-}
-
-pub struct UpdateLocationQuery {
-    pub sub_nbr: String,
-    pub vlr_location: u32,
-}
-
-pub struct InsertCallForwardingQuery {
-    pub sub_nbr: String,
-    pub sf_type: u8,
-    pub start_time: u8,
-    pub entd_time: u8,
-}
-
-pub enum TatpQuery {
-    GetSubscriberData(GetSubscriberDataQuery),
-    GetNewDestination(GetNewDestinationQuery),
-    GetAccessData(GetAccessDataQuery),
-    UpdateSubscriberData(UpdateSubscriberDataQuery),
-    UpdateLocation(UpdateLocationQuery),
-    InsertCallForwarding(InsertCallForwardingQuery),
-}
-
-pub fn init_tatp_data() -> (
-    Arc<HashMap<u64, Subscriber>>,
-    Arc<HashMap<u64, AccessInfo>>,
-    Arc<HashMap<u64, SpecialFacility>>,
-    Arc<HashMap<u64, CallForwarding>>,
-) {
-    let mut subscriber: HashMap<u64, Subscriber> = HashMap::new();
-    let mut access_info: HashMap<u64, AccessInfo> = HashMap::new();
-    let mut special_facility: HashMap<u64, SpecialFacility> = HashMap::new();
-    let mut call_forwarding: HashMap<u64, CallForwarding> = HashMap::new();
-
-    let start_times = vec![0, 8, 16];
-
-    for s_id in 0..65535 {
-        // init subscriber
-        let subscriber_record = Subscriber::new(s_id);
-        subscriber.insert(s_id, subscriber_record);
-        // init access_info
-        let access_info_record = AccessInfo::new(s_id);
-        access_info.insert(s_id, access_info_record);
-        // init special_facility record
-        let subrecord_amount = u64_rand(1, 4);
-        let mut sr_type = vec![0; 4];
-        for i in 0..subrecord_amount {
-            loop {
-                let sr = rnd("ai_type") as usize;
-                if sr_type[sr] == 0 {
-                    // insert special_facility record
-                    let special_facility_record = SpecialFacility::new(s_id, sr as u8);
-                    special_facility.insert(s_id, special_facility_record);
-
-                    // init call_forwarding record
-                    let callfw_amount = u64_rand(0, 3);
-                    for j in 0..callfw_amount {
-                        let start_time = start_times[j as usize];
-                        let end_time = start_time + u64_rand(1, 8);
-                        let call_forwarding_record =
-                            CallForwarding::new(s_id, sr as u8, start_time as u8, end_time as u8);
-                        call_forwarding.insert(s_id, call_forwarding_record);
+        for s_id in 0..65535 {
+            // init subscriber
+            let subscriber_record = Subscriber::new(s_id);
+            subscriber.insert(
+                s_id,
+                RwLock::new(Tuple::new(
+                    String::from_utf8(bincode::serialize(&subscriber_record).unwrap()).unwrap(),
+                )),
+            );
+            // init access_info
+            let ai_record_amount = u64_rand(1, 4);
+            let mut ai_type = vec![0; 4];
+            for i in 0..ai_record_amount {
+                loop {
+                    let ai = rnd("ai_type") as usize;
+                    if ai_type[ai] == 0 {
+                        let access_info_record = AccessInfo::new(s_id, ai as u64);
+                        access_info.insert(
+                            s_id,
+                            RwLock::new(Tuple::new(
+                                String::from_utf8(bincode::serialize(&access_info_record).unwrap())
+                                    .unwrap(),
+                            )),
+                        );
+                        ai_type[ai] = 1;
+                        break;
                     }
+                }
+            }
+            // init special_facility record
+            let subrecord_amount = u64_rand(1, 4);
+            let mut sr_type = vec![0; 4];
+            for i in 0..subrecord_amount {
+                loop {
+                    let sr = rnd("sf_type") as usize;
+                    if sr_type[sr] == 0 {
+                        // insert special_facility record
+                        let special_facility_record = SpecialFacility::new(s_id, sr as u8);
+                        special_facility.insert(
+                            sf_key(s_id, sr as u64),
+                            RwLock::new(Tuple::new(
+                                String::from_utf8(
+                                    bincode::serialize(&special_facility_record).unwrap(),
+                                )
+                                .unwrap(),
+                            )),
+                        );
 
-                    sr_type[sr] = 1;
-                    break;
+                        // init call_forwarding record
+                        let callfw_amount = u64_rand(0, 3);
+                        for j in 0..callfw_amount {
+                            let start_time = start_times[j as usize];
+                            let end_time = start_time + u64_rand(1, 8);
+                            let call_forwarding_record = CallForwarding::new(
+                                s_id,
+                                sr as u8,
+                                start_time as u8,
+                                end_time as u8,
+                            );
+                            call_forwarding.insert(
+                                cf_key(s_id, sr as u64, start_time),
+                                RwLock::new(Tuple::new(
+                                    String::from_utf8(
+                                        bincode::serialize(&call_forwarding_record).unwrap(),
+                                    )
+                                    .unwrap(),
+                                )),
+                            );
+                        }
+
+                        sr_type[sr] = 1;
+                        break;
+                    }
                 }
             }
         }
     }
-
-    return (
-        Arc::new(subscriber),
-        Arc::new(access_info),
-        Arc::new(special_facility),
-        Arc::new(call_forwarding),
-    );
 }
 
 static SUBSCRIBER_ROWS: u64 = 100;
@@ -334,7 +335,7 @@ pub struct TatpWorkload {
 }
 
 impl TatpWorkload {
-    pub fn generate(&mut self) -> TatpQuery {
+    pub fn generate(&mut self) {
         let sid = tatp_random(1, self.subscriber_rows);
         let op = f64_rand(0.0, 1.0, 0.01);
         if op * 100.0 < 35 as f64 {
@@ -345,9 +346,5 @@ impl TatpWorkload {
             //
         } else {
         }
-        return TatpQuery::GetAccessData(GetAccessDataQuery {
-            s_id: 0,
-            ai_type: todo!(),
-        });
     }
 }

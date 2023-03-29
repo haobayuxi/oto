@@ -16,14 +16,7 @@ pub fn init_micro_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     let mut tables = Vec::new();
     let mut table = HashMap::new();
     for i in 0..MicroTableSize {
-        table.insert(
-            i,
-            RwLock::new(Tuple {
-                lock_txn_id: 0,
-                ts: 0,
-                data: write_value.clone(),
-            }),
-        );
+        table.insert(i, RwLock::new(Tuple::new(write_value.clone())));
     }
     tables.push(table);
     tables

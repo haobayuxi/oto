@@ -5,18 +5,47 @@ use rpc::common::Msg;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot::Sender as OneShotSender;
 
-pub static SUBSCRIBER: i32 = 0;
-pub static DERSTINATION: i32 = 1;
-pub static ACCESS_INFO: i32 = 2;
-pub static LOCATION: i32 = 3;
+pub static SUBSCRIBER_TABLE: i32 = 0;
+pub static SPECIAL_FACILITY_TABLE: i32 = 1;
+pub static ACCESS_INFO_TABLE: i32 = 2;
+pub static CALL_FORWARDING_TABLE: i32 = 3;
 
 pub static TXNS_PER_CLIENT: u64 = 1000;
 
 #[derive(Clone)]
 pub struct Tuple {
-    pub lock_txn_id: u64, // 0 state for no lock
+    lock_txn_id: u64, // 0 state for no lock
     pub ts: u64,
     pub data: String,
+}
+
+impl Tuple {
+    pub fn new(data: String) -> Self {
+        Self {
+            lock_txn_id: 0,
+            ts: 0,
+            data,
+        }
+    }
+
+    pub fn is_locked(&self) -> bool {
+        if self.lock_txn_id == 0 {
+            return false;
+        }
+        true
+    }
+    pub fn set_lock(&mut self, txn_id: u64) -> bool {
+        if self.lock_txn_id == 0 {
+            self.lock_txn_id = txn_id;
+            return true;
+        }
+        false
+    }
+    pub fn release_lock(&mut self, txn_id: u64) {
+        if self.lock_txn_id == txn_id {
+            self.lock_txn_id = 0;
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]

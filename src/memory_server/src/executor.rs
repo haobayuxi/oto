@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use common::CoordnatorMsg;
 use rpc::common::Msg;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -9,11 +11,16 @@ use crate::data::{
 pub struct Executor {
     pub id: u64,
     pub recv: UnboundedReceiver<CoordnatorMsg>,
+    // txns: HashMap<u64, Msg>,
 }
 
 impl Executor {
     pub fn new(id: u64, recv: UnboundedReceiver<CoordnatorMsg>) -> Self {
-        Self { id, recv }
+        Self {
+            id,
+            recv,
+            // txns: HashMap::new(),
+        }
     }
     pub async fn run(&mut self) {
         loop {
@@ -33,11 +40,17 @@ impl Executor {
                             }
                             reply.success =
                                 lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
+                            // if coor_msg.msg.write_set.len() != 0 {
+                            //     self.txns.insert(coor_msg.msg.txn_id, coor_msg.msg);
+                            // }
                             coor_msg.call_back.send(reply);
                         }
                         rpc::common::TxnOp::Commit => {
                             // update and release the lock
-                            update_and_release_locks(coor_msg.msg.write_set).await;
+                            // let txn_id = coor_msg.msg.txn_id;
+                            // let msg = self.txns.remove(&txn_id).unwrap();
+                            update_and_release_locks(coor_msg.msg.write_set, coor_msg.msg.txn_id)
+                                .await;
                             let mut reply = Msg::default();
                             reply.success = true;
                             coor_msg.call_back.send(reply);
@@ -45,6 +58,8 @@ impl Executor {
                         rpc::common::TxnOp::Abort => {
                             // release the lock
 
+                            // let txn_id = coor_msg.msg.txn_id;
+                            // let msg = self.txns.remove(&txn_id).unwrap();
                             releass_locks(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
                             let mut reply = Msg::default();
                             reply.success = true;

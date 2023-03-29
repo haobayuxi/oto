@@ -27,7 +27,7 @@ pub async fn validate_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStru
             let table = &mut DATA[iter.table_id as usize];
             let guard = table.get_mut(&iter.key).unwrap().read().await;
 
-            if guard.lock_txn_id != 0 {
+            if guard.is_locked() {
                 // has been locked
                 return (false, result);
             }
@@ -52,7 +52,7 @@ pub async fn get_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) 
             match table.get_mut(&iter.key) {
                 Some(rwlock) => {
                     let guard = rwlock.read().await;
-                    if guard.lock_txn_id != 0 {
+                    if guard.is_locked() {
                         // has been locked
                         return (false, result);
                     }
@@ -65,7 +65,7 @@ pub async fn get_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) 
                     };
                     result.push(read_struct);
                 }
-                None => return (false, result),
+                None => continue,
             }
         }
         (true, result)
@@ -77,9 +77,7 @@ pub async fn lock_write_set(write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-            if guard.lock_txn_id == 0 {
-                guard.lock_txn_id = txn_id;
-            } else {
+            if !guard.set_lock(txn_id) {
                 return false;
             }
         }
@@ -87,12 +85,12 @@ pub async fn lock_write_set(write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
     }
 }
 
-pub async fn update_and_release_locks(write_set: Vec<WriteStruct>) {
+pub async fn update_and_release_locks(write_set: Vec<WriteStruct>, txn_id: u64) {
     unsafe {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-            guard.lock_txn_id = 0;
+            guard.release_lock(txn_id);
             guard.data = iter.value.clone().unwrap();
         }
     }
@@ -103,9 +101,7 @@ pub async fn releass_locks(write_set: Vec<WriteStruct>, txn_id: u64) {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-            if guard.lock_txn_id == txn_id {
-                guard.lock_txn_id = 0;
-            }
+            guard.release_lock(txn_id)
         }
     }
 }

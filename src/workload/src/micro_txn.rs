@@ -57,7 +57,8 @@ async fn run_transacntion(
     coordinator.tx_begin().await;
     coordinator.read_set = read_set;
     coordinator.write_set = write_set;
-    if !coordinator.tx_exe().await {
+    let (status, result) = coordinator.tx_exe().await;
+    if !status {
         coordinator.tx_abort().await;
         return false;
     }
