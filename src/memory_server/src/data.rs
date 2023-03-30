@@ -4,7 +4,7 @@ use common::{DbType, Tuple};
 use rpc::common::{ReadStruct, WriteStruct};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use workload::micro_db::init_micro_db;
+use workload::{micro_db::init_micro_db, tatp_db::init_tatp_data};
 
 pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
 
@@ -14,7 +14,7 @@ pub fn init_data(txn_type: DbType) {
             DbType::micro => {
                 DATA = init_micro_db();
             }
-            DbType::tatp => todo!(),
+            DbType::tatp => DATA = init_tatp_data(),
             DbType::smallbank => todo!(),
         }
     }

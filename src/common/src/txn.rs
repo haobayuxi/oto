@@ -3,6 +3,10 @@ use rpc::common::{
     ReadStruct, TxnOp, WriteStruct,
 };
 use serde::Deserialize;
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
+use std::iter::FromIterator;
+use std::rc::Rc;
 use std::{any::Any, convert::TryInto, sync::Arc};
 use tokio::sync::RwLock;
 use tokio::time::sleep;
@@ -35,9 +39,9 @@ pub struct DtxCoordinator {
     start_ts: u64,
     commit_ts: u64,
     pub read_set: Vec<ReadStruct>,
-    pub write_set: Vec<WriteStruct>,
+    pub write_set: Vec<Rc<RefCell<WriteStruct>>>,
     read_to_execute: Vec<ReadStruct>,
-    write_to_execute: Vec<WriteStruct>,
+    write_to_execute: Vec<Rc<RefCell<WriteStruct>>>,
     cto_client: CtoServiceClient<Channel>,
     data_client: DataServiceClient<Channel>,
 }
@@ -94,10 +98,15 @@ impl DtxCoordinator {
         if self.read_to_execute.is_empty() && self.write_to_execute.is_empty() {
             return (true, Vec::new());
         }
+        let write_set = self
+            .write_to_execute
+            .iter()
+            .map(|x| x.borrow_mut().clone())
+            .collect();
         let exe_msg = Msg {
             txn_id: self.txn_id,
             read_set: self.read_to_execute.clone(),
-            write_set: self.write_to_execute.clone(),
+            write_set,
             op: TxnOp::Execute.into(),
             success: true,
             commit_ts: None,
@@ -109,7 +118,7 @@ impl DtxCoordinator {
             .unwrap()
             .into_inner();
         self.read_set.extend(reply.read_set.clone());
-        self.write_set.extend(reply.write_set);
+        self.write_set.extend(self.write_to_execute.clone());
         self.read_to_execute.clear();
         self.write_to_execute.clear();
         return (reply.success, reply.read_set);
@@ -117,10 +126,15 @@ impl DtxCoordinator {
     pub async fn tx_commit(&mut self) -> bool {
         // validate
         if self.validate().await {
+            let write_set = self
+                .write_set
+                .iter()
+                .map(|x| x.borrow_mut().clone())
+                .collect();
             let commit = Msg {
                 txn_id: self.txn_id,
                 read_set: Vec::new(),
-                write_set: Vec::new(),
+                write_set,
                 op: TxnOp::Commit.into(),
                 success: true,
                 commit_ts: Some(self.commit_ts),
@@ -163,13 +177,20 @@ impl DtxCoordinator {
         self.read_to_execute.push(read_struct);
     }
 
-    pub fn add_write_to_execute(&mut self, key: u64, table_id: i32, value: String) {
+    pub fn add_write_to_execute(
+        &mut self,
+        key: u64,
+        table_id: i32,
+        value: String,
+    ) -> Rc<RefCell<WriteStruct>> {
         let write_struct = WriteStruct {
             key,
             table_id,
             value: Some(value),
         };
-        self.write_to_execute.push(write_struct);
+        let obj = Rc::new(RefCell::new(write_struct));
+        self.write_to_execute.push(obj.clone());
+        obj
     }
 
     async fn validate(&mut self) -> bool {

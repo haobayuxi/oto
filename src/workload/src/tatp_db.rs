@@ -234,92 +234,92 @@ impl CallForwarding {
     }
 }
 
-pub fn init_tatp_data() {
-    unsafe {
-        let mut subscriber: HashMap<u64, RwLock<Tuple>> = HashMap::new();
-        let mut access_info: HashMap<u64, RwLock<Tuple>> = HashMap::new();
-        let mut special_facility: HashMap<u64, RwLock<Tuple>> = HashMap::new();
-        let mut call_forwarding: HashMap<u64, RwLock<Tuple>> = HashMap::new();
+pub fn init_tatp_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
+    let mut data = Vec::new();
+    let mut subscriber: HashMap<u64, RwLock<Tuple>> = HashMap::new();
+    let mut access_info: HashMap<u64, RwLock<Tuple>> = HashMap::new();
+    let mut special_facility: HashMap<u64, RwLock<Tuple>> = HashMap::new();
+    let mut call_forwarding: HashMap<u64, RwLock<Tuple>> = HashMap::new();
 
-        let start_times = vec![0, 8, 16];
+    let start_times = vec![0, 8, 16];
 
-        for s_id in 0..65535 {
-            // init subscriber
-            let subscriber_record = Subscriber::new(s_id);
-            subscriber.insert(
-                s_id,
-                RwLock::new(Tuple::new(
-                    String::from_utf8(bincode::serialize(&subscriber_record).unwrap()).unwrap(),
-                )),
-            );
-            // init access_info
-            let ai_record_amount = u64_rand(1, 4);
-            let mut ai_type = vec![0; 4];
-            for i in 0..ai_record_amount {
-                loop {
-                    let ai = rnd("ai_type") as usize;
-                    if ai_type[ai] == 0 {
-                        let access_info_record = AccessInfo::new(s_id, ai as u64);
-                        access_info.insert(
-                            s_id,
-                            RwLock::new(Tuple::new(
-                                String::from_utf8(bincode::serialize(&access_info_record).unwrap())
-                                    .unwrap(),
-                            )),
-                        );
-                        ai_type[ai] = 1;
-                        break;
-                    }
+    for s_id in 0..65535 {
+        // init subscriber
+        let subscriber_record = Subscriber::new(s_id);
+        subscriber.insert(
+            s_id,
+            RwLock::new(Tuple::new(
+                String::from_utf8(bincode::serialize(&subscriber_record).unwrap()).unwrap(),
+            )),
+        );
+        // init access_info
+        let ai_record_amount = u64_rand(1, 4);
+        let mut ai_type = vec![0; 4];
+        for i in 0..ai_record_amount {
+            loop {
+                let ai = rnd("ai_type") as usize;
+                if ai_type[ai] == 0 {
+                    let access_info_record = AccessInfo::new(s_id, ai as u64);
+                    access_info.insert(
+                        s_id,
+                        RwLock::new(Tuple::new(
+                            String::from_utf8(bincode::serialize(&access_info_record).unwrap())
+                                .unwrap(),
+                        )),
+                    );
+                    ai_type[ai] = 1;
+                    break;
                 }
             }
-            // init special_facility record
-            let subrecord_amount = u64_rand(1, 4);
-            let mut sr_type = vec![0; 4];
-            for i in 0..subrecord_amount {
-                loop {
-                    let sr = rnd("sf_type") as usize;
-                    if sr_type[sr] == 0 {
-                        // insert special_facility record
-                        let special_facility_record = SpecialFacility::new(s_id, sr as u8);
-                        special_facility.insert(
-                            sf_key(s_id, sr as u64),
+        }
+        // init special_facility record
+        let subrecord_amount = u64_rand(1, 4);
+        let mut sr_type = vec![0; 4];
+        for i in 0..subrecord_amount {
+            loop {
+                let sr = rnd("sf_type") as usize;
+                if sr_type[sr] == 0 {
+                    // insert special_facility record
+                    let special_facility_record = SpecialFacility::new(s_id, sr as u8);
+                    special_facility.insert(
+                        sf_key(s_id, sr as u64),
+                        RwLock::new(Tuple::new(
+                            String::from_utf8(
+                                bincode::serialize(&special_facility_record).unwrap(),
+                            )
+                            .unwrap(),
+                        )),
+                    );
+
+                    // init call_forwarding record
+                    let callfw_amount = u64_rand(0, 3);
+                    for j in 0..callfw_amount {
+                        let start_time = start_times[j as usize];
+                        let end_time = start_time + u64_rand(1, 8);
+                        let call_forwarding_record =
+                            CallForwarding::new(s_id, sr as u8, start_time as u8, end_time as u8);
+                        call_forwarding.insert(
+                            cf_key(s_id, sr as u64, start_time),
                             RwLock::new(Tuple::new(
                                 String::from_utf8(
-                                    bincode::serialize(&special_facility_record).unwrap(),
+                                    bincode::serialize(&call_forwarding_record).unwrap(),
                                 )
                                 .unwrap(),
                             )),
                         );
-
-                        // init call_forwarding record
-                        let callfw_amount = u64_rand(0, 3);
-                        for j in 0..callfw_amount {
-                            let start_time = start_times[j as usize];
-                            let end_time = start_time + u64_rand(1, 8);
-                            let call_forwarding_record = CallForwarding::new(
-                                s_id,
-                                sr as u8,
-                                start_time as u8,
-                                end_time as u8,
-                            );
-                            call_forwarding.insert(
-                                cf_key(s_id, sr as u64, start_time),
-                                RwLock::new(Tuple::new(
-                                    String::from_utf8(
-                                        bincode::serialize(&call_forwarding_record).unwrap(),
-                                    )
-                                    .unwrap(),
-                                )),
-                            );
-                        }
-
-                        sr_type[sr] = 1;
-                        break;
                     }
+
+                    sr_type[sr] = 1;
+                    break;
                 }
             }
         }
     }
+    data.push(subscriber);
+    data.push(special_facility);
+    data.push(access_info);
+    data.push(call_forwarding);
+    data
 }
 
 static SUBSCRIBER_ROWS: u64 = 100;
