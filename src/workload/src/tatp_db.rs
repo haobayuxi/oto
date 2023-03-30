@@ -106,7 +106,7 @@ pub fn rnd(param: &str) -> i64 {
 pub struct Subscriber {
     pub s_id: u64,
     pub sub_nbr: String,
-    bit: Vec<bool>,
+    pub bit: Vec<bool>,
     // pub bit_1: bool,
     // pub bit_2: bool,
     // pub bit_3: bool,

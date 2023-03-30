@@ -89,17 +89,55 @@ async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.tx_begin().await;
     // build key
     let s_id = get_sid();
-    let sub_obj = Subscriber::new(s_id);
-    // coordinator.add_write_to_execute(key, table_id, value)
-    let sf_type = rnd("sf_type") as u64;
+    coordinator.add_read_to_execute(s_id, SUBSCRIBER_TABLE);
+    let sub_write_obj = coordinator.add_write_to_execute(s_id, SUBSCRIBER_TABLE, "".to_string());
 
-    true
+    let sf_type = rnd("sf_type") as u64;
+    let sf_id = sf_key(s_id, sf_type);
+    coordinator.add_read_to_execute(sf_id, SPECIAL_FACILITY_TABLE);
+    let sf_write_obj =
+        coordinator.add_write_to_execute(sf_id, SPECIAL_FACILITY_TABLE, "".to_string());
+
+    let (status, read) = coordinator.tx_exe().await;
+
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    // already locked
+    let mut sub_record: Subscriber = bincode::deserialize(&read[0].value().as_bytes()).unwrap();
+    sub_record.bit[0] = rnd("bit") != 0;
+    let mut sf_record: SpecialFacility = bincode::deserialize(&read[1].value().as_bytes()).unwrap();
+    sf_record.data_a = rnd("data") as u8;
+
+    sub_write_obj.borrow_mut().value =
+        Some(String::from_utf8(bincode::serialize(&sub_record).unwrap()).unwrap());
+    sf_write_obj.borrow_mut().value =
+        Some(String::from_utf8(bincode::serialize(&sf_record).unwrap()).unwrap());
+
+    let commit_status = coordinator.tx_commit().await;
+
+    return commit_status;
 }
 
 async fn tx_update_lcoation(coordinator: &mut DtxCoordinator) -> bool {
-    true
+    coordinator.tx_begin().await;
+    // build key
+    let s_id = get_sid();
+    coordinator.add_read_to_execute(s_id, SUBSCRIBER_TABLE);
+    let sub_write_obj = coordinator.add_write_to_execute(s_id, SUBSCRIBER_TABLE, "".to_string());
+    let (status, read) = coordinator.tx_exe().await;
+
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+
+    // already locked
+    let mut sub_record: Subscriber = bincode::deserialize(&read[0].value().as_bytes()).unwrap();
+    sub_record.vlr_location = rnd("vlr_location") as u32;
+
+    sub_write_obj.borrow_mut().value =
+        Some(String::from_utf8(bincode::serialize(&sub_record).unwrap()).unwrap());
+    return coordinator.tx_commit().await;
 }
-
-// async fn tx_insert_call_forwarding() {}
-
-// async fn tx_delete_call_forwarding() {}

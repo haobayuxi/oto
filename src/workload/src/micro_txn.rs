@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use common::{txn::DtxCoordinator, TXNS_PER_CLIENT};
 use rpc::common::{ReadStruct, WriteStruct};
 use tokio::{fs::OpenOptions, io::AsyncWriteExt, time::Instant};
@@ -56,7 +58,10 @@ async fn run_transacntion(
 ) -> bool {
     coordinator.tx_begin().await;
     coordinator.read_set = read_set;
-    coordinator.write_set = write_set;
+    coordinator.write_set = write_set
+        .into_iter()
+        .map(|f| Rc::new(RefCell::new(f)))
+        .collect();
     let (status, result) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
