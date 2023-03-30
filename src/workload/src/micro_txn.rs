@@ -18,12 +18,14 @@ pub async fn micro_run_transactions(
     for i in 0..TXNS_PER_CLIENT {
         let start = Instant::now();
         let (read_set, write_set) = query.generate();
-        run_transacntion(coordinator, read_set, write_set).await;
+        let success = run_transaction(coordinator, read_set, write_set).await;
         let end_time = start.elapsed().as_micros();
-        latency_result.push(end_time);
+        if success {
+            latency_result.push(end_time);
+        }
     }
     let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
-    let throughput_result = TXNS_PER_CLIENT as f64 / total_end;
+    let throughput_result = latency_result.len() as f64 / total_end;
     // println!("throughput = {}", throughput_result);
     (latency_result, throughput_result)
     // write results to file
@@ -51,7 +53,7 @@ pub async fn micro_run_transactions(
     // throughput_file.write("\n".as_bytes()).await;
 }
 
-async fn run_transacntion(
+async fn run_transaction(
     coordinator: &mut DtxCoordinator,
     read_set: Vec<ReadStruct>,
     write_set: Vec<WriteStruct>,

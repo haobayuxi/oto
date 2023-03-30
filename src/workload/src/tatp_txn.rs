@@ -1,18 +1,47 @@
 use common::{
-    txn::DtxCoordinator, u64_rand, ACCESS_INFO_TABLE, CALL_FORWARDING_TABLE,
-    SPECIAL_FACILITY_TABLE, SUBSCRIBER_TABLE,
+    f64_rand, txn::DtxCoordinator, u64_rand, ACCESS_INFO_TABLE, CALL_FORWARDING_TABLE,
+    SPECIAL_FACILITY_TABLE, SUBSCRIBER_TABLE, TXNS_PER_CLIENT,
 };
+use tokio::time::Instant;
 
 use crate::tatp_db::{
     ai_key, cf_key, get_sid, rnd, sf_key, CallForwarding, SpecialFacility, Subscriber,
 };
 
-pub async fn tatp_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {
-    let mut latency_result = Vec::new();
-    (latency_result, 0.0)
+async fn run_tatp_transaction(coordinator: &mut DtxCoordinator) -> bool {
+    let op = f64_rand(0.0, 1.0, 0.01);
+    if op * 100.0 < 35 as f64 {
+        //
+        return tx_get_subscriber_data(coordinator).await;
+    } else if op * 100.0 < 45 as f64 {
+        //
+        return tx_get_new_destination(coordinator).await;
+    } else if op * 100.0 < 80 as f64 {
+        //
+        return tx_get_access_data(coordinator).await;
+    } else if op * 100.0 < 95 as f64 {
+        return tx_update_lcoation(coordinator).await;
+    } else {
+        return tx_update_subscriber_data(coordinator).await;
+    }
 }
 
-async fn run_transaction() {}
+pub async fn tatp_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {
+    let mut latency_result = Vec::new();
+    let total_start = Instant::now();
+    for i in 0..TXNS_PER_CLIENT {
+        let start = Instant::now();
+        let success = run_tatp_transaction(coordinator).await;
+        let end_time = start.elapsed().as_micros();
+        if success {
+            latency_result.push(end_time);
+        }
+    }
+    let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
+    let throughput_result = latency_result.len() as f64 / total_end;
+    // println!("throughput = {}", throughput_result);
+    (latency_result, throughput_result)
+}
 
 async fn tx_get_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.tx_begin().await;
