@@ -41,14 +41,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await;
                 }
                 DbType::tatp => {
-                    sender
-                        .send(tatp_run_transactions(&mut dtx_coordinator).await)
-                        .await;
+                    // sender
+                    //     .send(tatp_run_transactions(&mut dtx_coordinator).await)
+                    //     .await;
                 }
                 DbType::smallbank => {
-                    sender
-                        .send(small_bank_run_transactions(&mut dtx_coordinator).await)
-                        .await;
+                    // sender
+                    //     .send(small_bank_run_transactions(&mut dtx_coordinator).await)
+                    //     .await;
                 }
             }
         });

@@ -139,9 +139,9 @@ async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
     let mut sf_record: SpecialFacility = bincode::deserialize(&read[1].value().as_bytes()).unwrap();
     sf_record.data_a = rnd("data") as u8;
 
-    sub_write_obj.borrow_mut().value =
+    sub_write_obj.write().await.value =
         Some(String::from_utf8(bincode::serialize(&sub_record).unwrap()).unwrap());
-    sf_write_obj.borrow_mut().value =
+    sf_write_obj.write().await.value =
         Some(String::from_utf8(bincode::serialize(&sf_record).unwrap()).unwrap());
 
     let commit_status = coordinator.tx_commit().await;
@@ -166,7 +166,7 @@ async fn tx_update_lcoation(coordinator: &mut DtxCoordinator) -> bool {
     let mut sub_record: Subscriber = bincode::deserialize(&read[0].value().as_bytes()).unwrap();
     sub_record.vlr_location = rnd("vlr_location") as u32;
 
-    sub_write_obj.borrow_mut().value =
+    sub_write_obj.write().await.value =
         Some(String::from_utf8(bincode::serialize(&sub_record).unwrap()).unwrap());
     return coordinator.tx_commit().await;
 }

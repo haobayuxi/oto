@@ -39,9 +39,9 @@ pub struct DtxCoordinator {
     start_ts: u64,
     commit_ts: u64,
     pub read_set: Vec<ReadStruct>,
-    pub write_set: Vec<Rc<RefCell<WriteStruct>>>,
+    pub write_set: Vec<Arc<RwLock<WriteStruct>>>,
     read_to_execute: Vec<ReadStruct>,
-    write_to_execute: Vec<Rc<RefCell<WriteStruct>>>,
+    write_to_execute: Vec<Arc<RwLock<WriteStruct>>>,
     cto_client: CtoServiceClient<Channel>,
     data_client: DataServiceClient<Channel>,
 }
@@ -101,7 +101,7 @@ impl DtxCoordinator {
         let write_set = self
             .write_to_execute
             .iter()
-            .map(|x| x.borrow_mut().clone())
+            .map(|x| x.blocking_read().clone())
             .collect();
         let exe_msg = Msg {
             txn_id: self.txn_id,
@@ -129,7 +129,7 @@ impl DtxCoordinator {
             let write_set = self
                 .write_set
                 .iter()
-                .map(|x| x.borrow_mut().clone())
+                .map(|x| x.blocking_read().clone())
                 .collect();
             let commit = Msg {
                 txn_id: self.txn_id,
@@ -182,13 +182,13 @@ impl DtxCoordinator {
         key: u64,
         table_id: i32,
         value: String,
-    ) -> Rc<RefCell<WriteStruct>> {
+    ) -> Arc<RwLock<WriteStruct>> {
         let write_struct = WriteStruct {
             key,
             table_id,
             value: Some(value),
         };
-        let obj = Rc::new(RefCell::new(write_struct));
+        let obj = Arc::new(RwLock::new(write_struct));
         self.write_to_execute.push(obj.clone());
         obj
     }

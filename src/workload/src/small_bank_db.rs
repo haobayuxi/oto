@@ -20,7 +20,7 @@ pub fn init_smallbank_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     write_value.extend(value.iter());
     let mut tables = Vec::new();
     let mut table = HashMap::new();
-    for i in 0..MicroTableSize {
+    for i in 0..NUM_ACCOUNTS {
         table.insert(i, RwLock::new(Tuple::new(write_value.clone())));
     }
     tables.push(table);

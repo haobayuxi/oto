@@ -9,6 +9,8 @@ pub static SUBSCRIBER_TABLE: i32 = 0;
 pub static SPECIAL_FACILITY_TABLE: i32 = 1;
 pub static ACCESS_INFO_TABLE: i32 = 2;
 pub static CALL_FORWARDING_TABLE: i32 = 3;
+pub static SAVING_TABLE: u64 = 0;
+pub static CHECKING_TABLE: u64 = 1;
 
 pub static TXNS_PER_CLIENT: u64 = 1000;
 
