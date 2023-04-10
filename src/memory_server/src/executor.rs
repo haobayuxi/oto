@@ -31,13 +31,13 @@ impl Executor {
                             let mut reply = Msg::default();
                             // get the data and lock the write set
                             let (success, read_result) = get_read_set(coor_msg.msg.read_set).await;
-                            if success {
-                            } else {
+                            if !success {
                                 // send back failure
                                 reply.success = false;
                                 coor_msg.call_back.send(reply);
                                 continue;
                             }
+                            reply.read_set = read_result;
                             reply.success =
                                 lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
                             // if coor_msg.msg.write_set.len() != 0 {
