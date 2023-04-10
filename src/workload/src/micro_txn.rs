@@ -39,7 +39,9 @@ async fn run_transaction(
     write_set: Vec<WriteStruct>,
 ) -> bool {
     coordinator.tx_begin().await;
-    coordinator.read_set = read_set;
+    for iter in read_set {
+        coordinator.add_read_to_execute(iter.key, iter.table_id);
+    }
     coordinator.write_set = Vec::new();
     for iter in write_set {
         coordinator.write_set.push(Arc::new(RwLock::new(iter)));
@@ -49,7 +51,7 @@ async fn run_transaction(
     //     .map(|f| Arc::new(RwLock::new(f)))
     //     .collect();
     let (status, result) = coordinator.tx_exe().await;
-    println!("{} {:?}", status, result);
+    // println!("{} {:?}", status, result);
     if !status {
         coordinator.tx_abort().await;
         return false;
