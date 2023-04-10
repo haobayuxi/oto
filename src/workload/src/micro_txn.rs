@@ -21,7 +21,7 @@ pub async fn micro_run_transactions(
         let success = run_transaction(coordinator, read_set, write_set).await;
         let end_time = start.elapsed().as_micros();
         if success {
-            // println!("{}-{}", i, end_time);
+            println!("{}-{}", i, end_time);
             latency_result.push(end_time);
         }
     }
