@@ -28,29 +28,6 @@ pub async fn micro_run_transactions(
     let throughput_result = latency_result.len() as f64 / total_end;
     // println!("throughput = {}", throughput_result);
     (latency_result, throughput_result)
-    // write results to file
-    // let latency_file_name = coordinator.id.to_string() + "latency.data";
-    // let mut latency_file = OpenOptions::new()
-    //     .create(true)
-    //     .write(true)
-    //     .open(latency_file_name)
-    //     .await
-    //     .unwrap();
-    // for iter in latency_result {
-    //     latency_file.write(iter.to_string().as_bytes()).await;
-    //     latency_file.write("\n".as_bytes()).await;
-    // }
-    // let throughput_file_name = coordinator.id.to_string() + "throughput.data";
-    // let mut throughput_file = OpenOptions::new()
-    //     .create(true)
-    //     .write(true)
-    //     .open(throughput_file_name)
-    //     .await
-    //     .unwrap();
-    // throughput_file
-    //     .write(throughput_result.to_string().as_bytes())
-    //     .await;
-    // throughput_file.write("\n".as_bytes()).await;
 }
 
 async fn run_transaction(
@@ -60,10 +37,14 @@ async fn run_transaction(
 ) -> bool {
     coordinator.tx_begin().await;
     coordinator.read_set = read_set;
-    coordinator.write_set = write_set
-        .into_iter()
-        .map(|f| Arc::new(RwLock::new(f)))
-        .collect();
+    coordinator.write_set = Vec::new();
+    for iter in write_set {
+        coordinator.write_set.push(Arc::new(RwLock::new(iter)));
+    }
+    // write_set
+    //     .into_iter()
+    //     .map(|f| Arc::new(RwLock::new(f)))
+    //     .collect();
     let (status, result) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;

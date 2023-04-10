@@ -41,9 +41,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await;
                 }
                 DbType::tatp => {
-                    // sender
-                    //     .send(tatp_run_transactions(&mut dtx_coordinator).await)
-                    //     .await;
+                    sender
+                        .send(tatp_run_transactions(&mut dtx_coordinator).await)
+                        .await;
                 }
                 DbType::smallbank => {
                     // sender
@@ -62,9 +62,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     total_latency.sort();
     let success_num = total_latency.len();
-    println!("mean latency = {}", total_latency[success_num / 2 as usize]);
     println!(
-        ".9 latency = {}",
+        "mean latency = {} {}",
+        total_latency[success_num / 2 as usize],
+        success_num
+    );
+    println!(
+        ".99 latency = {}",
         total_latency[success_num / 100 * 99 as usize]
     );
     // println!("")

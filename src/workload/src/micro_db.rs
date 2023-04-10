@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use common::{f64_rand, Tuple};
+use common::{f64_rand, u64_rand, Tuple};
 use rpc::common::{ReadStruct, WriteStruct};
 use tokio::sync::RwLock;
 
@@ -65,7 +65,7 @@ impl MicroQuery {
         let mut write_set = Vec::new();
         let mut keys = Vec::new();
         for _ in 0..self.req_per_query {
-            let op = f64_rand(0.0, 1.0, 0.01);
+            let op = u64_rand(1, 100);
 
             let key = self.zipf(self.table_size, self.theta);
 
@@ -75,7 +75,7 @@ impl MicroQuery {
                 keys.push(key);
             }
 
-            if op * 100.0 <= self.read_perc as f64 {
+            if op <= self.read_perc as u64 {
                 read_set.push(ReadStruct {
                     key,
                     value: None,
