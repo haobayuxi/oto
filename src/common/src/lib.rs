@@ -12,7 +12,7 @@ pub static CALL_FORWARDING_TABLE: i32 = 3;
 pub static SAVING_TABLE: i32 = 0;
 pub static CHECKING_TABLE: i32 = 1;
 
-pub static TXNS_PER_CLIENT: u64 = 1000;
+pub static TXNS_PER_CLIENT: u64 = 10000;
 
 #[derive(Clone)]
 pub struct Tuple {
@@ -88,7 +88,7 @@ impl Default for Config {
             server_addr: "192.168.1.89:8001".to_string(),
             cto_addr: "192.168.1.70:8001".to_string(),
             executor_num: 20,
-            client_num: 10,
+            client_num: 100,
         }
     }
 }
