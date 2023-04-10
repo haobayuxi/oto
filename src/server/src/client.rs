@@ -10,7 +10,7 @@ use workload::micro_txn::micro_run_transactions;
 use workload::small_bank_txn::small_bank_run_transactions;
 use workload::tatp_txn::tatp_run_transactions;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 96)]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
