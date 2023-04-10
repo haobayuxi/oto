@@ -126,6 +126,9 @@ impl DtxCoordinator {
     pub async fn tx_commit(&mut self) -> bool {
         // validate
         if self.validate().await {
+            if self.write_set.is_empty() {
+                return true;
+            }
             let mut write_set = Vec::new();
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());
@@ -144,7 +147,9 @@ impl DtxCoordinator {
                 commit_ts: Some(self.commit_ts),
             };
             let mut client = self.data_client.clone();
-            let _ = client.communication(commit).await.unwrap().into_inner();
+            tokio::spawn(async move {
+                let _ = client.communication(commit).await.unwrap().into_inner();
+            });
 
             return true;
         } else {
