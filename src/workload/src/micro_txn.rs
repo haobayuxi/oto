@@ -56,9 +56,9 @@ async fn run_transaction(
         coordinator.tx_abort().await;
         return false;
     }
-    // if !coordinator.tx_commit().await {
-    //     coordinator.tx_abort().await;
-    //     return false;
-    // }
+    if !coordinator.tx_commit().await {
+        coordinator.tx_abort().await;
+        return false;
+    }
     true
 }
