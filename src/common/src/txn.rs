@@ -1,3 +1,4 @@
+use rpc::common::Ts;
 use rpc::common::{
     cto_service_client::CtoServiceClient, data_service_client::DataServiceClient, Echo, Msg,
     ReadStruct, TxnOp, WriteStruct,
@@ -138,13 +139,24 @@ impl DtxCoordinator {
             //     .iter()
             //     .map(|x| x.blocking_read().clone())
             //     .collect();
+            let mut final_ts = 0;
+            if self.dtx_type == DtxType::oto {
+                // get commit ts
+                let final_ts = self
+                    .cto_client
+                    .get_commit_ts(Echo::default())
+                    .await
+                    .unwrap()
+                    .into_inner()
+                    .ts;
+            }
             let commit = Msg {
                 txn_id: self.txn_id,
                 read_set: Vec::new(),
                 write_set,
                 op: TxnOp::Commit.into(),
                 success: true,
-                commit_ts: Some(self.commit_ts),
+                commit_ts: Some(final_ts),
             };
             let mut client = self.data_client.clone();
             tokio::spawn(async move {
