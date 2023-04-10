@@ -142,7 +142,7 @@ impl DtxCoordinator {
             let mut final_ts = 0;
             if self.dtx_type == DtxType::oto {
                 // get commit ts
-                let final_ts = self
+                final_ts = self
                     .cto_client
                     .get_commit_ts(Echo::default())
                     .await
@@ -221,6 +221,7 @@ impl DtxCoordinator {
             }
             DtxType::occ => {
                 if self.read_set.is_empty() {
+                    // println!("read set is null");
                     return true;
                 }
                 let vadilate_msg = Msg {
