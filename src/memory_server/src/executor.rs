@@ -38,6 +38,7 @@ impl Executor {
                                 continue;
                             }
                             reply.read_set = read_result;
+                            // println!()
                             reply.success =
                                 lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
                             // if coor_msg.msg.write_set.len() != 0 {
