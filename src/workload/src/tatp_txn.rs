@@ -9,17 +9,17 @@ use crate::tatp_db::{
 };
 
 async fn run_tatp_transaction(coordinator: &mut DtxCoordinator) -> bool {
-    let op = f64_rand(0.0, 1.0, 0.01);
-    if op * 100.0 < 35 as f64 {
+    let op = u64_rand(0, 99);
+    if op < 35 {
         //
         return tx_get_subscriber_data(coordinator).await;
-    } else if op * 100.0 < 45 as f64 {
+    } else if op < 45 {
         //
         return tx_get_new_destination(coordinator).await;
-    } else if op * 100.0 < 80 as f64 {
+    } else if op < 80 {
         //
         return tx_get_access_data(coordinator).await;
-    } else if op * 100.0 < 95 as f64 {
+    } else if op < 95 {
         return tx_update_lcoation(coordinator).await;
     } else {
         return tx_update_subscriber_data(coordinator).await;
@@ -51,7 +51,11 @@ async fn tx_get_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.add_read_to_execute(s_id, SUBSCRIBER_TABLE);
 
     let (status, result) = coordinator.tx_exe().await;
-    return status;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    return coordinator.tx_commit().await;
 }
 
 async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
@@ -69,11 +73,13 @@ async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
     let (status, specfac_result) = coordinator.tx_exe().await;
     if specfac_result.len() == 0 || !status {
         // fail to get
+        coordinator.tx_abort().await;
         return false;
     }
     let specfac: SpecialFacility = serde_json::from_str(specfac_result[0].value()).unwrap();
 
     if !specfac.is_active {
+        coordinator.tx_abort().await;
         return false;
     }
 
@@ -85,17 +91,18 @@ async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
 
     let (status, cf_result) = coordinator.tx_exe().await;
     if !status {
+        coordinator.tx_abort().await;
         return false;
     }
 
     for iter in cf_result {
         let cf_obj: CallForwarding = serde_json::from_str(&iter.value.unwrap()).unwrap();
         if cf_obj.start_time as u64 > start_time || cf_obj.end_time as u64 <= end_time {
+            coordinator.tx_abort().await;
             return false;
         }
     }
-
-    true
+    return coordinator.tx_commit().await;
 }
 
 async fn tx_get_access_data(coordinator: &mut DtxCoordinator) -> bool {
@@ -109,9 +116,10 @@ async fn tx_get_access_data(coordinator: &mut DtxCoordinator) -> bool {
 
     let (status, result) = coordinator.tx_exe().await;
     if !status || result.len() == 0 {
+        coordinator.tx_abort().await;
         return false;
     }
-    return true;
+    return coordinator.tx_commit().await;
 }
 
 async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
