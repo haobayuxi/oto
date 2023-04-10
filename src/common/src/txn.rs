@@ -99,11 +99,10 @@ impl DtxCoordinator {
         if self.read_to_execute.is_empty() && self.write_to_execute.is_empty() {
             return (true, Vec::new());
         }
-        let write_set = self
-            .write_to_execute
-            .iter()
-            .map(|x| x.blocking_read().clone())
-            .collect();
+        let mut write_set = Vec::new();
+        for iter in self.write_to_execute.iter() {
+            write_set.push(iter.read().await.clone());
+        }
         let exe_msg = Msg {
             txn_id: self.txn_id,
             read_set: self.read_to_execute.clone(),
