@@ -44,7 +44,7 @@ async fn run_transaction(
     }
     coordinator.write_set = Vec::new();
     for iter in write_set {
-        coordinator.write_set.push(Arc::new(RwLock::new(iter)));
+        coordinator.add_write_to_execute(iter.key, iter.table_id, iter.value.unwrap());
     }
     // write_set
     //     .into_iter()
