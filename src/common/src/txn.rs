@@ -58,7 +58,7 @@ impl DtxCoordinator {
             id,
             local_ts,
             dtx_type,
-            txn_id: id << 40,
+            txn_id: id,
             start_ts: 0,
             commit_ts: 0,
             read_set: Vec::new(),
@@ -73,7 +73,7 @@ impl DtxCoordinator {
     pub async fn tx_begin(&mut self) {
         // init coordinator
         self.commit_ts = 0;
-        self.txn_id += 1;
+        self.txn_id += self.id;
         self.read_set.clear();
         self.write_set.clear();
         self.read_to_execute.clear();

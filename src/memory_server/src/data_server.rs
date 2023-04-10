@@ -83,14 +83,12 @@ impl DataServer {
         // start server for client to connect
         let listen_ip = self.config.server_addr.clone();
         println!("server listen ip {}", listen_ip);
-        let server = RpcServer::new(self.config.executor_num, listen_ip, executor_senders);
+        let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
         run_rpc_server(server).await;
     }
 
     fn init_executors(&mut self, db_type: DbType) {
-        // self.executor_num = config.executor_num;
-        self.executor_num = self.config.executor_num;
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
