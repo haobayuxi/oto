@@ -81,9 +81,14 @@ pub async fn lock_write_set(write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
     unsafe {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
-            let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-            if !guard.set_lock(txn_id) {
-                return false;
+            match table.get_mut(&iter.key) {
+                Some(lock) => {
+                    let mut guard = lock.write().await;
+                    if !guard.set_lock(txn_id) {
+                        return false;
+                    }
+                }
+                None => return false,
             }
         }
         true
