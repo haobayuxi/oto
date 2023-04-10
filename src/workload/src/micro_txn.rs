@@ -20,6 +20,7 @@ pub async fn micro_run_transactions(
         let (read_set, write_set) = query.generate();
         let success = run_transaction(coordinator, read_set, write_set).await;
         let end_time = start.elapsed().as_micros();
+        println!("{}-{}", i, end_time);
         if success {
             latency_result.push(end_time);
         }
@@ -28,7 +29,7 @@ pub async fn micro_run_transactions(
     let start_index = latency_result.len() * 5 / 100;
     latency_result.drain(0..start_index);
     let throughput_result = latency_result.len() as f64 / total_end;
-    println!("throughput = {}", throughput_result);
+    // println!("throughput = {}", throughput_result);
     (latency_result, throughput_result)
 }
 
@@ -50,7 +51,6 @@ async fn run_transaction(
     //     .map(|f| Arc::new(RwLock::new(f)))
     //     .collect();
     let (status, result) = coordinator.tx_exe().await;
-    // println!("{} {:?}", status, result);
     if !status {
         coordinator.tx_abort().await;
         return false;
