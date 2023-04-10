@@ -55,7 +55,6 @@ impl DataService for RpcServer {
         };
         self.sender.get(&executor_id).unwrap().send(coor_msg);
         let reply = receiver.await.unwrap();
-        println!("reply{:?}", reply.read_set);
         Ok(Response::new(reply))
     }
 }
