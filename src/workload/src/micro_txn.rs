@@ -11,7 +11,7 @@ pub async fn micro_run_transactions(
     theta: f64,
 ) -> (Vec<u128>, f64) {
     // init workload
-    let mut query = MicroQuery::new(theta, 4, 100);
+    let mut query = MicroQuery::new(theta, 4, 90);
     // run transaction
     let mut latency_result = Vec::new();
     let total_start = Instant::now();
@@ -21,7 +21,6 @@ pub async fn micro_run_transactions(
         let success = run_transaction(coordinator, read_set, write_set).await;
         let end_time = start.elapsed().as_micros();
         if success {
-            println!("{}-{}", i, end_time);
             latency_result.push(end_time);
         }
     }
