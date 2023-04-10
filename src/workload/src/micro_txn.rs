@@ -18,6 +18,7 @@ pub async fn micro_run_transactions(
     for i in 0..TXNS_PER_CLIENT {
         let start = Instant::now();
         let (read_set, write_set) = query.generate();
+        println!("{:?}, {:?}", read_set, write_set);
         let success = run_transaction(coordinator, read_set, write_set).await;
         let end_time = start.elapsed().as_micros();
         if success {
