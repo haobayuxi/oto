@@ -237,7 +237,7 @@ impl DtxCoordinator {
                     .await
                     .unwrap()
                     .into_inner();
-                for i in 0..self.read_set.iter().len() {
+                for i in 0..self.read_set.len() {
                     if self.read_set[i].timestamp() != reply.read_set[i].timestamp() {
                         return false;
                     }
