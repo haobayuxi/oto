@@ -1,7 +1,6 @@
-use std::collections::HashMap;
-
 use common::{u64_rand, Tuple};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 static TX_HOT_PERCENT: u64 = 90;
@@ -29,9 +28,7 @@ pub fn init_smallbank_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
 
         saving_table.insert(
             i,
-            RwLock::new(Tuple::new(
-                String::from_utf8(bincode::serialize(&saving).unwrap()).unwrap(),
-            )),
+            RwLock::new(Tuple::new(serde_json::to_string(&saving).unwrap())),
         );
 
         let checking = Checking {
@@ -40,9 +37,7 @@ pub fn init_smallbank_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
         };
         checking_table.insert(
             i,
-            RwLock::new(Tuple::new(
-                String::from_utf8(bincode::serialize(&checking).unwrap()).unwrap(),
-            )),
+            RwLock::new(Tuple::new(serde_json::to_string(&checking).unwrap())),
         );
     }
     tables.push(saving_table);

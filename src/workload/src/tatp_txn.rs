@@ -71,8 +71,8 @@ async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
         // fail to get
         return false;
     }
-    let specfac: SpecialFacility =
-        bincode::deserialize(&specfac_result[0].value().as_bytes()).unwrap();
+    let specfac: SpecialFacility = serde_json::from_str(specfac_result[0].value()).unwrap();
+
     if !specfac.is_active {
         return false;
     }
@@ -89,7 +89,7 @@ async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
     }
 
     for iter in cf_result {
-        let cf_obj: CallForwarding = bincode::deserialize(&iter.value().as_bytes()).unwrap();
+        let cf_obj: CallForwarding = serde_json::from_str(&iter.value.unwrap()).unwrap();
         if cf_obj.start_time as u64 > start_time || cf_obj.end_time as u64 <= end_time {
             return false;
         }
@@ -134,15 +134,13 @@ async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
         return false;
     }
     // already locked
-    let mut sub_record: Subscriber = bincode::deserialize(&read[0].value().as_bytes()).unwrap();
+    let mut sub_record: Subscriber = serde_json::from_str(read[0].value()).unwrap();
     sub_record.bit[0] = rnd("bit") != 0;
-    let mut sf_record: SpecialFacility = bincode::deserialize(&read[1].value().as_bytes()).unwrap();
+    let mut sf_record: SpecialFacility = serde_json::from_str(read[1].value()).unwrap();
     sf_record.data_a = rnd("data") as u8;
 
-    sub_write_obj.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&sub_record).unwrap()).unwrap());
-    sf_write_obj.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&sf_record).unwrap()).unwrap());
+    sub_write_obj.write().await.value = Some(serde_json::to_string(&sub_record).unwrap());
+    sf_write_obj.write().await.value = Some(serde_json::to_string(&sf_record).unwrap());
 
     let commit_status = coordinator.tx_commit().await;
 
@@ -163,10 +161,9 @@ async fn tx_update_lcoation(coordinator: &mut DtxCoordinator) -> bool {
     }
 
     // already locked
-    let mut sub_record: Subscriber = bincode::deserialize(&read[0].value().as_bytes()).unwrap();
+    let mut sub_record: Subscriber = serde_json::from_str(read[0].value()).unwrap();
     sub_record.vlr_location = rnd("vlr_location") as u32;
 
-    sub_write_obj.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&sub_record).unwrap()).unwrap());
+    sub_write_obj.write().await.value = Some(serde_json::to_string(&sub_record).unwrap());
     return coordinator.tx_commit().await;
 }

@@ -30,10 +30,9 @@ async fn deposit_checking(coordinator: &mut DtxCoordinator) -> bool {
         coordinator.tx_abort().await;
         return false;
     }
-    let mut check_record: Checking = bincode::deserialize(&result[0].value().as_bytes()).unwrap();
+    let mut check_record: Checking = serde_json::from_str(result[0].value()).unwrap();
     check_record.balance += u64_rand(MIN_BALANCE, MAX_BALANCE);
-    check_obj.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&check_record).unwrap()).unwrap());
+    check_obj.write().await.value = Some(serde_json::to_string(&check_record).unwrap());
     coordinator.tx_commit().await;
     true
 }
@@ -60,22 +59,18 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
         return false;
     }
 
-    let mut save_record_from: Saving = bincode::deserialize(&result[0].value().as_bytes()).unwrap();
-    let mut check_record_from: Saving =
-        bincode::deserialize(&result[1].value().as_bytes()).unwrap();
-    let mut check_record_to: Saving = bincode::deserialize(&result[2].value().as_bytes()).unwrap();
+    let mut save_record_from: Saving = serde_json::from_str(result[0].value()).unwrap();
+    let mut check_record_from: Saving = serde_json::from_str(&result[1].value()).unwrap();
+    let mut check_record_to: Saving = serde_json::from_str(&result[2].value()).unwrap();
 
     check_record_to.balance += save_record_from.balance + check_record_from.balance;
     save_record_from.balance = 0;
     check_record_from.balance = 0;
 
-    save_obj_from.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&save_record_from).unwrap()).unwrap());
+    save_obj_from.write().await.value = Some(serde_json::to_string(&save_record_from).unwrap());
 
-    check_obj_from.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&check_record_from).unwrap()).unwrap());
-    check_obj_to.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&check_record_to).unwrap()).unwrap());
+    check_obj_from.write().await.value = Some(serde_json::to_string(&check_record_from).unwrap());
+    check_obj_to.write().await.value = Some(serde_json::to_string(&check_record_to).unwrap());
     coordinator.tx_commit().await;
     true
 }
@@ -92,10 +87,9 @@ async fn write_check(coordinator: &mut DtxCoordinator) -> bool {
         coordinator.tx_abort().await;
         return false;
     }
-    let mut check_record: Checking = bincode::deserialize(&result[0].value().as_bytes()).unwrap();
+    let mut check_record: Checking = serde_json::from_str(result[0].value()).unwrap();
     check_record.balance += u64_rand(MIN_BALANCE, MAX_BALANCE);
-    check_obj.write().await.value =
-        Some(String::from_utf8(bincode::serialize(&check_record).unwrap()).unwrap());
+    check_obj.write().await.value = Some(serde_json::to_string(&check_record).unwrap());
     coordinator.tx_commit().await;
     true
 }

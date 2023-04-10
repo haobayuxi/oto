@@ -1,4 +1,3 @@
-// use bincode;
 use common::{f64_rand, u64_rand, Tuple};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
@@ -249,7 +248,7 @@ pub fn init_tatp_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
         subscriber.insert(
             s_id,
             RwLock::new(Tuple::new(
-                String::from_utf8(bincode::serialize(&subscriber_record).unwrap()).unwrap(),
+                serde_json::to_string(&subscriber_record).unwrap(),
             )),
         );
         // init access_info
@@ -263,8 +262,7 @@ pub fn init_tatp_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
                     access_info.insert(
                         s_id,
                         RwLock::new(Tuple::new(
-                            String::from_utf8(bincode::serialize(&access_info_record).unwrap())
-                                .unwrap(),
+                            serde_json::to_string(&access_info_record).unwrap(),
                         )),
                     );
                     ai_type[ai] = 1;
@@ -284,10 +282,7 @@ pub fn init_tatp_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
                     special_facility.insert(
                         sf_key(s_id, sr as u64),
                         RwLock::new(Tuple::new(
-                            String::from_utf8(
-                                bincode::serialize(&special_facility_record).unwrap(),
-                            )
-                            .unwrap(),
+                            serde_json::to_string(&special_facility_record).unwrap(),
                         )),
                     );
 
@@ -301,10 +296,7 @@ pub fn init_tatp_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
                         call_forwarding.insert(
                             cf_key(s_id, sr as u64, start_time),
                             RwLock::new(Tuple::new(
-                                String::from_utf8(
-                                    bincode::serialize(&call_forwarding_record).unwrap(),
-                                )
-                                .unwrap(),
+                                serde_json::to_string(&call_forwarding_record).unwrap(),
                             )),
                         );
                     }

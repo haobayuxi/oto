@@ -10,10 +10,8 @@ use workload::micro_txn::micro_run_transactions;
 use workload::small_bank_txn::small_bank_run_transactions;
 use workload::tatp_txn::tatp_run_transactions;
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 96)]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = env::args().collect();
-
     let f = std::fs::File::open("config.yml").unwrap();
     let server_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();
     let dtx_type = serde_yaml::from_str(&server_config.dtx_type).unwrap();
