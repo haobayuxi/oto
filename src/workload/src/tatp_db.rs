@@ -96,7 +96,7 @@ pub fn rnd(param: &str) -> i64 {
     } else if param.eq("end_time") {
         return u64_rand(1, 8) as i64;
     } else if param.starts_with("ai_type") || param.starts_with("sf_type") {
-        return u64_rand(1, 4) as i64;
+        return u64_rand(0, 3) as i64;
     }
     0
 }
