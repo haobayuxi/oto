@@ -28,7 +28,7 @@ pub async fn micro_run_transactions(
     let start_index = latency_result.len() * 5 / 100;
     latency_result.drain(0..start_index);
     let throughput_result = latency_result.len() as f64 / total_end;
-    // println!("throughput = {}", throughput_result);
+    println!("throughput = {}", throughput_result);
     (latency_result, throughput_result)
 }
 
