@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use common::{u64_rand, Tuple};
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 static TX_HOT_PERCENT: u64 = 90;
@@ -13,28 +14,70 @@ static FREQUENCY_TRANSACT_SAVINGS: u64 = 15;
 static FREQUENCY_WRITE_CHECK: u64 = 15;
 
 pub static NUM_ACCOUNTS: u64 = 100000;
+pub static MIN_BALANCE: u64 = 10000;
+pub static MAX_BALANCE: u64 = 50000;
 
 pub fn init_smallbank_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
-    let value: Vec<char> = vec!['a'; 40];
-    let mut write_value = String::from("");
-    write_value.extend(value.iter());
     let mut tables = Vec::new();
-    let mut table = HashMap::new();
+    let mut saving_table = HashMap::new();
+    let mut checking_table = HashMap::new();
     for i in 0..NUM_ACCOUNTS {
-        table.insert(i, RwLock::new(Tuple::new(write_value.clone())));
+        let saving = Saving {
+            customer_id: i,
+            balance: u64_rand(MIN_BALANCE, MAX_BALANCE),
+        };
+
+        saving_table.insert(
+            i,
+            RwLock::new(Tuple::new(
+                String::from_utf8(bincode::serialize(&saving).unwrap()).unwrap(),
+            )),
+        );
+
+        let checking = Checking {
+            customer_id: i,
+            balance: u64_rand(MIN_BALANCE, MAX_BALANCE),
+        };
+        checking_table.insert(
+            i,
+            RwLock::new(Tuple::new(
+                String::from_utf8(bincode::serialize(&checking).unwrap()).unwrap(),
+            )),
+        );
     }
-    tables.push(table);
+    tables.push(saving_table);
+    tables.push(checking_table);
     tables
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Saving {
-    customer_id: u64,
-    balance: u64,
+    pub customer_id: u64,
+    pub balance: u64,
 }
 
+impl Saving {
+    pub fn new(customer_id: u64, balance: u64) -> Self {
+        Self {
+            customer_id,
+            balance,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct Checking {
-    customer_id: u64,
-    balance: u64,
+    pub customer_id: u64,
+    pub balance: u64,
+}
+
+impl Checking {
+    pub fn new(customer_id: u64, balance: u64) -> Self {
+        Self {
+            customer_id,
+            balance,
+        }
+    }
 }
 
 pub fn get_c_id() -> u64 {
