@@ -78,9 +78,9 @@ pub struct Config {
     pub client_num: u64,
 }
 
-// optane08 192.168.1.88
-// optane09 192.168.1.89
-// optane10 192.168.1.70
+// optane08 192.168.1.88 client
+// optane09 192.168.1.89 server
+// optane10 192.168.1.70 cto
 
 impl Default for Config {
     fn default() -> Self {

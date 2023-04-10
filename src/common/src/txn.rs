@@ -126,11 +126,15 @@ impl DtxCoordinator {
     pub async fn tx_commit(&mut self) -> bool {
         // validate
         if self.validate().await {
-            let write_set = self
-                .write_set
-                .iter()
-                .map(|x| x.blocking_read().clone())
-                .collect();
+            let mut write_set = Vec::new();
+            for iter in self.write_set.iter() {
+                write_set.push(iter.read().await.clone());
+            }
+            // let write_set = self
+            //     .write_set
+            //     .iter()
+            //     .map(|x| x.blocking_read().clone())
+            //     .collect();
             let commit = Msg {
                 txn_id: self.txn_id,
                 read_set: Vec::new(),
