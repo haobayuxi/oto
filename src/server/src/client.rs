@@ -1,9 +1,11 @@
 use common::{ip_addr_add_prefix, txn::DtxCoordinator, Config, ConfigInFile};
 use common::{DbType, TXNS_PER_CLIENT};
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use std::{env, sync::Arc};
 use tokio::sync::mpsc::channel;
 use tokio::sync::RwLock;
+use tokio::time::sleep;
 use workload::micro_txn::micro_run_transactions;
 use workload::small_bank_txn::small_bank_run_transactions;
 use workload::tatp_txn::tatp_run_transactions;
@@ -73,5 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     // println!("")
     println!("throughtput = {}", total_throuthput);
+    sleep(Duration::from_secs(2)).await;
     Ok(())
 }
