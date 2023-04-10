@@ -25,20 +25,22 @@ pub async fn validate_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStru
     unsafe {
         for iter in read_set {
             let table = &mut DATA[iter.table_id as usize];
-            let guard = table.get_mut(&iter.key).unwrap().read().await;
-
-            if guard.is_locked() {
-                // has been locked
-                return (false, result);
+            match table.get_mut(&iter.key).unwrap().try_read() {
+                Ok(guard) => {
+                    // insert into result
+                    let read_struct = ReadStruct {
+                        key: iter.key,
+                        table_id: iter.table_id,
+                        value: None,
+                        timestamp: Some(guard.ts),
+                    };
+                    result.push(read_struct);
+                }
+                Err(_) => {
+                    // has been locked
+                    return (false, result);
+                }
             }
-            // insert into result
-            let read_struct = ReadStruct {
-                key: iter.key,
-                table_id: iter.table_id,
-                value: None,
-                timestamp: Some(guard.ts),
-            };
-            result.push(read_struct);
         }
         (true, result)
     }
@@ -51,19 +53,22 @@ pub async fn get_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) 
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(rwlock) => {
-                    let guard = rwlock.read().await;
-                    if guard.is_locked() {
-                        // has been locked
-                        return (false, result);
+                    match rwlock.try_read() {
+                        Ok(guard) => {
+                            // insert into result
+                            let read_struct = ReadStruct {
+                                key: iter.key,
+                                table_id: iter.table_id,
+                                value: Some(guard.data.clone()),
+                                timestamp: Some(guard.ts),
+                            };
+                            result.push(read_struct);
+                        }
+                        Err(_) => {
+                            // has been locked
+                            return (false, result);
+                        }
                     }
-                    // insert into result
-                    let read_struct = ReadStruct {
-                        key: iter.key,
-                        table_id: iter.table_id,
-                        value: Some(guard.data.clone()),
-                        timestamp: Some(guard.ts),
-                    };
-                    result.push(read_struct);
                 }
                 None => continue,
             }
