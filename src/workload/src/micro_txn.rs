@@ -21,11 +21,13 @@ pub async fn micro_run_transactions(
         let success = run_transaction(coordinator, read_set, write_set).await;
         let end_time = start.elapsed().as_micros();
         if success {
-            println!("{}-{}", i, end_time);
+            // println!("{}-{}", i, end_time);
             latency_result.push(end_time);
         }
     }
     let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
+    let start_index = latency_result.len() * 5 / 100;
+    latency_result.drain(0..start_index);
     let throughput_result = latency_result.len() as f64 / total_end;
     // println!("throughput = {}", throughput_result);
     (latency_result, throughput_result)
