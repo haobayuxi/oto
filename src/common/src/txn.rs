@@ -1,10 +1,7 @@
-use rpc::common::Ts;
 use rpc::common::{
     cto_service_client::CtoServiceClient, data_service_client::DataServiceClient, Echo, Msg,
     ReadStruct, TxnOp, WriteStruct,
 };
-use serde::Deserialize;
-use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::iter::FromIterator;
 use std::rc::Rc;
@@ -72,6 +69,7 @@ impl DtxCoordinator {
             write_to_execute: Vec::new(),
         }
     }
+
     pub async fn tx_begin(&mut self) {
         // init coordinator
         self.commit_ts = 0;
