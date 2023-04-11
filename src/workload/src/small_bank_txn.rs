@@ -1,10 +1,44 @@
-use common::{txn::DtxCoordinator, u64_rand, CHECKING_TABLE, SAVING_TABLE};
+use common::{txn::DtxCoordinator, u64_rand, CHECKING_TABLE, SAVING_TABLE, TXNS_PER_CLIENT};
+use tokio::time::Instant;
 
 use crate::small_bank_db::{get_c_id, Checking, Saving, MAX_BALANCE, MIN_BALANCE};
 
+static FREQUENCY_AMALGAMATE: u64 = 15;
+static FREQUENCY_BALANCE: u64 = 30;
+static FREQUENCY_DEPOSIT_CHECKING: u64 = 45;
+static FREQUENCY_TRANSACT_SAVINGS: u64 = 85;
+static FREQUENCY_WRITE_CHECK: u64 = 100;
+
 pub async fn small_bank_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {
     let mut latency_result = Vec::new();
-    (latency_result, 0.0)
+    let total_start = Instant::now();
+    for i in 0..TXNS_PER_CLIENT {
+        let start = Instant::now();
+        let success = small_bank_run_transaction(coordinator).await;
+        let end_time = start.elapsed().as_micros();
+        if success {
+            latency_result.push(end_time);
+        }
+    }
+    let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
+    let throughput_result = latency_result.len() as f64 / total_end;
+    // println!("throughput = {}", throughput_result);
+    (latency_result, throughput_result)
+}
+
+async fn small_bank_run_transaction(coordinator: &mut DtxCoordinator) -> bool {
+    let op = u64_rand(1, 100);
+    if op < FREQUENCY_AMALGAMATE {
+        return amalgamate(coordinator).await;
+    } else if op < FREQUENCY_BALANCE {
+        return balance(coordinator).await;
+    } else if op < FREQUENCY_DEPOSIT_CHECKING {
+        return deposit_checking(coordinator).await;
+    } else if op < FREQUENCY_TRANSACT_SAVINGS {
+        return transac_saving(coordinator).await;
+    } else {
+        return write_check(coordinator).await;
+    }
 }
 
 // It returns the sum of savings and checking balances for the specified customer
@@ -15,7 +49,10 @@ async fn balance(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.add_read_to_execute(c_id, CHECKING_TABLE);
     let (status, result) = coordinator.tx_exe().await;
 
-    status
+    if !status {
+        return false;
+    }
+    return coordinator.tx_commit().await;
 }
 
 async fn deposit_checking(coordinator: &mut DtxCoordinator) -> bool {
@@ -31,14 +68,32 @@ async fn deposit_checking(coordinator: &mut DtxCoordinator) -> bool {
         return false;
     }
     let mut check_record: Checking = serde_json::from_str(result[0].value()).unwrap();
-    check_record.balance += u64_rand(MIN_BALANCE, MAX_BALANCE);
+    check_record.balance += u64_rand(0, 10);
     check_obj.write().await.value = Some(serde_json::to_string(&check_record).unwrap());
-    coordinator.tx_commit().await;
-    true
+    return coordinator.tx_commit().await;
 }
 
 async fn transac_saving(coordinator: &mut DtxCoordinator) -> bool {
-    true
+    coordinator.tx_begin().await;
+    let c_id = get_c_id();
+    coordinator.add_read_to_execute(c_id, SAVING_TABLE);
+
+    let save_obj = coordinator.add_write_to_execute(c_id, SAVING_TABLE, "".to_string());
+
+    let (status, result) = coordinator.tx_exe().await;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    let mut save_record: Checking = serde_json::from_str(result[0].value()).unwrap();
+    let value = u64_rand(0, 10);
+    if value > save_record.balance {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    save_record.balance -= u64_rand(0, 10);
+    save_obj.write().await.value = Some(serde_json::to_string(&save_record).unwrap());
+    return coordinator.tx_commit().await;
 }
 
 async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
@@ -71,8 +126,7 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
 
     check_obj_from.write().await.value = Some(serde_json::to_string(&check_record_from).unwrap());
     check_obj_to.write().await.value = Some(serde_json::to_string(&check_record_to).unwrap());
-    coordinator.tx_commit().await;
-    true
+    return coordinator.tx_commit().await;
 }
 
 async fn write_check(coordinator: &mut DtxCoordinator) -> bool {
@@ -88,8 +142,7 @@ async fn write_check(coordinator: &mut DtxCoordinator) -> bool {
         return false;
     }
     let mut check_record: Checking = serde_json::from_str(result[0].value()).unwrap();
-    check_record.balance += u64_rand(MIN_BALANCE, MAX_BALANCE);
+    check_record.balance -= u64_rand(0, 10);
     check_obj.write().await.value = Some(serde_json::to_string(&check_record).unwrap());
-    coordinator.tx_commit().await;
-    true
+    return coordinator.tx_commit().await;
 }
