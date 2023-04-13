@@ -137,16 +137,16 @@ impl DtxCoordinator {
             //     .map(|x| x.blocking_read().clone())
             //     .collect();
             let mut final_ts = 0;
-            // if self.dtx_type == DtxType::oto || self.dtx_type == DtxType::to {
-            //     // get commit ts
-            //     final_ts = self
-            //         .cto_client
-            //         .get_commit_ts(Echo::default())
-            //         .await
-            //         .unwrap()
-            //         .into_inner()
-            //         .ts;
-            // }
+            if self.dtx_type == DtxType::oto || self.dtx_type == DtxType::to {
+                // get commit ts
+                final_ts = self
+                    .cto_client
+                    .get_commit_ts(Echo::default())
+                    .await
+                    .unwrap()
+                    .into_inner()
+                    .ts;
+            }
             let commit = Msg {
                 txn_id: self.txn_id,
                 read_set: Vec::new(),
