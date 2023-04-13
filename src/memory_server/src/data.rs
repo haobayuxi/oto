@@ -104,13 +104,21 @@ pub async fn lock_write_set(write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
     }
 }
 
-pub async fn update_and_release_locks(write_set: Vec<WriteStruct>, txn_id: u64) {
+pub async fn update_and_release_locks(
+    write_set: Vec<WriteStruct>,
+    txn_id: u64,
+    dtx_type: DtxType,
+    commit_ts: u64,
+) {
     unsafe {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             let mut guard = table.get_mut(&iter.key).unwrap().write().await;
             guard.release_lock(txn_id);
             guard.data = iter.value.clone().unwrap();
+            if dtx_type != DtxType::occ {
+                guard.ts = commit_ts;
+            }
         }
     }
 }

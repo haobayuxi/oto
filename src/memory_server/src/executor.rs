@@ -48,8 +48,14 @@ impl Executor {
                             // update and release the lock
                             // let txn_id = coor_msg.msg.txn_id;
                             // let msg = self.txns.remove(&txn_id).unwrap();
-                            update_and_release_locks(coor_msg.msg.write_set, coor_msg.msg.txn_id)
-                                .await;
+                            let commit_ts = coor_msg.msg.ts();
+                            update_and_release_locks(
+                                coor_msg.msg.write_set,
+                                coor_msg.msg.txn_id,
+                                self.dtx_type,
+                                commit_ts,
+                            )
+                            .await;
                             let mut reply = Msg::default();
                             reply.success = true;
                             coor_msg.call_back.send(reply);
