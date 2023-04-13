@@ -28,7 +28,6 @@ pub async fn small_bank_run_transactions(coordinator: &mut DtxCoordinator) -> (V
 
 async fn small_bank_run_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(1, 100);
-    return amalgamate(coordinator).await;
     if op < FREQUENCY_AMALGAMATE {
         return amalgamate(coordinator).await;
     } else if op < FREQUENCY_BALANCE {
@@ -110,6 +109,7 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
     let check_obj_to = coordinator.add_write_to_execute(c_to, CHECKING_TABLE, "".to_string());
 
     let (status, result) = coordinator.tx_exe().await;
+
     if !status {
         coordinator.tx_abort().await;
         return false;
