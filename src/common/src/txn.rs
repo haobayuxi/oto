@@ -156,9 +156,9 @@ impl DtxCoordinator {
                 ts: Some(final_ts),
             };
             let mut client = self.data_client.clone();
-            tokio::spawn(async move {
-                let _ = client.communication(commit).await.unwrap().into_inner();
-            });
+            // tokio::spawn(async move {
+            let _ = client.communication(commit).await.unwrap().into_inner();
+            // });
 
             return true;
         } else {
