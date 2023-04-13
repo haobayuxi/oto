@@ -115,18 +115,18 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
         return false;
     }
 
-    let mut save_record_from: Saving = serde_json::from_str(result[0].value()).unwrap();
-    let mut check_record_from: Saving = serde_json::from_str(&result[1].value()).unwrap();
-    let mut check_record_to: Saving = serde_json::from_str(&result[2].value()).unwrap();
+    // let mut save_record_from: Saving = serde_json::from_str(result[0].value()).unwrap();
+    // let mut check_record_from: Saving = serde_json::from_str(&result[1].value()).unwrap();
+    // let mut check_record_to: Saving = serde_json::from_str(&result[2].value()).unwrap();
 
-    check_record_to.balance += save_record_from.balance + check_record_from.balance;
-    save_record_from.balance = 0;
-    check_record_from.balance = 0;
+    // check_record_to.balance += save_record_from.balance + check_record_from.balance;
+    // save_record_from.balance = 0;
+    // check_record_from.balance = 0;
 
-    save_obj_from.write().await.value = Some(serde_json::to_string(&save_record_from).unwrap());
+    // save_obj_from.write().await.value = Some(serde_json::to_string(&save_record_from).unwrap());
 
-    check_obj_from.write().await.value = Some(serde_json::to_string(&check_record_from).unwrap());
-    check_obj_to.write().await.value = Some(serde_json::to_string(&check_record_to).unwrap());
+    // check_obj_from.write().await.value = Some(serde_json::to_string(&check_record_from).unwrap());
+    // check_obj_to.write().await.value = Some(serde_json::to_string(&check_record_to).unwrap());
     return coordinator.tx_commit().await;
 }
 
