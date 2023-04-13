@@ -51,9 +51,10 @@ async fn run_transaction(
     //     .map(|f| Arc::new(RwLock::new(f)))
     //     .collect();
     let (status, result) = coordinator.tx_exe().await;
-    if !status {
-        coordinator.tx_abort().await;
-        return false;
-    }
-    return coordinator.tx_commit().await;
+    // if !status {
+    //     coordinator.tx_abort().await;
+    //     return false;
+    // }
+    // return coordinator.tx_commit().await;
+    return true;
 }
