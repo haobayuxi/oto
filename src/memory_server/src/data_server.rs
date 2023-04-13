@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use common::{Config, CoordnatorMsg, DbType};
+use common::{Config, CoordnatorMsg, DbType, DtxType};
 use rpc::common::{
     data_service_server::{DataService, DataServiceServer},
     Msg,
@@ -88,20 +88,20 @@ impl DataServer {
         run_rpc_server(server).await;
     }
 
-    fn init_executors(&mut self, db_type: DbType) {
+    fn init_executors(&mut self, db_type: DbType, dtx_type: DtxType) {
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(i, receiver);
+            let mut exec = Executor::new(i, receiver, dtx_type);
             tokio::spawn(async move {
                 exec.run().await;
             });
         }
     }
 
-    pub async fn init_and_run(&mut self, db_type: DbType) {
+    pub async fn init_and_run(&mut self, db_type: DbType, dtx_type: DtxType) {
         init_data(db_type);
-        self.init_executors(db_type);
+        self.init_executors(db_type, dtx_type);
         self.init_rpc(Arc::new(self.executor_senders.clone())).await;
     }
 }

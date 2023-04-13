@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use common::CoordnatorMsg;
+use common::{CoordnatorMsg, DtxType};
 use rpc::common::Msg;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
@@ -11,16 +11,12 @@ use crate::data::{
 pub struct Executor {
     pub id: u64,
     pub recv: UnboundedReceiver<CoordnatorMsg>,
-    // txns: HashMap<u64, Msg>,
+    dtx_type: DtxType,
 }
 
 impl Executor {
-    pub fn new(id: u64, recv: UnboundedReceiver<CoordnatorMsg>) -> Self {
-        Self {
-            id,
-            recv,
-            // txns: HashMap::new(),
-        }
+    pub fn new(id: u64, recv: UnboundedReceiver<CoordnatorMsg>, dtx_type: DtxType) -> Self {
+        Self { id, recv, dtx_type }
     }
     pub async fn run(&mut self) {
         loop {
@@ -30,7 +26,9 @@ impl Executor {
                         rpc::common::TxnOp::Execute => {
                             let mut reply = Msg::default();
                             // get the data and lock the write set
-                            let (success, read_result) = get_read_set(coor_msg.msg.read_set).await;
+                            let start_ts = coor_msg.msg.ts();
+                            let (success, read_result) =
+                                get_read_set(coor_msg.msg.read_set, start_ts, self.dtx_type).await;
                             if !success {
                                 // send back failure
                                 reply.success = false;

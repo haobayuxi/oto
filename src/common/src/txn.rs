@@ -107,7 +107,7 @@ impl DtxCoordinator {
             write_set,
             op: TxnOp::Execute.into(),
             success: true,
-            commit_ts: None,
+            ts: Some(self.start_ts),
         };
         let reply = self
             .data_client
@@ -137,7 +137,7 @@ impl DtxCoordinator {
             //     .map(|x| x.blocking_read().clone())
             //     .collect();
             let mut final_ts = 0;
-            if self.dtx_type == DtxType::oto {
+            if self.dtx_type == DtxType::oto || self.dtx_type == DtxType::to {
                 // get commit ts
                 final_ts = self
                     .cto_client
@@ -153,7 +153,7 @@ impl DtxCoordinator {
                 write_set,
                 op: TxnOp::Commit.into(),
                 success: true,
-                commit_ts: Some(final_ts),
+                ts: Some(final_ts),
             };
             let mut client = self.data_client.clone();
             tokio::spawn(async move {
@@ -177,7 +177,7 @@ impl DtxCoordinator {
             write_set: Vec::new(),
             op: TxnOp::Abort.into(),
             success: true,
-            commit_ts: Some(self.commit_ts),
+            ts: Some(self.commit_ts),
         };
         let mut client = self.data_client.clone();
         tokio::spawn(async move {
@@ -227,7 +227,7 @@ impl DtxCoordinator {
                     write_set: Vec::new(),
                     op: TxnOp::Validate.into(),
                     success: true,
-                    commit_ts: None,
+                    ts: None,
                 };
                 let reply = self
                     .data_client

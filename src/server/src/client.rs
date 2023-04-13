@@ -46,9 +46,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         .await;
                 }
                 DbType::smallbank => {
-                    // sender
-                    //     .send(small_bank_run_transactions(&mut dtx_coordinator).await)
-                    //     .await;
+                    sender
+                        .send(small_bank_run_transactions(&mut dtx_coordinator).await)
+                        .await;
                 }
             }
         });

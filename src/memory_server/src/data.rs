@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use common::{DbType, Tuple};
+use common::{DbType, DtxType, Tuple};
 use rpc::common::{ReadStruct, WriteStruct};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
@@ -46,7 +46,11 @@ pub async fn validate_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStru
     }
 }
 
-pub async fn get_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) {
+pub async fn get_read_set(
+    read_set: Vec<ReadStruct>,
+    start_ts: u64,
+    dtx_type: DtxType,
+) -> (bool, Vec<ReadStruct>) {
     let mut result = Vec::new();
     unsafe {
         for iter in read_set {
@@ -56,6 +60,9 @@ pub async fn get_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) 
                     match rwlock.try_read() {
                         Ok(guard) => {
                             // insert into result
+                            if dtx_type == DtxType::to && guard.ts > start_ts {
+                                return (false, result);
+                            }
                             let read_struct = ReadStruct {
                                 key: iter.key,
                                 table_id: iter.table_id,
