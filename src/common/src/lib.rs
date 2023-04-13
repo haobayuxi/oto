@@ -86,8 +86,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            server_addr: "192.168.1.89:8001".to_string(),
-            cto_addr: "192.168.1.88:8001".to_string(),
+            server_addr: "192.168.1.89:10001".to_string(),
+            cto_addr: "192.168.1.88:10001".to_string(),
             executor_num: 80,
             client_num: 1,
         }
