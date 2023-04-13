@@ -28,6 +28,7 @@ pub async fn small_bank_run_transactions(coordinator: &mut DtxCoordinator) -> (V
 
 async fn small_bank_run_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(1, 100);
+    return balance(coordinator).await;
     if op < FREQUENCY_AMALGAMATE {
         return amalgamate(coordinator).await;
     } else if op < FREQUENCY_BALANCE {
