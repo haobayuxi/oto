@@ -105,7 +105,7 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.add_read_to_execute(c_from, CHECKING_TABLE);
     coordinator.add_read_to_execute(c_to, CHECKING_TABLE);
 
-    let save_obj_from = coordinator.add_write_to_execute(c_from, CHECKING_TABLE, "".to_string());
+    let save_obj_from = coordinator.add_write_to_execute(c_from, SAVING_TABLE, "".to_string());
     let check_obj_from = coordinator.add_write_to_execute(c_from, CHECKING_TABLE, "".to_string());
     let check_obj_to = coordinator.add_write_to_execute(c_to, CHECKING_TABLE, "".to_string());
 
