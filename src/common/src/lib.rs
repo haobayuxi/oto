@@ -89,7 +89,7 @@ impl Default for Config {
             server_addr: "192.168.1.89:10001".to_string(),
             cto_addr: "192.168.1.88:10001".to_string(),
             executor_num: 80,
-            client_num: 1,
+            client_num: 70,
         }
     }
 }
