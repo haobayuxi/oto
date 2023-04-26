@@ -14,6 +14,7 @@ use tonic::transport::Channel;
 
 use crate::ip_addr_add_prefix;
 use crate::DtxType;
+use crate::GLOBAL_COMMITTED;
 
 async fn init_coordinator_rpc(
     cto_ip: String,
@@ -59,7 +60,7 @@ pub struct DtxCoordinator {
     write_to_execute: Vec<Arc<RwLock<WriteStruct>>>,
     cto_client: CtoServiceClient<Channel>,
     data_clients: Vec<DataServiceClient<Channel>>,
-    committed: Arc<AtomicU64>,
+    // committed: Arc<AtomicU64>,
 }
 
 impl DtxCoordinator {
@@ -69,7 +70,7 @@ impl DtxCoordinator {
         dtx_type: DtxType,
         cto_ip: String,
         data_ip: Vec<String>,
-        committed: Arc<AtomicU64>,
+        // committed: Arc<AtomicU64>,
     ) -> Self {
         // init cto client & data client
         let (cto_client, data_clients) = init_coordinator_rpc(cto_ip, data_ip).await;
@@ -87,7 +88,7 @@ impl DtxCoordinator {
             data_clients,
             read_to_execute: Vec::new(),
             write_to_execute: Vec::new(),
-            committed,
+            // committed,
         }
     }
 
@@ -168,7 +169,7 @@ impl DtxCoordinator {
             };
             // broadcast
             self.broadcast_commit(commit).await;
-            self.committed.fetch_add(1, Ordering::Relaxed);
+            GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             // println!("committed {}", self.txn_id);
             return true;
         } else {

@@ -1,6 +1,6 @@
 use common::throughput_statistics::ThroughputStatisticsServer;
-use common::DbType;
 use common::{ip_addr_add_prefix, txn::DtxCoordinator, Config, ConfigInFile};
+use common::{DbType, GLOBAL_COMMITTED};
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,18 +20,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db_type: DbType = serde_yaml::from_str(&server_config.db_type).unwrap();
     let local_ts = Arc::new(RwLock::new(0));
     let config = Config::default();
-    let committed = Arc::new(AtomicU64::new(0));
     // init throughput statistics rpc server
     // if id == 0 {
     //     // init client
     // } else {
     //     let statistics_ = ThroughputStatisticsServer::new(committed.clone());
     // }
-    let throughput = committed.clone();
     tokio::spawn(async move {
         loop {
             sleep(Duration::from_millis(100)).await;
-            let result = throughput.load(std::sync::atomic::Ordering::Relaxed);
+            let result = GLOBAL_COMMITTED.load(std::sync::atomic::Ordering::Relaxed);
             println!("{}", result);
         }
     });
@@ -42,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let server_addr = config.server_addr.clone();
         let zipf = server_config.zipf;
         let sender = result_sender.clone();
-        let committed_ = committed.clone();
+        // let committed_ = committed.clone();
         tokio::spawn(async move {
             let mut dtx_coordinator = DtxCoordinator::new(
                 i,
@@ -50,7 +48,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 dtx_type,
                 ip_addr_add_prefix(cto_addr),
                 server_addr,
-                committed_,
             )
             .await;
             match db_type {

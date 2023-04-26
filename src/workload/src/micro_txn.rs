@@ -1,8 +1,13 @@
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, rc::Rc, sync::Arc, time::Duration};
 
-use common::{txn::DtxCoordinator, TXNS_PER_CLIENT};
+use common::{txn::DtxCoordinator, GLOBAL_COMMITTED, TXNS_PER_CLIENT};
 use rpc::common::{ReadStruct, WriteStruct};
-use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::RwLock, time::Instant};
+use tokio::{
+    fs::OpenOptions,
+    io::AsyncWriteExt,
+    sync::RwLock,
+    time::{sleep, Instant},
+};
 
 use crate::micro_db::MicroQuery;
 
@@ -11,6 +16,10 @@ pub async fn micro_run_transactions(
     theta: f64,
 ) -> (Vec<u128>, f64) {
     // init workload
+    loop {
+        sleep(Duration::from_millis(1)).await;
+        GLOBAL_COMMITTED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
     let mut query = MicroQuery::new(theta, 4, 100);
     // run transaction
     let mut latency_result = Vec::new();

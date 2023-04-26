@@ -2,12 +2,17 @@
 pub mod throughput_statistics;
 pub mod txn;
 
-use std::collections::BTreeSet;
+use std::{
+    collections::BTreeSet,
+    sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT},
+};
 
 use rand::*;
 use rpc::common::Msg;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot::Sender as OneShotSender;
+
+pub static GLOBAL_COMMITTED: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub static SUBSCRIBER_TABLE: i32 = 0;
 pub static SPECIAL_FACILITY_TABLE: i32 = 1;
