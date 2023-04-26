@@ -116,7 +116,7 @@ pub async fn get_read_set(
                         }
                     }
                 }
-                None => continue,
+                None => return (false, result),
             }
         }
         (true, result)
