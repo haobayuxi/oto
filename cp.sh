@@ -9,6 +9,7 @@ cp target/release/*server ~/server2
 
 cp target/release/cto ~/
 
+
 # cp run_client.py ~/yuxi
 #cp aggregate_result.py ~/yuxi
 cp clean.sh ~/yuxi

@@ -96,7 +96,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            server_addr: vec!["http://192.168.3.71:10001".to_string()],
+            server_addr: vec!["192.168.3.71:10001".to_string()],
             cto_addr: "192.168.3.72:10001".to_string(),
             executor_num: 80,
             client_num: 60,
