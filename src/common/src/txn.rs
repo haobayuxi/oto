@@ -25,6 +25,7 @@ async fn init_coordinator_rpc(
                 let mut data_clients = Vec::new();
                 for iter in data_ip {
                     let server_ip = ip_addr_add_prefix(iter);
+                    println!("connecting {}", server_ip);
                     loop {
                         match DataServiceClient::connect(server_ip.clone()).await {
                             Ok(data_client) => data_clients.push(data_client),
