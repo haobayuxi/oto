@@ -4,6 +4,7 @@ use rpc::common::{
     ReadStruct, TxnOp, WriteStruct,
 };
 use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::RwLock;
@@ -160,7 +161,7 @@ impl DtxCoordinator {
             };
             // broadcast
             self.broadcast_commit(commit).await;
-
+            self.committed.fetch_add(1, Ordering::Relaxed);
             return true;
         } else {
             self.tx_abort().await;

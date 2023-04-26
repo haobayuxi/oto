@@ -27,7 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // } else {
     //     let statistics_ = ThroughputStatisticsServer::new(committed.clone());
     // }
-
+    let throughput = committed.clone();
+    tokio::spawn(async move {
+        sleep(Duration::from_secs(1)).await;
+        let result = throughput.load(std::sync::atomic::Ordering::Relaxed);
+        println!("{}", result);
+    });
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(10000);
     for i in 0..config.client_num {
         let loca_ts_bk = local_ts.clone();
