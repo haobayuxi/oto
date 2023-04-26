@@ -61,7 +61,7 @@ pub async fn validate_read_set(msg: Msg, dtx_type: DtxType) -> bool {
                         guard.prepared_write.insert(msg.ts());
                     }
                 }
-                return abort;
+                return !abort;
             }
             _ => {
                 for iter in msg.read_set {
