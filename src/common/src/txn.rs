@@ -299,7 +299,8 @@ impl DtxCoordinator {
                     success: true,
                     ts: None,
                 };
-                let client = self.data_clients.get_mut(0).unwrap();
+                let server_id = self.id % 3;
+                let client = self.data_clients.get_mut(server_id as usize).unwrap();
                 let reply = client
                     .communication(vadilate_msg)
                     .await
