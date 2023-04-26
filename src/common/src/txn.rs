@@ -20,8 +20,10 @@ async fn init_coordinator_rpc(
     loop {
         match CtoServiceClient::connect(cto_ip.clone()).await {
             Ok(cto_client) => {
+                println!("connect cto done");
                 let mut data_clients = Vec::new();
                 for iter in data_ip {
+                    println!("connecting {}", iter.clone());
                     loop {
                         match DataServiceClient::connect(iter.clone()).await {
                             Ok(data_client) => data_clients.push(data_client),
@@ -29,6 +31,7 @@ async fn init_coordinator_rpc(
                         }
                     }
                 }
+                println!("connect server done");
                 return (cto_client, data_clients);
             }
             Err(_) => sleep(Duration::from_millis(10)).await,
@@ -62,6 +65,7 @@ impl DtxCoordinator {
     ) -> Self {
         // init cto client & data client
         let (cto_client, data_clients) = init_coordinator_rpc(cto_ip, data_ip).await;
+        println!("init rpc done {}", id);
         Self {
             id,
             local_ts,
