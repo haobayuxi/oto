@@ -11,6 +11,7 @@ use tokio::time::sleep;
 use tokio::time::Duration;
 use tonic::transport::Channel;
 
+use crate::ip_addr_add_prefix;
 use crate::DtxType;
 
 async fn init_coordinator_rpc(
@@ -20,18 +21,17 @@ async fn init_coordinator_rpc(
     loop {
         match CtoServiceClient::connect(cto_ip.clone()).await {
             Ok(cto_client) => {
-                println!("connect cto done");
                 let mut data_clients = Vec::new();
                 for iter in data_ip {
-                    println!("connecting {}", iter.clone());
+                    let server_ip = ip_addr_add_prefix(iter);
                     loop {
-                        match DataServiceClient::connect(iter.clone()).await {
+                        match DataServiceClient::connect(server_ip.clone()).await {
                             Ok(data_client) => data_clients.push(data_client),
                             Err(_) => sleep(Duration::from_millis(10)).await,
                         }
                     }
                 }
-                println!("connect server done");
+                // println!("connect server done");
                 return (cto_client, data_clients);
             }
             Err(_) => sleep(Duration::from_millis(10)).await,
