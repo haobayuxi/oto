@@ -29,7 +29,10 @@ async fn init_coordinator_rpc(
                     loop {
                         match DataServiceClient::connect(server_ip.clone()).await {
                             Ok(data_client) => data_clients.push(data_client),
-                            Err(_) => sleep(Duration::from_millis(10)).await,
+                            Err(e) => {
+                                println!("connect error {:?}", e);
+                                sleep(Duration::from_millis(1000)).await;
+                            }
                         }
                     }
                 }
