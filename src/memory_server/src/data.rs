@@ -169,17 +169,15 @@ pub async fn update_and_release_locks(msg: Msg, dtx_type: DtxType) {
             _ => {
                 for iter in msg.write_set.iter() {
                     let table = &mut DATA[iter.table_id as usize];
-                    let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-                    guard.release_lock(msg.txn_id);
-                    guard.data = iter.value.clone().unwrap();
-                    guard.ts = msg.ts();
-                }
-                for iter in msg.write_set.iter() {
-                    let table = &mut DATA[iter.table_id as usize];
-                    let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-                    guard.release_lock(msg.txn_id);
-                    guard.data = iter.value.clone().unwrap();
-                    guard.ts = msg.ts();
+                    match table.get_mut(&iter.key) {
+                        Some(lock) => {
+                            let mut guard = lock.write().await;
+                            guard.release_lock(msg.txn_id);
+                            guard.data = iter.value.clone().unwrap();
+                            guard.ts = msg.ts();
+                        }
+                        None => {}
+                    }
                 }
             }
         }
