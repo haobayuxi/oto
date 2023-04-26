@@ -20,7 +20,7 @@ pub async fn micro_run_transactions(
         let (read_set, write_set) = query.generate();
         let success = run_transaction(coordinator, read_set, write_set).await;
         let end_time = start.elapsed().as_micros();
-        // println!("{}-{}", i, end_time);
+
         if success {
             latency_result.push(end_time);
         }
