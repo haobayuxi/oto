@@ -13,15 +13,15 @@ use rpc::common::{
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
 use tonic::{transport::Channel, Request, Response, Status};
 
+use crate::GLOBAL_COMMITTED;
+
 //
 
-pub struct ThroughputStatisticsServer {
-    committed: Arc<AtomicU64>,
-}
+pub struct ThroughputStatisticsServer {}
 
 impl ThroughputStatisticsServer {
-    pub fn new(committed: Arc<AtomicU64>) -> Self {
-        Self { committed }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
@@ -29,7 +29,7 @@ impl ThroughputStatisticsServer {
 impl ThroughputStatisticsService for ThroughputStatisticsServer {
     async fn get(&self, request: Request<Echo>) -> Result<Response<Throughput>, Status> {
         Ok(Response::new(Throughput {
-            committed: self.committed.load(Ordering::Relaxed),
+            committed: GLOBAL_COMMITTED.load(Ordering::Relaxed) as u64,
         }))
     }
 }

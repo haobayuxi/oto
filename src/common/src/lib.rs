@@ -90,13 +90,10 @@ pub enum DbType {
 pub struct Config {
     pub server_addr: Vec<String>,
     pub cto_addr: String,
+    pub client_addr: Vec<String>,
     pub executor_num: u64,
     pub client_num: u64,
 }
-
-// optane08 192.168.1.88 cto
-// optane09 192.168.1.89 server
-// optane10 192.168.1.70 client
 
 impl Default for Config {
     fn default() -> Self {
@@ -105,6 +102,7 @@ impl Default for Config {
             cto_addr: "192.168.3.72:10001".to_string(),
             executor_num: 30,
             client_num: 1,
+            client_addr: vec!["192.168.3.71:10001".to_string()],
         }
     }
 }

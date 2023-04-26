@@ -27,10 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     let statistics_ = ThroughputStatisticsServer::new(committed.clone());
     // }
     tokio::spawn(async move {
+        let mut last_committed = 0;
         loop {
             sleep(Duration::from_millis(100)).await;
             let result = GLOBAL_COMMITTED.load(std::sync::atomic::Ordering::Relaxed);
-            println!("{}", result);
+            println!("{}", result - last_committed);
+            last_committed = result;
         }
     });
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(10000);

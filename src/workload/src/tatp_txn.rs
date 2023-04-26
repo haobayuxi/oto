@@ -1,3 +1,5 @@
+use std::result;
+
 use common::{
     f64_rand, txn::DtxCoordinator, u64_rand, ACCESS_INFO_TABLE, CALL_FORWARDING_TABLE,
     SPECIAL_FACILITY_TABLE, SUBSCRIBER_TABLE, TXNS_PER_CLIENT,
@@ -70,33 +72,27 @@ async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
 
     coordinator.add_read_to_execute(sf_key(s_id, sf_type), SPECIAL_FACILITY_TABLE);
 
-    let (status, specfac_result) = coordinator.tx_exe().await;
-    if specfac_result.len() == 0 || !status {
-        // fail to get
-        coordinator.tx_abort().await;
-        return false;
-    }
-    let specfac: SpecialFacility = serde_json::from_str(specfac_result[0].value()).unwrap();
-
-    if !specfac.is_active {
-        coordinator.tx_abort().await;
-        return false;
-    }
-
     // fetch call forwarding records
     for i in 0..cf_to_fetch {
         let cf_key = cf_key(s_id, sf_type, start_time);
         coordinator.add_read_to_execute(cf_key, CALL_FORWARDING_TABLE);
     }
 
-    let (status, cf_result) = coordinator.tx_exe().await;
+    let (status, results) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
         return false;
     }
+    let specfac: SpecialFacility = serde_json::from_str(results[0].value()).unwrap();
 
-    for iter in cf_result {
-        let cf_obj: CallForwarding = serde_json::from_str(&iter.value.unwrap()).unwrap();
+    if !specfac.is_active {
+        coordinator.tx_abort().await;
+        return false;
+    }
+
+    for i in 1..results.len() {
+        let iter = results.get(i).unwrap().value();
+        let cf_obj: CallForwarding = serde_json::from_str(iter).unwrap();
         if cf_obj.start_time as u64 > start_time || cf_obj.end_time as u64 <= end_time {
             coordinator.tx_abort().await;
             return false;

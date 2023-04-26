@@ -69,13 +69,6 @@ impl DataService for RpcServer {
         let reply = receiver.await.unwrap();
         Ok(Response::new(reply))
     }
-    // async fn throughput(&self, request: Request<Echo>) -> Result<Response<Throughput>, Status> {
-    //     let reply = Throughput {
-    //         read_only_committed: self.read_only_committed.load(Ordering::Relaxed),
-    //         read_write_committed: self.read_write_committed.load(Ordering::Relaxed),
-    //     };
-    //     Ok(Response::new(reply))
-    // }
 }
 
 pub struct DataServer {
