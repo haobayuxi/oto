@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let throughput = committed.clone();
     tokio::spawn(async move {
         loop {
-            sleep(Duration::from_secs(1)).await;
+            sleep(Duration::from_millis(100)).await;
             let result = throughput.load(std::sync::atomic::Ordering::Relaxed);
             println!("{}", result);
         }

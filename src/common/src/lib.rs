@@ -16,7 +16,7 @@ pub static CALL_FORWARDING_TABLE: i32 = 3;
 pub static SAVING_TABLE: i32 = 0;
 pub static CHECKING_TABLE: i32 = 1;
 
-pub static TXNS_PER_CLIENT: u64 = 1000;
+pub static TXNS_PER_CLIENT: u64 = 100000;
 
 #[derive(Clone)]
 pub struct Tuple {
