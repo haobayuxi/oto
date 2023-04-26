@@ -106,8 +106,7 @@ impl DtxCoordinator {
                 // get start ts from local
                 self.start_ts = self.local_ts.read().await.clone();
             }
-            DtxType::occ => {}
-            DtxType::meerkat => {}
+            _ => {}
         }
     }
 
@@ -119,22 +118,71 @@ impl DtxCoordinator {
         for iter in self.write_to_execute.iter() {
             write_set.push(iter.read().await.clone());
         }
-        let exe_msg = Msg {
-            txn_id: self.txn_id,
-            read_set: self.read_to_execute.clone(),
-            write_set,
-            op: TxnOp::Execute.into(),
-            success: true,
-            ts: Some(self.start_ts),
-        };
+
         let server_id = self.id % 3;
-        let client = self.data_clients.get_mut(server_id as usize).unwrap();
-        let reply = client.communication(exe_msg).await.unwrap().into_inner();
-        self.read_set.extend(reply.read_set.clone());
-        self.write_set.extend(self.write_to_execute.clone());
-        self.read_to_execute.clear();
-        self.write_to_execute.clear();
-        return (reply.success, reply.read_set);
+
+        if self.dtx_type == DtxType::ford {
+            let (sender, mut recv) = unbounded_channel::<Msg>();
+            let need_lock = !self.write_to_execute.is_empty();
+            if need_lock {
+                // lock the write
+                let lock = Msg {
+                    txn_id: self.txn_id,
+                    read_set: Vec::new(),
+                    write_set,
+                    op: TxnOp::Execute.into(),
+                    success: true,
+                    ts: Some(self.start_ts),
+                };
+                let mut client = self.data_clients.get_mut(0).unwrap().clone();
+                tokio::spawn(async move {
+                    let reply = client.communication(lock).await.unwrap().into_inner();
+                    sender.send(reply);
+                });
+            }
+            let mut result = Vec::new();
+            if !self.read_to_execute.is_empty() {
+                let read = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_to_execute.clone(),
+                    write_set: Vec::new(),
+                    op: TxnOp::Execute.into(),
+                    success: true,
+                    ts: Some(self.start_ts),
+                };
+                let client = self.data_clients.get_mut(server_id as usize).unwrap();
+
+                let reply: Msg = client.communication(read).await.unwrap().into_inner();
+                if !reply.success {
+                    return (false, result);
+                }
+                result = reply.read_set;
+            }
+            if need_lock {
+                let lock_reply = recv.recv().await.unwrap();
+                if !lock_reply.success {
+                    return (false, result);
+                }
+            }
+
+            return (true, result);
+        } else {
+            let exe_msg = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_to_execute.clone(),
+                write_set,
+                op: TxnOp::Execute.into(),
+                success: true,
+                ts: Some(self.start_ts),
+            };
+            let client = self.data_clients.get_mut(server_id as usize).unwrap();
+            let reply = client.communication(exe_msg).await.unwrap().into_inner();
+            self.read_set.extend(reply.read_set.clone());
+            self.write_set.extend(self.write_to_execute.clone());
+            self.read_to_execute.clear();
+            self.write_to_execute.clear();
+            return (reply.success, reply.read_set);
+        }
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
@@ -158,6 +206,17 @@ impl DtxCoordinator {
                     .unwrap()
                     .into_inner()
                     .ts;
+            } else if self.dtx_type == DtxType::ford {
+                // broadcast to lock the back
+                let lock = Msg {
+                    txn_id: self.txn_id,
+                    read_set: Vec::new(),
+                    write_set: write_set.clone(),
+                    op: TxnOp::Execute.into(),
+                    success: true,
+                    ts: Some(self.commit_ts),
+                };
+                self.sync_broadcast(lock).await;
             }
             let commit = Msg {
                 txn_id: self.txn_id,
@@ -168,7 +227,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
             };
             // broadcast
-            self.broadcast_commit(commit).await;
+            self.async_broadcast_commit(commit).await;
+
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
         } else {
@@ -189,7 +249,7 @@ impl DtxCoordinator {
             success: true,
             ts: Some(self.commit_ts),
         };
-        self.broadcast_commit(abort).await;
+        self.async_broadcast_commit(abort).await;
     }
 
     pub fn add_read_to_execute(&mut self, key: u64, table_id: i32) {
@@ -223,7 +283,7 @@ impl DtxCoordinator {
             DtxType::oto => {
                 return self.oto_validate().await;
             }
-            DtxType::occ => {
+            DtxType::ford => {
                 if self.read_set.is_empty() {
                     // println!("read set is null");
                     return true;
@@ -236,12 +296,17 @@ impl DtxCoordinator {
                     success: true,
                     ts: None,
                 };
-                let reply = self.broadcast_validate(vadilate_msg).await;
-                for iter in reply.iter() {
-                    if !iter.success {
-                        return false;
-                    }
+                let client = self.data_clients.get_mut(0).unwrap();
+                let reply = client
+                    .communication(vadilate_msg)
+                    .await
+                    .unwrap()
+                    .into_inner();
+
+                if !reply.success {
+                    return false;
                 }
+
                 return true;
             }
             DtxType::meerkat => {
@@ -257,7 +322,7 @@ impl DtxCoordinator {
                     success: true,
                     ts: Some(self.commit_ts),
                 };
-                let reply = self.broadcast_validate(vadilate_msg).await;
+                let reply = self.sync_broadcast(vadilate_msg).await;
                 for iter in reply.iter() {
                     if !iter.success {
                         return false;
@@ -285,7 +350,7 @@ impl DtxCoordinator {
         true
     }
 
-    async fn broadcast_validate(&mut self, msg: Msg) -> Vec<Msg> {
+    async fn sync_broadcast(&mut self, msg: Msg) -> Vec<Msg> {
         let mut result = Vec::new();
         let (sender, mut recv) = unbounded_channel::<Msg>();
         for i in 0..self.data_clients.len() {
@@ -302,7 +367,7 @@ impl DtxCoordinator {
         return result;
     }
 
-    async fn broadcast_commit(&mut self, commit: Msg) {
+    async fn async_broadcast_commit(&mut self, commit: Msg) {
         for i in 0..self.data_clients.len() {
             let mut client = self.data_clients[i].clone();
             let msg_ = commit.clone();

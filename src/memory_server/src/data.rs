@@ -30,12 +30,12 @@ pub async fn validate_read_set(msg: Msg, dtx_type: DtxType) -> bool {
                     let key = read.key;
                     let table = &mut DATA[read.table_id as usize];
                     let mut guard = table.get_mut(&key).unwrap().write().await;
-                    println!(
-                        "validate read ts = {}, guard ts = {},write len = {},",
-                        msg.ts(),
-                        guard.ts,
-                        guard.prepared_write.len()
-                    );
+                    // println!(
+                    //     "validate read ts = {}, guard ts = {},write len = {},",
+                    //     msg.ts(),
+                    //     guard.ts,
+                    //     guard.prepared_write.len()
+                    // );
                     if msg.ts() < guard.ts
                         || (guard.prepared_write.len() > 0
                             && msg.ts() < *guard.prepared_write.iter().min().unwrap())

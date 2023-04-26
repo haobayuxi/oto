@@ -76,7 +76,7 @@ pub struct ConfigInFile {
 #[derive(PartialEq, Eq, Deserialize, Clone, Copy)]
 pub enum DtxType {
     oto,
-    occ,
+    ford,
     meerkat,
 }
 
@@ -98,11 +98,15 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            server_addr: vec!["192.168.3.71:10001".to_string()],
-            cto_addr: "192.168.3.72:10001".to_string(),
+            server_addr: vec![
+                "192.168.1.70:10001".to_string(),
+                "192.168.1.71:10001".to_string(),
+                "192.168.1.72:10001".to_string(),
+            ],
+            cto_addr: "192.168.1.89:10001".to_string(),
             executor_num: 30,
             client_num: 1,
-            client_addr: vec!["192.168.3.71:10001".to_string()],
+            client_addr: vec!["192.168.1.71:10001".to_string()],
         }
     }
 }
