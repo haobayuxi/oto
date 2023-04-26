@@ -84,6 +84,7 @@ impl Executor {
                             // return read set ts
                             let success = validate_read_set(coor_msg.msg, self.dtx_type).await;
                             let mut reply = Msg::default();
+                            println!("validate  = {}", success);
                             reply.success = success;
                             coor_msg.call_back.send(reply);
                         }
