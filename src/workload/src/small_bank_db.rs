@@ -5,12 +5,6 @@ use tokio::sync::RwLock;
 
 static TX_HOT_PERCENT: u64 = 90;
 static HOTSPOT_SIZE: u64 = 100;
-static FREQUENCY_AMALGAMATE: u64 = 15;
-static FREQUENCY_BALANCE: u64 = 30;
-static FREQUENCY_DEPOSIT_CHECKING: u64 = 45;
-static FREQUENCY_SEND_PAYMENT: u64 = 70;
-static FREQUENCY_TRANSACT_SAVINGS: u64 = 85;
-static FREQUENCY_WRITE_CHECK: u64 = 100;
 
 pub static NUM_ACCOUNTS: u64 = 100000;
 pub static MIN_BALANCE: u64 = 10000;

@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{atomic::AtomicU64, Arc},
+};
 
 use common::{CoordnatorMsg, DtxType};
 use rpc::common::Msg;
@@ -12,11 +15,25 @@ pub struct Executor {
     pub id: u64,
     pub recv: UnboundedReceiver<CoordnatorMsg>,
     dtx_type: DtxType,
+    // read_only_committed: Arc<AtomicU64>,
+    // read_write_committed: Arc<AtomicU64>,
 }
 
 impl Executor {
-    pub fn new(id: u64, recv: UnboundedReceiver<CoordnatorMsg>, dtx_type: DtxType) -> Self {
-        Self { id, recv, dtx_type }
+    pub fn new(
+        id: u64,
+        recv: UnboundedReceiver<CoordnatorMsg>,
+        dtx_type: DtxType,
+        // read_only_committed: Arc<AtomicU64>,
+        // read_write_committed: Arc<AtomicU64>,
+    ) -> Self {
+        Self {
+            id,
+            recv,
+            dtx_type,
+            // read_only_committed,
+            // read_write_committed,
+        }
     }
     pub async fn run(&mut self) {
         loop {
@@ -48,14 +65,7 @@ impl Executor {
                             // update and release the lock
                             // let txn_id = coor_msg.msg.txn_id;
                             // let msg = self.txns.remove(&txn_id).unwrap();
-                            let commit_ts = coor_msg.msg.ts();
-                            update_and_release_locks(
-                                coor_msg.msg.write_set,
-                                coor_msg.msg.txn_id,
-                                self.dtx_type,
-                                commit_ts,
-                            )
-                            .await;
+                            update_and_release_locks(coor_msg.msg, self.dtx_type).await;
                             let mut reply = Msg::default();
                             reply.success = true;
                             coor_msg.call_back.send(reply);
@@ -65,17 +75,15 @@ impl Executor {
 
                             // let txn_id = coor_msg.msg.txn_id;
                             // let msg = self.txns.remove(&txn_id).unwrap();
-                            releass_locks(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
+                            releass_locks(coor_msg.msg, self.dtx_type).await;
                             let mut reply = Msg::default();
                             reply.success = true;
                             coor_msg.call_back.send(reply);
                         }
                         rpc::common::TxnOp::Validate => {
                             // return read set ts
-                            let (success, read_result) =
-                                validate_read_set(coor_msg.msg.read_set).await;
+                            let success = validate_read_set(coor_msg.msg, self.dtx_type).await;
                             let mut reply = Msg::default();
-                            reply.read_set = read_result;
                             reply.success = success;
                             coor_msg.call_back.send(reply);
                         }

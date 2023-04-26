@@ -2,10 +2,9 @@ use rpc::common::{
     cto_service_client::CtoServiceClient, data_service_client::DataServiceClient, Echo, Msg,
     ReadStruct, TxnOp, WriteStruct,
 };
-use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
-use std::rc::Rc;
-use std::{any::Any, convert::TryInto, sync::Arc};
+use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
+use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::time::Duration;
@@ -15,16 +14,22 @@ use crate::DtxType;
 
 async fn init_coordinator_rpc(
     cto_ip: String,
-    data_ip: String,
-) -> (CtoServiceClient<Channel>, DataServiceClient<Channel>) {
+    data_ip: Vec<String>,
+) -> (CtoServiceClient<Channel>, Vec<DataServiceClient<Channel>>) {
     loop {
         match CtoServiceClient::connect(cto_ip.clone()).await {
-            Ok(cto_client) => loop {
-                match DataServiceClient::connect(data_ip.clone()).await {
-                    Ok(data_client) => return (cto_client, data_client),
-                    Err(_) => sleep(Duration::from_millis(10)).await,
+            Ok(cto_client) => {
+                let mut data_clients = Vec::new();
+                for iter in data_ip {
+                    loop {
+                        match DataServiceClient::connect(iter.clone()).await {
+                            Ok(data_client) => data_clients.push(data_client),
+                            Err(_) => sleep(Duration::from_millis(10)).await,
+                        }
+                    }
                 }
-            },
+                return (cto_client, data_clients);
+            }
             Err(_) => sleep(Duration::from_millis(10)).await,
         }
     }
@@ -41,7 +46,8 @@ pub struct DtxCoordinator {
     read_to_execute: Vec<ReadStruct>,
     write_to_execute: Vec<Arc<RwLock<WriteStruct>>>,
     cto_client: CtoServiceClient<Channel>,
-    data_client: DataServiceClient<Channel>,
+    data_clients: Vec<DataServiceClient<Channel>>,
+    committed: Arc<AtomicU64>,
 }
 
 impl DtxCoordinator {
@@ -50,10 +56,11 @@ impl DtxCoordinator {
         local_ts: Arc<RwLock<u64>>,
         dtx_type: DtxType,
         cto_ip: String,
-        data_ip: String,
+        data_ip: Vec<String>,
+        committed: Arc<AtomicU64>,
     ) -> Self {
         // init cto client & data client
-        let (cto_client, data_client) = init_coordinator_rpc(cto_ip, data_ip).await;
+        let (cto_client, data_clients) = init_coordinator_rpc(cto_ip, data_ip).await;
         Self {
             id,
             local_ts,
@@ -64,9 +71,10 @@ impl DtxCoordinator {
             read_set: Vec::new(),
             write_set: Vec::new(),
             cto_client,
-            data_client,
+            data_clients,
             read_to_execute: Vec::new(),
             write_to_execute: Vec::new(),
+            committed,
         }
     }
 
@@ -85,11 +93,7 @@ impl DtxCoordinator {
                 self.start_ts = self.local_ts.read().await.clone();
             }
             DtxType::occ => {}
-            DtxType::to => {
-                // get start ts from cto
-                let reply = self.cto_client.get_start_ts(Echo::default()).await.unwrap();
-                self.start_ts = reply.into_inner().ts;
-            }
+            DtxType::meerkat => {}
         }
     }
 
@@ -109,12 +113,9 @@ impl DtxCoordinator {
             success: true,
             ts: Some(self.start_ts),
         };
-        let reply = self
-            .data_client
-            .communication(exe_msg)
-            .await
-            .unwrap()
-            .into_inner();
+        let server_id = self.id % 3;
+        let client = self.data_clients.get_mut(server_id as usize).unwrap();
+        let reply = client.communication(exe_msg).await.unwrap().into_inner();
         self.read_set.extend(reply.read_set.clone());
         self.write_set.extend(self.write_to_execute.clone());
         self.read_to_execute.clear();
@@ -131,13 +132,8 @@ impl DtxCoordinator {
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());
             }
-            // let write_set = self
-            //     .write_set
-            //     .iter()
-            //     .map(|x| x.blocking_read().clone())
-            //     .collect();
             let mut final_ts = 0;
-            if self.dtx_type == DtxType::oto || self.dtx_type == DtxType::to {
+            if self.dtx_type == DtxType::oto {
                 // get commit ts
                 final_ts = self
                     .cto_client
@@ -155,10 +151,8 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(final_ts),
             };
-            let mut client = self.data_client.clone();
-            tokio::spawn(async move {
-                let _ = client.communication(commit).await.unwrap().into_inner();
-            });
+            // broadcast
+            self.broadcast_commit(commit).await;
 
             return true;
         } else {
@@ -179,10 +173,7 @@ impl DtxCoordinator {
             success: true,
             ts: Some(self.commit_ts),
         };
-        let mut client = self.data_client.clone();
-        tokio::spawn(async move {
-            let reply = client.communication(abort).await.unwrap().into_inner();
-        });
+        self.broadcast_commit(abort).await;
     }
 
     pub fn add_read_to_execute(&mut self, key: u64, table_id: i32) {
@@ -229,23 +220,35 @@ impl DtxCoordinator {
                     success: true,
                     ts: None,
                 };
-                let reply = self
-                    .data_client
-                    .communication(vadilate_msg)
-                    .await
-                    .unwrap()
-                    .into_inner();
-                if !reply.success {
-                    return false;
-                }
-                for i in 0..self.read_set.len() {
-                    if self.read_set[i].timestamp() != reply.read_set[i].timestamp() {
+                let reply = self.broadcast_validate(vadilate_msg).await;
+                for iter in reply.iter() {
+                    if !iter.success {
                         return false;
                     }
                 }
                 return true;
             }
-            DtxType::to => return true,
+            DtxType::meerkat => {
+                let mut write_set = Vec::new();
+                for iter in self.write_set.iter() {
+                    write_set.push(iter.read().await.clone());
+                }
+                let vadilate_msg = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_set.clone(),
+                    write_set: write_set.clone(),
+                    op: TxnOp::Validate.into(),
+                    success: true,
+                    ts: None,
+                };
+                let reply = self.broadcast_validate(vadilate_msg).await;
+                for iter in reply.iter() {
+                    if !iter.success {
+                        return false;
+                    }
+                }
+                return true;
+            }
         }
     }
 
@@ -264,5 +267,32 @@ impl DtxCoordinator {
             return false;
         }
         true
+    }
+
+    async fn broadcast_validate(&mut self, msg: Msg) -> Vec<Msg> {
+        let mut result = Vec::new();
+        let (sender, mut recv) = unbounded_channel::<Msg>();
+        for i in 0..self.data_clients.len() {
+            let mut client = self.data_clients[i].clone();
+            let s_ = sender.clone();
+            let msg_ = msg.clone();
+            tokio::spawn(async move {
+                s_.send(client.communication(msg_).await.unwrap().into_inner());
+            });
+        }
+        for i in 0..self.data_clients.len() {
+            result.push(recv.recv().await.unwrap());
+        }
+        return result;
+    }
+
+    async fn broadcast_commit(&mut self, commit: Msg) {
+        for i in 0..self.data_clients.len() {
+            let mut client = self.data_clients[i].clone();
+            let msg_ = commit.clone();
+            tokio::spawn(async move {
+                client.communication(msg_).await.unwrap().into_inner();
+            });
+        }
     }
 }

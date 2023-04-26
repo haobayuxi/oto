@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 
 use common::{DbType, DtxType, Tuple};
-use rpc::common::{ReadStruct, WriteStruct};
-use serde::{Deserialize, Serialize};
+use rpc::common::{Msg, ReadStruct, WriteStruct};
 use tokio::sync::RwLock;
 use workload::{
     micro_db::init_micro_db, small_bank_db::init_smallbank_db, tatp_db::init_tatp_data,
@@ -22,29 +21,62 @@ pub fn init_data(txn_type: DbType) {
     }
 }
 
-pub async fn validate_read_set(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) {
-    let mut result = Vec::new();
+pub async fn validate_read_set(msg: Msg, dtx_type: DtxType) -> bool {
     unsafe {
-        for iter in read_set {
-            let table = &mut DATA[iter.table_id as usize];
-            match table.get_mut(&iter.key).unwrap().try_read() {
-                Ok(guard) => {
-                    // insert into result
-                    let read_struct = ReadStruct {
-                        key: iter.key,
-                        table_id: iter.table_id,
-                        value: None,
-                        timestamp: Some(guard.ts),
-                    };
-                    result.push(read_struct);
+        match dtx_type {
+            DtxType::meerkat => {
+                let mut abort = false;
+                for read in msg.read_set.iter() {
+                    let key = read.key;
+                    let table = &mut DATA[read.table_id as usize];
+                    let mut guard = table.get_mut(&key).unwrap().write().await;
+
+                    if read.timestamp() < guard.ts
+                        || (guard.prepared_write.len() > 0
+                            && msg.ts() < *guard.prepared_write.iter().min().unwrap())
+                    {
+                        abort = true;
+                        break;
+                    }
+                    // insert ts to prepared read
+                    guard.prepared_read.insert(msg.ts());
                 }
-                Err(_) => {
-                    // has been locked
-                    return (false, result);
+                if !abort {
+                    for write in msg.write_set.iter() {
+                        let table = &mut DATA[write.table_id as usize];
+                        let mut guard = table.get_mut(&write.key).unwrap().write().await;
+                        if msg.ts() < guard.rts
+                            || (guard.prepared_read.len() > 0
+                                && msg.ts() < *guard.prepared_read.iter().max().unwrap())
+                        {
+                            // abort the txn
+                            abort = true;
+                            break;
+                        }
+                        guard.prepared_write.insert(msg.ts());
+                    }
                 }
+                return abort;
+            }
+            _ => {
+                for iter in msg.read_set {
+                    let table = &mut DATA[iter.table_id as usize];
+                    match table.get_mut(&iter.key).unwrap().try_read() {
+                        Ok(guard) => {
+                            // insert into result
+                            if guard.ts < iter.timestamp() {
+                                return false;
+                            }
+                        }
+                        Err(_) => {
+                            // has been locked
+                            return false;
+                        }
+                    }
+                }
+                return true;
             }
         }
-        (true, result)
     }
 }
 
@@ -62,9 +94,9 @@ pub async fn get_read_set(
                     match rwlock.try_read() {
                         Ok(guard) => {
                             // insert into result
-                            if dtx_type == DtxType::to && guard.ts > start_ts {
-                                return (false, result);
-                            }
+                            // if dtx_type == DtxType::oto && guard.ts > start_ts {
+                            //     return (false, result);
+                            // }
                             let read_struct = ReadStruct {
                                 key: iter.key,
                                 table_id: iter.table_id,
@@ -104,161 +136,74 @@ pub async fn lock_write_set(write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
     }
 }
 
-pub async fn update_and_release_locks(
-    write_set: Vec<WriteStruct>,
-    txn_id: u64,
-    dtx_type: DtxType,
-    commit_ts: u64,
-) {
+pub async fn update_and_release_locks(msg: Msg, dtx_type: DtxType) {
     unsafe {
-        for iter in write_set.iter() {
-            let table = &mut DATA[iter.table_id as usize];
-            let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-            guard.release_lock(txn_id);
-            guard.data = iter.value.clone().unwrap();
-            if dtx_type != DtxType::occ {
-                guard.ts = commit_ts;
+        match dtx_type {
+            DtxType::meerkat => {
+                let ts = msg.ts();
+                for read in msg.read_set.iter() {
+                    let table = &mut DATA[read.table_id as usize];
+                    let mut guard = table.get_mut(&read.key).unwrap().write().await;
+                    guard.prepared_read.remove(&ts);
+                    if guard.rts < ts {
+                        guard.rts = ts;
+                    }
+                }
+
+                for write in msg.write_set {
+                    // update value
+                    let table = &mut DATA[write.table_id as usize];
+                    let mut guard = table.get_mut(&write.key).unwrap().write().await;
+                    guard.data = write.value().to_string();
+                    guard.prepared_write.remove(&ts);
+                    if guard.ts < ts {
+                        guard.ts = ts
+                    }
+                }
+            }
+            _ => {
+                for iter in msg.write_set.iter() {
+                    let table = &mut DATA[iter.table_id as usize];
+                    let mut guard = table.get_mut(&iter.key).unwrap().write().await;
+                    guard.release_lock(msg.txn_id);
+                    guard.data = iter.value.clone().unwrap();
+                    guard.ts = msg.ts();
+                }
+                for iter in msg.write_set.iter() {
+                    let table = &mut DATA[iter.table_id as usize];
+                    let mut guard = table.get_mut(&iter.key).unwrap().write().await;
+                    guard.release_lock(msg.txn_id);
+                    guard.data = iter.value.clone().unwrap();
+                    guard.ts = msg.ts();
+                }
             }
         }
     }
 }
 
-pub async fn releass_locks(write_set: Vec<WriteStruct>, txn_id: u64) {
+pub async fn releass_locks(msg: Msg, dtx_type: DtxType) {
     unsafe {
-        for iter in write_set.iter() {
-            let table = &mut DATA[iter.table_id as usize];
-            let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-            guard.release_lock(txn_id)
+        match dtx_type {
+            DtxType::meerkat => {
+                for read in msg.read_set.iter() {
+                    let table = &mut DATA[read.table_id as usize];
+                    let mut guard = table.get_mut(&read.key).unwrap().write().await;
+                    guard.prepared_read.remove(&msg.ts());
+                }
+
+                for write in msg.write_set.iter() {
+                    let table = &mut DATA[write.table_id as usize];
+                    let mut guard = table.get_mut(&write.key).unwrap().write().await;
+                    guard.prepared_write.remove(&msg.ts());
+                }
+            }
+            _ => {
+                for iter in msg.write_set.iter() {
+                    let table = &mut DATA[iter.table_id as usize];
+                    let mut guard = table.get_mut(&iter.key).unwrap().write().await;
+                    guard.release_lock(msg.txn_id);
+                }
+            }
         }
     }
 }
-
-// pub struct Data {
-//     pub txn_type: DbType,
-//     pub tables: HashMap<i32, HashMap<u64, RwLock<Tuple>>>,
-// }
-
-// impl Data {
-//     pub fn new(txn_type: DbType) -> Self {
-//         let mut tables = HashMap::new();
-
-//         match txn_type {
-//             DbType::micro => {
-//                 tables = init_micro_db();
-//             }
-//             DbType::tatp => todo!(),
-//             DbType::smallbank => todo!(),
-//         }
-
-//         Self { txn_type, tables }
-//     }
-
-//     pub async fn validate_read_set(
-//         &mut self,
-//         read_set: Vec<ReadStruct>,
-//     ) -> (bool, Vec<ReadStruct>) {
-//         let mut result = Vec::new();
-//         for iter in read_set {
-//             let guard = self
-//                 .tables
-//                 .get_mut(&iter.table_id)
-//                 .unwrap()
-//                 .get_mut(&iter.key)
-//                 .unwrap()
-//                 .read()
-//                 .await;
-
-//             if guard.lock_txn_id != 0 {
-//                 // has been locked
-//                 return (false, result);
-//             }
-//             // insert into result
-//             let read_struct = ReadStruct {
-//                 key: iter.key,
-//                 table_id: iter.table_id,
-//                 value: None,
-//                 timestamp: Some(guard.ts),
-//             };
-//             result.push(read_struct);
-//         }
-//         (true, result)
-//     }
-
-//     pub async fn get_read_set(&mut self, read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) {
-//         let mut result = Vec::new();
-//         for iter in read_set {
-//             let guard = self
-//                 .tables
-//                 .get_mut(&iter.table_id)
-//                 .unwrap()
-//                 .get_mut(&iter.key)
-//                 .unwrap()
-//                 .read()
-//                 .await;
-
-//             if guard.lock_txn_id != 0 {
-//                 // has been locked
-//                 return (false, result);
-//             }
-//             // insert into result
-//             let read_struct = ReadStruct {
-//                 key: iter.key,
-//                 table_id: iter.table_id,
-//                 value: Some(guard.data.clone()),
-//                 timestamp: Some(guard.ts),
-//             };
-//             result.push(read_struct);
-//         }
-//         (true, result)
-//     }
-
-//     pub async fn lock_write_set(&mut self, write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
-//         for iter in write_set.iter() {
-//             let mut guard = self
-//                 .tables
-//                 .get_mut(&iter.table_id)
-//                 .unwrap()
-//                 .get_mut(&iter.key)
-//                 .unwrap()
-//                 .write()
-//                 .await;
-//             if guard.lock_txn_id == 0 {
-//                 guard.lock_txn_id = txn_id;
-//             } else {
-//                 return false;
-//             }
-//         }
-//         true
-//     }
-
-//     pub async fn update_and_release_locks(&mut self, write_set: Vec<WriteStruct>) {
-//         for iter in write_set.iter() {
-//             let mut guard = self
-//                 .tables
-//                 .get_mut(&iter.table_id)
-//                 .unwrap()
-//                 .get_mut(&iter.key)
-//                 .unwrap()
-//                 .write()
-//                 .await;
-//             guard.lock_txn_id = 0;
-//             guard.data = iter.value.clone().unwrap();
-//         }
-//     }
-
-//     pub async fn releass_locks(&mut self, write_set: Vec<WriteStruct>, txn_id: u64) {
-//         for iter in write_set.iter() {
-//             let mut guard = self
-//                 .tables
-//                 .get_mut(&iter.table_id)
-//                 .unwrap()
-//                 .get_mut(&iter.key)
-//                 .unwrap()
-//                 .write()
-//                 .await;
-//             if guard.lock_txn_id == txn_id {
-//                 guard.lock_txn_id = 0;
-//             }
-//         }
-//     }
-// }

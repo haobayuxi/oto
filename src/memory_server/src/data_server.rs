@@ -1,9 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
+};
 
 use common::{Config, CoordnatorMsg, DbType, DtxType};
 use rpc::common::{
     data_service_server::{DataService, DataServiceServer},
-    Msg,
+    Echo, Msg, Throughput,
 };
 use tokio::sync::{
     mpsc::{unbounded_channel, UnboundedSender},
@@ -17,6 +23,8 @@ pub struct RpcServer {
     executor_num: u64,
     addr_to_listen: String,
     sender: Arc<HashMap<u64, UnboundedSender<CoordnatorMsg>>>,
+    // read_only_committed: Arc<AtomicU64>,
+    // read_write_committed: Arc<AtomicU64>,
 }
 
 impl RpcServer {
@@ -24,11 +32,15 @@ impl RpcServer {
         executor_num: u64,
         addr_to_listen: String,
         sender: Arc<HashMap<u64, UnboundedSender<CoordnatorMsg>>>,
+        read_only_committed: Arc<AtomicU64>,
+        read_write_committed: Arc<AtomicU64>,
     ) -> Self {
         Self {
             executor_num,
             sender,
             addr_to_listen,
+            // read_only_committed,
+            // read_write_committed,
         }
     }
 }
@@ -57,6 +69,13 @@ impl DataService for RpcServer {
         let reply = receiver.await.unwrap();
         Ok(Response::new(reply))
     }
+    // async fn throughput(&self, request: Request<Echo>) -> Result<Response<Throughput>, Status> {
+    //     let reply = Throughput {
+    //         read_only_committed: self.read_only_committed.load(Ordering::Relaxed),
+    //         read_write_committed: self.read_write_committed.load(Ordering::Relaxed),
+    //     };
+    //     Ok(Response::new(reply))
+    // }
 }
 
 pub struct DataServer {
@@ -64,6 +83,8 @@ pub struct DataServer {
     executor_num: u64,
     executor_senders: HashMap<u64, UnboundedSender<CoordnatorMsg>>,
     config: Config,
+    read_only_committed: Arc<AtomicU64>,
+    read_write_committed: Arc<AtomicU64>,
 }
 
 impl DataServer {
@@ -73,6 +94,8 @@ impl DataServer {
             executor_num: config.executor_num,
             executor_senders: HashMap::new(),
             config,
+            read_only_committed: Arc::new(AtomicU64::new(0)),
+            read_write_committed: Arc::new(AtomicU64::new(0)),
         }
     }
 
@@ -81,9 +104,15 @@ impl DataServer {
         executor_senders: Arc<HashMap<u64, UnboundedSender<CoordnatorMsg>>>,
     ) {
         // start server for client to connect
-        let listen_ip = self.config.server_addr.clone();
+        let listen_ip = self.config.server_addr[self.server_id as usize].clone();
         println!("server listen ip {}", listen_ip);
-        let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
+        let server = RpcServer::new(
+            self.executor_num,
+            listen_ip,
+            executor_senders,
+            self.read_only_committed.clone(),
+            self.read_write_committed.clone(),
+        );
 
         run_rpc_server(server).await;
     }
@@ -92,7 +121,12 @@ impl DataServer {
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(i, receiver, dtx_type);
+            let mut exec = Executor::new(
+                i, receiver,
+                dtx_type,
+                // self.read_only_committed.clone(),
+                // self.read_write_committed.clone(),
+            );
             tokio::spawn(async move {
                 exec.run().await;
             });

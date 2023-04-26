@@ -1,8 +1,9 @@
+use common::throughput_statistics::ThroughputStatisticsServer;
+use common::DbType;
 use common::{ip_addr_add_prefix, txn::DtxCoordinator, Config, ConfigInFile};
-use common::{DbType, TXNS_PER_CLIENT};
-use serde::{Deserialize, Serialize};
+use std::sync::atomic::AtomicU64;
+use std::sync::Arc;
 use std::time::Duration;
-use std::{env, sync::Arc};
 use tokio::sync::mpsc::channel;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
@@ -13,11 +14,20 @@ use workload::tatp_txn::tatp_run_transactions;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let f = std::fs::File::open("config.yml").unwrap();
+    let id = 0;
     let server_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();
     let dtx_type = serde_yaml::from_str(&server_config.dtx_type).unwrap();
     let db_type: DbType = serde_yaml::from_str(&server_config.db_type).unwrap();
     let local_ts = Arc::new(RwLock::new(0));
     let config = Config::default();
+    let committed = Arc::new(AtomicU64::new(0));
+    // init throughput statistics rpc server
+    if id == 0 {
+        // init client
+    } else {
+        let statistics_ = ThroughputStatisticsServer::new(committed.clone());
+    }
+
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(10000);
     for i in 0..config.client_num {
         let loca_ts_bk = local_ts.clone();
@@ -25,13 +35,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let server_addr = config.server_addr.clone();
         let zipf = server_config.zipf;
         let sender = result_sender.clone();
+        let committed_ = committed.clone();
         tokio::spawn(async move {
             let mut dtx_coordinator = DtxCoordinator::new(
                 i,
                 loca_ts_bk,
                 dtx_type,
                 ip_addr_add_prefix(cto_addr),
-                ip_addr_add_prefix(server_addr),
+                server_addr,
+                committed_,
             )
             .await;
             match db_type {
@@ -63,9 +75,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     total_latency.sort();
     let success_num = total_latency.len();
     println!(
-        "mean latency = {} {}",
+        "mean latency = {}",
         total_latency[success_num / 2 as usize],
-        success_num
+        // success_num
     );
     println!(
         ".99 latency = {}",

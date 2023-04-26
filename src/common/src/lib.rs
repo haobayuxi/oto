@@ -1,5 +1,8 @@
 // pub mod shmem;
+pub mod throughput_statistics;
 pub mod txn;
+
+use std::collections::BTreeSet;
 
 use rand::*;
 use rpc::common::Msg;
@@ -20,6 +23,10 @@ pub struct Tuple {
     lock_txn_id: u64, // 0 state for no lock
     pub ts: u64,
     pub data: String,
+    // meerkat meta
+    pub prepared_read: BTreeSet<u64>,
+    pub prepared_write: BTreeSet<u64>,
+    pub rts: u64,
 }
 
 impl Tuple {
@@ -28,6 +35,9 @@ impl Tuple {
             lock_txn_id: 0,
             ts: 0,
             data,
+            prepared_read: BTreeSet::new(),
+            prepared_write: BTreeSet::new(),
+            rts: 0,
         }
     }
 
@@ -62,7 +72,7 @@ pub struct ConfigInFile {
 pub enum DtxType {
     oto,
     occ,
-    to,
+    meerkat,
 }
 
 #[derive(Clone, Serialize, Deserialize, Copy)]
@@ -73,7 +83,7 @@ pub enum DbType {
 }
 
 pub struct Config {
-    pub server_addr: String,
+    pub server_addr: Vec<String>,
     pub cto_addr: String,
     pub executor_num: u64,
     pub client_num: u64,
@@ -86,7 +96,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            server_addr: "192.168.1.89:10001".to_string(),
+            server_addr: vec!["http://192.168.1.89:10001".to_string()],
             cto_addr: "192.168.1.88:10001".to_string(),
             executor_num: 80,
             client_num: 60,
