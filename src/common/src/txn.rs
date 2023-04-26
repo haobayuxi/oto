@@ -1,3 +1,4 @@
+use chrono::Local;
 use rpc::common::{
     cto_service_client::CtoServiceClient, data_service_client::DataServiceClient, Echo, Msg,
     ReadStruct, TxnOp, WriteStruct,
@@ -80,13 +81,13 @@ impl DtxCoordinator {
 
     pub async fn tx_begin(&mut self) {
         // init coordinator
-        self.commit_ts = 0;
         self.txn_id += self.id;
         self.read_set.clear();
         self.write_set.clear();
         self.read_to_execute.clear();
         self.write_to_execute.clear();
         self.start_ts = 0;
+        self.commit_ts = 0;
         match self.dtx_type {
             DtxType::oto => {
                 // get start ts from local
@@ -124,6 +125,9 @@ impl DtxCoordinator {
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
+        if self.dtx_type == DtxType::meerkat {
+            self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
+        }
         if self.validate().await {
             if self.write_set.is_empty() {
                 return true;
@@ -132,10 +136,9 @@ impl DtxCoordinator {
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());
             }
-            let mut final_ts = 0;
             if self.dtx_type == DtxType::oto {
                 // get commit ts
-                final_ts = self
+                self.commit_ts = self
                     .cto_client
                     .get_commit_ts(Echo::default())
                     .await
@@ -149,7 +152,7 @@ impl DtxCoordinator {
                 write_set,
                 op: TxnOp::Commit.into(),
                 success: true,
-                ts: Some(final_ts),
+                ts: Some(self.commit_ts),
             };
             // broadcast
             self.broadcast_commit(commit).await;
@@ -239,7 +242,7 @@ impl DtxCoordinator {
                     write_set: write_set.clone(),
                     op: TxnOp::Validate.into(),
                     success: true,
-                    ts: None,
+                    ts: Some(self.commit_ts),
                 };
                 let reply = self.broadcast_validate(vadilate_msg).await;
                 for iter in reply.iter() {

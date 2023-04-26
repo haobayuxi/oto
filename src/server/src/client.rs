@@ -22,11 +22,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::default();
     let committed = Arc::new(AtomicU64::new(0));
     // init throughput statistics rpc server
-    if id == 0 {
-        // init client
-    } else {
-        let statistics_ = ThroughputStatisticsServer::new(committed.clone());
-    }
+    // if id == 0 {
+    //     // init client
+    // } else {
+    //     let statistics_ = ThroughputStatisticsServer::new(committed.clone());
+    // }
 
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(10000);
     for i in 0..config.client_num {
