@@ -140,6 +140,7 @@ impl DtxCoordinator {
                     sender.send(reply);
                 });
             }
+            let mut success = true;
             let mut result = Vec::new();
             if !self.read_to_execute.is_empty() {
                 let read = Msg {
@@ -153,19 +154,20 @@ impl DtxCoordinator {
                 let client = self.data_clients.get_mut(server_id as usize).unwrap();
 
                 let reply: Msg = client.communication(read).await.unwrap().into_inner();
-                if !reply.success {
-                    return (false, result);
-                }
+                success = reply.success;
                 result = reply.read_set;
             }
             if need_lock {
                 let lock_reply = recv.recv().await.unwrap();
                 if !lock_reply.success {
-                    return (false, result);
+                    success = false;
                 }
             }
-
-            return (true, result);
+            self.read_set.extend(result.clone());
+            self.write_set.extend(self.write_to_execute.clone());
+            self.read_to_execute.clear();
+            self.write_to_execute.clear();
+            return (success, result);
         } else {
             let exe_msg = Msg {
                 txn_id: self.txn_id,
@@ -190,7 +192,8 @@ impl DtxCoordinator {
             self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
         }
         if self.validate().await {
-            if self.write_set.is_empty() {
+            if self.write_set.is_empty() && self.dtx_type != DtxType::meerkat {
+                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
             }
             let mut write_set = Vec::new();
