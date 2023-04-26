@@ -162,6 +162,7 @@ impl DtxCoordinator {
             // broadcast
             self.broadcast_commit(commit).await;
             self.committed.fetch_add(1, Ordering::Relaxed);
+            println!("committed {}", self.txn_id);
             return true;
         } else {
             self.tx_abort().await;
