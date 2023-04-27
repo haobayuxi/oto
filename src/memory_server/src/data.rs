@@ -153,21 +153,31 @@ pub async fn update_and_release_locks(msg: Msg, dtx_type: DtxType) {
                 let ts = msg.ts();
                 for read in msg.read_set.iter() {
                     let table = &mut DATA[read.table_id as usize];
-                    let mut guard = table.get_mut(&read.key).unwrap().write().await;
-                    guard.prepared_read.remove(&ts);
-                    if guard.rts < ts {
-                        guard.rts = ts;
+                    match table.get_mut(&read.key) {
+                        Some(lock) => {
+                            let mut guard = lock.write().await;
+                            guard.prepared_read.remove(&ts);
+                            if guard.rts < ts {
+                                guard.rts = ts;
+                            }
+                        }
+                        None => {}
                     }
                 }
 
                 for write in msg.write_set {
                     // update value
                     let table = &mut DATA[write.table_id as usize];
-                    let mut guard = table.get_mut(&write.key).unwrap().write().await;
-                    guard.data = write.value().to_string();
-                    guard.prepared_write.remove(&ts);
-                    if guard.ts < ts {
-                        guard.ts = ts
+                    match table.get_mut(&write.key) {
+                        Some(lock) => {
+                            let mut guard = lock.write().await;
+                            guard.data = write.value().to_string();
+                            guard.prepared_write.remove(&ts);
+                            if guard.ts < ts {
+                                guard.ts = ts
+                            }
+                        }
+                        None => {}
                     }
                 }
             }
@@ -208,8 +218,13 @@ pub async fn releass_locks(msg: Msg, dtx_type: DtxType) {
             _ => {
                 for iter in msg.write_set.iter() {
                     let table = &mut DATA[iter.table_id as usize];
-                    let mut guard = table.get_mut(&iter.key).unwrap().write().await;
-                    guard.release_lock(msg.txn_id);
+                    match table.get_mut(&iter.key) {
+                        Some(lock) => {
+                            let mut guard = lock.write().await;
+                            guard.release_lock(msg.txn_id);
+                        }
+                        None => {}
+                    }
                 }
             }
         }
