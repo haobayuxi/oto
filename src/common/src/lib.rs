@@ -108,8 +108,8 @@ impl Default for Config {
             client_num: 1,
             client_addr: vec![
                 "192.168.1.70:10001".to_string(),
-                // "192.168.1.74:10001".to_string(),
-                // "192.168.1.75:10001".to_string(),
+                "192.168.1.74:10001".to_string(),
+                "192.168.1.75:10001".to_string(),
             ],
         }
     }
