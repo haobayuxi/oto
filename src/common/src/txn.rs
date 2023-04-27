@@ -144,16 +144,16 @@ impl DtxCoordinator {
                 });
             } else if self.dtx_type == DtxType::oto {
                 // broadcast to lock
-                locks = 3;
-                for iter in self.data_clients.iter() {
-                    let mut client = iter.clone();
-                    let lock_msg = lock.clone();
-                    let s_ = sender.clone();
-                    tokio::spawn(async move {
-                        let reply = client.communication(lock_msg).await.unwrap().into_inner();
-                        s_.send(reply);
-                    });
-                }
+                // locks = 3;
+                // for iter in self.data_clients.iter() {
+                //     let mut client = iter.clone();
+                //     let lock_msg = lock.clone();
+                //     let s_ = sender.clone();
+                //     tokio::spawn(async move {
+                //         let reply = client.communication(lock_msg).await.unwrap().into_inner();
+                //         s_.send(reply);
+                //     });
+                // }
             }
         }
         let mut success = true;
