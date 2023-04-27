@@ -34,8 +34,8 @@ async fn init_coordinator_rpc(
                                 break;
                             }
                             Err(e) => {
-                                println!("connect error {:?}", e);
-                                sleep(Duration::from_millis(1000)).await;
+                                // println!("connect error {}-- {:?}", server_ip, e);
+                                sleep(Duration::from_millis(10)).await;
                             }
                         }
                     }
