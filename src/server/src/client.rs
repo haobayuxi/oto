@@ -28,12 +28,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if config.client_addr.len() > 1 {
         if id == 0 {
             // init client
+            println!("init throughput client");
             let mut get_throughput_client =
                 ThroughputStatistics::new(config.client_addr.clone()).await;
             tokio::spawn(async move {
-                loop {
-                    get_throughput_client.run().await;
-                }
+                // loop {
+                get_throughput_client.run().await;
+                // }
             });
         } else {
             let get_throughput_server = ThroughputStatisticsServer::new(
@@ -45,15 +46,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    tokio::spawn(async move {
-        let mut last_committed = 0;
-        loop {
-            sleep(Duration::from_millis(100)).await;
-            let result: usize = GLOBAL_COMMITTED.load(std::sync::atomic::Ordering::Relaxed);
-            println!("{}", result - last_committed);
-            last_committed = result;
-        }
-    });
+    // tokio::spawn(async move {
+    //     let mut last_committed = 0;
+    //     loop {
+    //         sleep(Duration::from_millis(100)).await;
+    //         let result: usize = GLOBAL_COMMITTED.load(std::sync::atomic::Ordering::Relaxed);
+    //         println!("{}", result - last_committed);
+    //         last_committed = result;
+    //     }
+    // });
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(100);
     for i in 0..config.client_num {
         let loca_ts_bk = local_ts.clone();

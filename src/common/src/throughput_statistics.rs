@@ -64,6 +64,7 @@ impl ThroughputStatistics {
         let mut clients = Vec::new();
         for i in 1..data_ip.len() {
             let ip = ip_addr_add_prefix(data_ip.get(i).unwrap().clone());
+            println!("connecting {}", ip);
             loop {
                 match ThroughputStatisticsServiceClient::connect(ip.clone()).await {
                     Ok(data_client) => clients.push(data_client),
@@ -81,7 +82,7 @@ impl ThroughputStatistics {
         let echo = Echo::default();
         loop {
             // sleep
-            sleep(Duration::from_millis(10)).await;
+            sleep(Duration::from_secs(1)).await;
             let (sender, mut recv) = unbounded_channel::<Throughput>();
 
             for i in 0..self.clients.len() {
