@@ -262,15 +262,31 @@ impl DtxCoordinator {
         if self.write_set.is_empty() {
             return;
         }
-        let abort = Msg {
-            txn_id: self.txn_id,
-            read_set: Vec::new(),
-            write_set: Vec::new(),
-            op: TxnOp::Abort.into(),
-            success: true,
-            ts: Some(self.commit_ts),
-        };
-        self.async_broadcast_commit(abort).await;
+        let mut write_set = Vec::new();
+        for iter in self.write_set.iter() {
+            write_set.push(iter.read().await.clone());
+        }
+        if self.dtx_type == DtxType::meerkat {
+            let abort = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_set.clone(),
+                write_set,
+                op: TxnOp::Abort.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+            };
+            self.async_broadcast_commit(abort).await;
+        } else {
+            let abort = Msg {
+                txn_id: self.txn_id,
+                read_set: Vec::new(),
+                write_set,
+                op: TxnOp::Abort.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+            };
+            self.async_broadcast_commit(abort).await;
+        }
     }
 
     pub fn add_read_to_execute(&mut self, key: u64, table_id: i32) {
