@@ -29,36 +29,41 @@ pub async fn validate_read_set(msg: Msg, dtx_type: DtxType) -> bool {
                 for read in msg.read_set.iter() {
                     let key = read.key;
                     let table = &mut DATA[read.table_id as usize];
-                    let mut guard = table.get_mut(&key).unwrap().write().await;
-                    // println!(
-                    //     "validate read ts = {}, guard ts = {},write len = {},",
-                    //     msg.ts(),
-                    //     guard.ts,
-                    //     guard.prepared_write.len()
-                    // );
-                    if msg.ts() < guard.ts
-                        || (guard.prepared_write.len() > 0
-                            && msg.ts() < *guard.prepared_write.iter().min().unwrap())
-                    {
-                        abort = true;
-                        break;
+                    match table.get_mut(&read.key) {
+                        Some(lock) => {
+                            let mut guard = lock.write().await;
+
+                            if msg.ts() < guard.ts
+                                || (guard.prepared_write.len() > 0
+                                    && msg.ts() < *guard.prepared_write.iter().min().unwrap())
+                            {
+                                abort = true;
+                                break;
+                            }
+                            // insert ts to prepared read
+                            guard.prepared_read.insert(msg.ts());
+                        }
+                        None => return false,
                     }
-                    // insert ts to prepared read
-                    guard.prepared_read.insert(msg.ts());
                 }
                 if !abort {
                     for write in msg.write_set.iter() {
                         let table = &mut DATA[write.table_id as usize];
-                        let mut guard = table.get_mut(&write.key).unwrap().write().await;
-                        if msg.ts() < guard.rts
-                            || (guard.prepared_read.len() > 0
-                                && msg.ts() < *guard.prepared_read.iter().max().unwrap())
-                        {
-                            // abort the txn
-                            abort = true;
-                            break;
+                        match table.get_mut(&write.key) {
+                            Some(lock) => {
+                                let mut guard = lock.write().await;
+                                if msg.ts() < guard.rts
+                                    || (guard.prepared_read.len() > 0
+                                        && msg.ts() < *guard.prepared_read.iter().max().unwrap())
+                                {
+                                    // abort the txn
+                                    abort = true;
+                                    break;
+                                }
+                                guard.prepared_write.insert(msg.ts());
+                            }
+                            None => return false,
                         }
-                        guard.prepared_write.insert(msg.ts());
                     }
                 }
                 return !abort;
