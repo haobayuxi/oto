@@ -205,6 +205,7 @@ impl DtxCoordinator {
         // }
     }
     pub async fn tx_commit(&mut self) -> bool {
+        return true;
         // validate
         if self.dtx_type == DtxType::meerkat {
             self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
