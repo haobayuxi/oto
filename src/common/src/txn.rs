@@ -120,71 +120,89 @@ impl DtxCoordinator {
         }
 
         let server_id = self.id % 3;
-
-        if self.dtx_type == DtxType::ford {
-            let (sender, mut recv) = unbounded_channel::<Msg>();
-            let need_lock = !self.write_to_execute.is_empty();
-            if need_lock {
-                // lock the write
-                let lock = Msg {
-                    txn_id: self.txn_id,
-                    read_set: Vec::new(),
-                    write_set,
-                    op: TxnOp::Execute.into(),
-                    success: true,
-                    ts: Some(self.start_ts),
-                };
-                let mut client = self.data_clients.get_mut(0).unwrap().clone();
-                tokio::spawn(async move {
-                    let reply = client.communication(lock).await.unwrap().into_inner();
-                    sender.send(reply);
-                });
-            }
-            let mut success = true;
-            let mut result = Vec::new();
-            if !self.read_to_execute.is_empty() {
-                let read = Msg {
-                    txn_id: self.txn_id,
-                    read_set: self.read_to_execute.clone(),
-                    write_set: Vec::new(),
-                    op: TxnOp::Execute.into(),
-                    success: true,
-                    ts: Some(self.start_ts),
-                };
-                let client = self.data_clients.get_mut(server_id as usize).unwrap();
-
-                let reply: Msg = client.communication(read).await.unwrap().into_inner();
-                success = reply.success;
-                result = reply.read_set;
-            }
-            if need_lock {
-                let lock_reply = recv.recv().await.unwrap();
-                if !lock_reply.success {
-                    success = false;
-                }
-            }
-            self.read_set.extend(result.clone());
-            self.write_set.extend(self.write_to_execute.clone());
-            self.read_to_execute.clear();
-            self.write_to_execute.clear();
-            return (success, result);
-        } else {
-            let exe_msg = Msg {
+        let mut locks = 0;
+        // if self.dtx_type == DtxType::ford {
+        let (sender, mut recv) = unbounded_channel::<Msg>();
+        let need_lock = !self.write_to_execute.is_empty();
+        if need_lock {
+            // lock the write
+            let lock = Msg {
                 txn_id: self.txn_id,
-                read_set: self.read_to_execute.clone(),
+                read_set: Vec::new(),
                 write_set,
                 op: TxnOp::Execute.into(),
                 success: true,
                 ts: Some(self.start_ts),
             };
-            let client = self.data_clients.get_mut(server_id as usize).unwrap();
-            let reply = client.communication(exe_msg).await.unwrap().into_inner();
-            self.read_set.extend(reply.read_set.clone());
-            self.write_set.extend(self.write_to_execute.clone());
-            self.read_to_execute.clear();
-            self.write_to_execute.clear();
-            return (reply.success, reply.read_set);
+            if self.dtx_type == DtxType::ford {
+                // lock the primary
+                locks = 1;
+                let mut client = self.data_clients.get_mut(0).unwrap().clone();
+                tokio::spawn(async move {
+                    let reply = client.communication(lock).await.unwrap().into_inner();
+                    sender.send(reply);
+                });
+            } else if self.dtx_type == DtxType::oto {
+                // broadcast to lock
+                locks = 3;
+                for iter in self.data_clients.iter() {
+                    let mut client = iter.clone();
+                    let lock_msg = lock.clone();
+                    let s_ = sender.clone();
+                    tokio::spawn(async move {
+                        let reply = client.communication(lock_msg).await.unwrap().into_inner();
+                        s_.send(reply);
+                    });
+                }
+            }
         }
+        let mut success = true;
+        let mut result = Vec::new();
+        if !self.read_to_execute.is_empty() {
+            let read = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_to_execute.clone(),
+                write_set: Vec::new(),
+                op: TxnOp::Execute.into(),
+                success: true,
+                ts: Some(self.start_ts),
+            };
+            let client = self.data_clients.get_mut(server_id as usize).unwrap();
+
+            let reply: Msg = client.communication(read).await.unwrap().into_inner();
+            success = reply.success;
+            result = reply.read_set;
+        }
+        if need_lock {
+            for _ in 0..locks {
+                let lock_reply = recv.recv().await.unwrap();
+                if !lock_reply.success {
+                    success = false;
+                }
+            }
+        }
+        self.read_set.extend(result.clone());
+        self.write_set.extend(self.write_to_execute.clone());
+        self.read_to_execute.clear();
+        self.write_to_execute.clear();
+        return (success, result);
+        // } else {
+        //     let exe_msg = Msg {
+        //         txn_id: self.txn_id,
+        //         read_set: self.read_to_execute.clone(),
+        //         write_set,
+        //         op: TxnOp::Execute.into(),
+        //         success: true,
+        //         ts: Some(self.start_ts),
+        //     };
+        //     let client = self.data_clients.get_mut(server_id as usize).unwrap();
+        //     let reply = client.communication(exe_msg).await.unwrap().into_inner();
+        //     self.read_set.extend(reply.read_set.clone());
+        //     self.write_set.extend(self.write_to_execute.clone());
+        //     self.read_to_execute.clear();
+        //     self.write_to_execute.clear();
+        //     return (reply.success, reply.read_set);
+        // }
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
