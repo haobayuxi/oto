@@ -25,25 +25,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let local_ts = Arc::new(RwLock::new(0));
     let config = Config::default();
     // init throughput statistics rpc server
-    if config.client_addr.len() > 1 {
-        if id == 0 {
-            // init client
-            println!("init throughput client");
-            let mut get_throughput_client =
-                ThroughputStatistics::new(config.client_addr.clone()).await;
-            tokio::spawn(async move {
-                // loop {
-                get_throughput_client.run().await;
-                // }
-            });
-        } else {
-            let get_throughput_server = ThroughputStatisticsServer::new(
-                config.client_addr.get(id as usize).unwrap().clone(),
-            );
-            tokio::spawn(async move {
-                run_get_throughput_server(get_throughput_server).await;
-            });
-        }
+    if id == 0 {
+        // init client
+        println!("init throughput client");
+        let mut get_throughput_client = ThroughputStatistics::new(config.client_addr.clone()).await;
+        tokio::spawn(async move {
+            // loop {
+            get_throughput_client.run().await;
+            // }
+        });
+    } else {
+        let get_throughput_server =
+            ThroughputStatisticsServer::new(config.client_addr.get(id as usize).unwrap().clone());
+        tokio::spawn(async move {
+            run_get_throughput_server(get_throughput_server).await;
+        });
     }
 
     // tokio::spawn(async move {
