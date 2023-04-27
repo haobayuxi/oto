@@ -101,6 +101,7 @@ impl ThroughputStatistics {
             for i in 0..self.clients.len() {
                 let reply = recv.recv().await.unwrap();
                 committed += reply.committed;
+                println!("reply committed = {}", reply.committed);
             }
             committed += GLOBAL_COMMITTED.load(Ordering::Relaxed) as u64;
             let throughput_per_second = committed - self.committed;
