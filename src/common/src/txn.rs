@@ -186,26 +186,8 @@ impl DtxCoordinator {
         self.read_to_execute.clear();
         self.write_to_execute.clear();
         return (success, result);
-        // } else {
-        //     let exe_msg = Msg {
-        //         txn_id: self.txn_id,
-        //         read_set: self.read_to_execute.clone(),
-        //         write_set,
-        //         op: TxnOp::Execute.into(),
-        //         success: true,
-        //         ts: Some(self.start_ts),
-        //     };
-        //     let client = self.data_clients.get_mut(server_id as usize).unwrap();
-        //     let reply = client.communication(exe_msg).await.unwrap().into_inner();
-        //     self.read_set.extend(reply.read_set.clone());
-        //     self.write_set.extend(self.write_to_execute.clone());
-        //     self.read_to_execute.clear();
-        //     self.write_to_execute.clear();
-        //     return (reply.success, reply.read_set);
-        // }
     }
     pub async fn tx_commit(&mut self) -> bool {
-        return true;
         // validate
         if self.dtx_type == DtxType::meerkat {
             self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
