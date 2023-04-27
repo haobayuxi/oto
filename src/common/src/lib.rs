@@ -68,7 +68,6 @@ impl Tuple {
 
 #[derive(Serialize, Deserialize)]
 pub struct ConfigInFile {
-    pub id: i32,
     pub db_type: String,
     pub dtx_type: String,
     pub zipf: f64,

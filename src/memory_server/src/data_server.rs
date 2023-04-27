@@ -72,7 +72,7 @@ impl DataService for RpcServer {
 }
 
 pub struct DataServer {
-    server_id: i32,
+    server_id: u32,
     executor_num: u64,
     executor_senders: HashMap<u64, UnboundedSender<CoordnatorMsg>>,
     config: Config,
@@ -81,7 +81,7 @@ pub struct DataServer {
 }
 
 impl DataServer {
-    pub fn new(server_id: i32, config: Config) -> Self {
+    pub fn new(server_id: u32, config: Config) -> Self {
         Self {
             server_id,
             executor_num: config.executor_num,

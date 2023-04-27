@@ -3,6 +3,7 @@ use common::throughput_statistics::{
 };
 use common::{ip_addr_add_prefix, txn::DtxCoordinator, Config, ConfigInFile};
 use common::{DbType, GLOBAL_COMMITTED};
+use std::env;
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,13 +16,14 @@ use workload::tatp_txn::tatp_run_transactions;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args: Vec<String> = env::args().collect();
+    let id = args[1].parse::<u32>().unwrap();
     let f = std::fs::File::open("config.yml").unwrap();
     let server_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();
     let dtx_type = serde_yaml::from_str(&server_config.dtx_type).unwrap();
     let db_type: DbType = serde_yaml::from_str(&server_config.db_type).unwrap();
     let local_ts = Arc::new(RwLock::new(0));
     let config = Config::default();
-    let id = server_config.id;
     // init throughput statistics rpc server
     if config.client_addr.len() > 1 {
         if id == 0 {

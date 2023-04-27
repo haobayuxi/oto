@@ -7,11 +7,12 @@ use serde::{Deserialize, Serialize};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
+    let id = args[1].parse::<u32>().unwrap();
     let f = std::fs::File::open("config.yml").unwrap();
     let server_config: ConfigInFile = serde_yaml::from_reader(f).unwrap();
     let db_type: common::DbType = serde_yaml::from_str(&server_config.db_type).unwrap();
     let dtx_type = serde_yaml::from_str(&server_config.dtx_type).unwrap();
-    let mut server = DataServer::new(server_config.id, Config::default());
+    let mut server = DataServer::new(id, Config::default());
     server.init_and_run(db_type, dtx_type).await;
     Ok(())
 }
