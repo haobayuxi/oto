@@ -167,11 +167,11 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.start_ts),
             };
-            // let client = self.data_clients.get_mut(server_id as usize).unwrap();
+            let client = self.data_clients.get_mut(server_id as usize).unwrap();
 
-            // let reply: Msg = client.communication(read).await.unwrap().into_inner();
-            // success = reply.success;
-            // result = reply.read_set;
+            let reply: Msg = client.communication(read).await.unwrap().into_inner();
+            success = reply.success;
+            result = reply.read_set;
         }
         if need_lock {
             for _ in 0..locks {
