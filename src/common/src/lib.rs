@@ -106,7 +106,7 @@ impl Default for Config {
             ],
             cto_addr: "192.168.1.89:10001".to_string(),
             executor_num: 30,
-            client_num: 1,
+            client_num: 60,
             client_addr: vec!["192.168.1.71:10001".to_string()],
         }
     }

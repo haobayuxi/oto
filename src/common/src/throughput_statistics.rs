@@ -8,21 +8,39 @@ use std::{
 
 use rpc::common::{
     throughput_statistics_service_client::ThroughputStatisticsServiceClient,
-    throughput_statistics_service_server::ThroughputStatisticsService, Echo, Throughput,
+    throughput_statistics_service_server::{
+        ThroughputStatisticsService, ThroughputStatisticsServiceServer,
+    },
+    Echo, Throughput,
 };
 use tokio::{sync::mpsc::unbounded_channel, time::sleep};
-use tonic::{transport::Channel, Request, Response, Status};
+use tonic::{
+    transport::{Channel, Server},
+    Request, Response, Status,
+};
 
-use crate::GLOBAL_COMMITTED;
+use crate::{ip_addr_add_prefix, GLOBAL_COMMITTED};
 
 //
 
-pub struct ThroughputStatisticsServer {}
+pub struct ThroughputStatisticsServer {
+    addr_to_listen: String,
+}
 
 impl ThroughputStatisticsServer {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(addr_to_listen: String) -> Self {
+        Self { addr_to_listen }
     }
+}
+
+pub async fn run_get_throughput_server(rpc_server: ThroughputStatisticsServer) {
+    let addr = rpc_server.addr_to_listen.parse().unwrap();
+
+    println!("rpc server listening on: {:?}", addr);
+
+    let server = ThroughputStatisticsServiceServer::new(rpc_server);
+
+    Server::builder().add_service(server).serve(addr).await;
 }
 
 #[tonic::async_trait]
@@ -44,9 +62,10 @@ pub struct ThroughputStatistics {
 impl ThroughputStatistics {
     pub async fn new(data_ip: Vec<String>) -> Self {
         let mut clients = Vec::new();
-        for iter in data_ip {
+        for i in 1..data_ip.len() {
+            let ip = ip_addr_add_prefix(data_ip.get(i).unwrap().clone());
             loop {
-                match ThroughputStatisticsServiceClient::connect(iter.clone()).await {
+                match ThroughputStatisticsServiceClient::connect(ip.clone()).await {
                     Ok(data_client) => clients.push(data_client),
                     Err(_) => sleep(Duration::from_millis(10)).await,
                 }
@@ -79,9 +98,10 @@ impl ThroughputStatistics {
                 let reply = recv.recv().await.unwrap();
                 committed += reply.committed;
             }
+            committed += GLOBAL_COMMITTED.load(Ordering::Relaxed) as u64;
             let throughput_per_second = committed - self.committed;
             self.committed = committed;
-            //
+            println!("committed = {}", throughput_per_second);
         }
     }
 }
