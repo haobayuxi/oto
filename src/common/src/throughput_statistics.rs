@@ -67,7 +67,10 @@ impl ThroughputStatistics {
             println!("connecting {}", ip);
             loop {
                 match ThroughputStatisticsServiceClient::connect(ip.clone()).await {
-                    Ok(data_client) => clients.push(data_client),
+                    Ok(data_client) => {
+                        clients.push(data_client);
+                        break;
+                    }
                     Err(_) => sleep(Duration::from_millis(10)).await,
                 }
             }
