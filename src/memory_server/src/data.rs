@@ -211,7 +211,7 @@ pub async fn releass_locks(msg: Msg, dtx_type: DtxType) {
 
                 for write in msg.write_set.iter() {
                     let table = &mut DATA[write.table_id as usize];
-                    match table.get_mut(&iter.key) {
+                    match table.get_mut(&write.key) {
                         Some(lock) => {
                             let mut guard = lock.write().await;
                             guard.prepared_write.remove(&msg.ts());
