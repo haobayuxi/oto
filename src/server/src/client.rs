@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     }
     // });
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(100);
-    for i in 0..config.client_num {
+    for i in 0..server_config.client_num {
         let loca_ts_bk = local_ts.clone();
         let cto_addr = config.cto_addr.clone();
         let server_addr = config.server_addr.clone();
@@ -88,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut total_latency: Vec<u128> = Vec::new();
     let mut total_throuthput = 0.0;
-    for _ in 0..config.client_num {
+    for _ in 0..server_config.client_num {
         let (latency_result, throughput) = recv.recv().await.unwrap();
         total_latency.extend(latency_result.iter());
         total_throuthput += throughput;

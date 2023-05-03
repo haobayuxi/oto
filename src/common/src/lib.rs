@@ -71,6 +71,7 @@ pub struct ConfigInFile {
     pub db_type: String,
     pub dtx_type: String,
     pub zipf: f64,
+    pub client_num: u64,
 }
 
 #[derive(PartialEq, Eq, Deserialize, Clone, Copy)]
@@ -92,7 +93,6 @@ pub struct Config {
     pub cto_addr: String,
     pub client_addr: Vec<String>,
     pub executor_num: u64,
-    pub client_num: u64,
 }
 
 impl Default for Config {
@@ -105,7 +105,6 @@ impl Default for Config {
             ],
             cto_addr: "192.168.1.89:10001".to_string(),
             executor_num: 30,
-            client_num: 25,
             client_addr: vec![
                 "192.168.1.70:10001".to_string(),
                 "192.168.1.74:10001".to_string(),
