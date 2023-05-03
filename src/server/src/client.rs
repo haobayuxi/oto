@@ -97,12 +97,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let success_num = total_latency.len();
     println!(
         "mean latency = {}",
-        total_latency[success_num / 2 as usize],
+        (total_latency[success_num / 2 as usize] as f64) / 1000.0,
         // success_num
     );
     println!(
         ".99 latency = {}",
-        total_latency[success_num / 100 * 99 as usize]
+        (total_latency[success_num / 100 * 99 as usize] as f64) / 1000.0
     );
     // println!("")
     // println!("throughtput = {}", total_throuthput);
