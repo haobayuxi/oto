@@ -21,7 +21,7 @@ pub static CALL_FORWARDING_TABLE: i32 = 3;
 pub static SAVING_TABLE: i32 = 0;
 pub static CHECKING_TABLE: i32 = 1;
 
-pub static TXNS_PER_CLIENT: u64 = 20000;
+pub static TXNS_PER_CLIENT: u64 = 15000;
 
 #[derive(Clone)]
 pub struct Tuple {
@@ -105,7 +105,7 @@ impl Default for Config {
             ],
             cto_addr: "192.168.1.89:10001".to_string(),
             executor_num: 30,
-            client_num: 20,
+            client_num: 25,
             client_addr: vec![
                 "192.168.1.70:10001".to_string(),
                 "192.168.1.74:10001".to_string(),
