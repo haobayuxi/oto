@@ -205,8 +205,14 @@ pub async fn releass_locks(msg: Msg, dtx_type: DtxType) {
             DtxType::meerkat => {
                 for read in msg.read_set.iter() {
                     let table = &mut DATA[read.table_id as usize];
-                    let mut guard = table.get_mut(&read.key).unwrap().write().await;
-                    guard.prepared_read.remove(&msg.ts());
+                    match table.get_mut(&read.key) {
+                        Some(lock) => {
+                            let mut guard = lock.write().await;
+
+                            guard.prepared_read.remove(&msg.ts());
+                        }
+                        None => {}
+                    }
                 }
 
                 for write in msg.write_set.iter() {
