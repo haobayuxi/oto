@@ -382,7 +382,7 @@ impl DtxCoordinator {
                 s_.send(client.communication(msg_).await.unwrap().into_inner());
             });
         }
-        for i in 0..self.data_clients.len() {
+        for _ in 0..self.data_clients.len() {
             result.push(recv.recv().await.unwrap());
         }
         return result;
