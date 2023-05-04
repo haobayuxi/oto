@@ -71,8 +71,9 @@ impl Tuple {
 pub struct ConfigInFile {
     pub db_type: String,
     pub dtx_type: String,
-    pub zipf: f64,
+    // pub zipf: f64,
     pub client_num: u64,
+    pub read_only: bool,
 }
 
 #[derive(PartialEq, Eq, Deserialize, Clone, Copy)]

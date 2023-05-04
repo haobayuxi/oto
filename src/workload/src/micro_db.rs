@@ -42,9 +42,12 @@ pub struct MicroQuery {
 }
 
 impl MicroQuery {
-    pub fn new(theta: f64, req_per_query: i32, read_perc: i32) -> Self {
+    pub fn new(read_only: bool) -> Self {
+        let theta = if read_only { 0.0 } else { 0.8 };
+        let req_per_query = if read_only { 2 } else { 4 };
+        let read_perc = if read_only { 100 } else { 95 };
         let zeta_2_theta = zeta(2, theta);
-        let value: Vec<char> = vec!['a'; 100];
+        let value: Vec<char> = vec!['a'; 40];
         let mut write_value = String::from("");
         write_value.extend(value.iter());
         Self {

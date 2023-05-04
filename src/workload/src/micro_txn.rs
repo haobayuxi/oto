@@ -6,10 +6,11 @@ use crate::micro_db::MicroQuery;
 
 pub async fn micro_run_transactions(
     coordinator: &mut DtxCoordinator,
-    theta: f64,
+    // theta: f64,
+    read_only: bool,
 ) -> (Vec<u128>, f64) {
     // init workload
-    let mut query = MicroQuery::new(theta, 4, 100);
+    let mut query = MicroQuery::new(read_only);
     // run transaction
     let mut latency_result = Vec::new();
     let total_start = Instant::now();

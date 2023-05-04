@@ -56,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let loca_ts_bk = local_ts.clone();
         let cto_addr = config.cto_addr.clone();
         let server_addr = config.server_addr.clone();
-        let zipf = server_config.zipf;
+        let read_only = server_config.read_only;
         let sender = result_sender.clone();
         tokio::spawn(async move {
             let mut dtx_coordinator = DtxCoordinator::new(
@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match db_type {
                 DbType::micro => {
                     sender
-                        .send(micro_run_transactions(&mut dtx_coordinator, zipf).await)
+                        .send(micro_run_transactions(&mut dtx_coordinator, read_only).await)
                         .await;
                 }
                 DbType::tatp => {
