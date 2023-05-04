@@ -49,25 +49,25 @@ impl CtoService for CTO {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let client_config: CtoConfig = serde_yaml::from_reader(f).unwrap();
     let config = Config::default();
-    let addr1 = config.cto_addr[0].parse().unwrap();
-    let addr2 = config.cto_addr[1].parse().unwrap();
-    tokio::spawn(async move {
-        let cto = CTO::new();
+    let addr1 = config.cto_addr.parse().unwrap();
+    // let addr2 = config.cto_addr[1].parse().unwrap();
+    // tokio::spawn(async move {
+    //     let cto = CTO::new();
 
-        println!("CTO listening on {}", addr1);
+    //     println!("CTO listening on {}", addr1);
 
-        Server::builder()
-            .add_service(CtoServiceServer::new(cto))
-            .serve(addr1)
-            .await;
-    });
+    //     Server::builder()
+    //         .add_service(CtoServiceServer::new(cto))
+    //         .serve(addr1)
+    //         .await;
+    // });
     let cto = CTO::new();
 
-    println!("CTO listening on {}", addr2);
+    println!("CTO listening on {}", addr1);
 
     Server::builder()
         .add_service(CtoServiceServer::new(cto))
-        .serve(addr2)
+        .serve(addr1)
         .await?;
 
     Ok(())
