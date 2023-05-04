@@ -213,20 +213,23 @@ impl DtxCoordinator {
                 // get commit ts
                 let mut cto_client = self.cto_client.clone();
                 let data_clients = self.data_clients.clone();
-                let commit_ts = cto_client
-                    .get_commit_ts(Echo::default())
-                    .await
-                    .unwrap()
-                    .into_inner()
-                    .ts;
-                commit.ts = Some(commit_ts);
-                for iter in data_clients.iter() {
-                    let mut client = iter.clone();
-                    let msg_ = commit.clone();
-                    tokio::spawn(async move {
-                        client.communication(msg_).await;
-                    });
-                }
+                tokio::spawn(async move {
+                    let commit_ts = cto_client
+                        .get_commit_ts(Echo::default())
+                        .await
+                        .unwrap()
+                        .into_inner()
+                        .ts;
+                    commit.ts = Some(commit_ts);
+                    for iter in data_clients.iter() {
+                        let mut client = iter.clone();
+                        let msg_ = commit.clone();
+                        tokio::spawn(async move {
+                            client.communication(msg_).await;
+                        });
+                    }
+                });
+
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
                 // tokio::spawn(async move {});
