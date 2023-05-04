@@ -216,25 +216,25 @@ impl DtxCoordinator {
                     *guard = self.commit_ts;
                 }
                 let mut cto_client = self.cto_client.clone();
-                let data_clients = self.data_clients.clone();
-                tokio::spawn(async move {
-                    let commit_ts = cto_client
-                        .get_commit_ts(Echo::default())
-                        .await
-                        .unwrap()
-                        .into_inner()
-                        .ts;
-                    commit.ts = Some(commit_ts);
-                    for iter in data_clients.iter() {
-                        let mut client = iter.clone();
-                        let msg_ = commit.clone();
-                        tokio::spawn(async move {
-                            client.communication(msg_).await.unwrap().into_inner();
-                        });
-                    }
-                });
-                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
-                return true;
+                // let data_clients = self.data_clients.clone();
+                // tokio::spawn(async move {
+                let commit_ts = cto_client
+                    .get_commit_ts(Echo::default())
+                    .await
+                    .unwrap()
+                    .into_inner()
+                    .ts;
+                commit.ts = Some(commit_ts);
+                // for iter in data_clients.iter() {
+                //     let mut client = iter.clone();
+                //     let msg_ = commit.clone();
+                //     tokio::spawn(async move {
+                //         client.communication(msg_).await.unwrap().into_inner();
+                //     });
+                // }
+                // });
+                // GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
+                // return true;
             }
 
             if self.dtx_type == DtxType::ford {
