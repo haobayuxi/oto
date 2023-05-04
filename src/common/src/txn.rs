@@ -232,6 +232,7 @@ impl DtxCoordinator {
                             client.communication(msg_).await.unwrap().into_inner();
                         });
                     }
+                    sleep(Duration::from_millis(1)).await;
                 });
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
