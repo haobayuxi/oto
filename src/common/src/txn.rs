@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::oneshot;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::time::Duration;
@@ -123,6 +124,7 @@ impl DtxCoordinator {
         let mut locks = 0;
         // if self.dtx_type == DtxType::ford {
         let (sender, mut recv) = unbounded_channel::<Msg>();
+        let (commit_ts_channel, mut commit_ts_recv) = oneshot::channel();
         let need_lock = !self.write_to_execute.is_empty();
         if need_lock {
             // lock the write
@@ -154,6 +156,19 @@ impl DtxCoordinator {
                         s_.send(reply);
                     });
                 }
+                // get commit ts
+                if self.commit_ts == 0 {
+                    let mut cto_client = self.cto_client.clone();
+                    tokio::spawn(async move {
+                        let commit_ts = cto_client
+                            .get_commit_ts(Echo::default())
+                            .await
+                            .unwrap()
+                            .into_inner()
+                            .ts;
+                        commit_ts_channel.send(commit_ts);
+                    });
+                }
             }
         }
         let mut success = true;
@@ -180,6 +195,10 @@ impl DtxCoordinator {
                     success = false;
                 }
             }
+            if self.dtx_type == DtxType::oto && self.commit_ts == 0 {
+                // wait for cto
+                self.commit_ts = commit_ts_recv.await.unwrap();
+            }
         }
         self.read_set.extend(result.clone());
         self.write_set.extend(self.write_to_execute.clone());
@@ -201,16 +220,7 @@ impl DtxCoordinator {
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());
             }
-            if self.dtx_type == DtxType::oto {
-                // get commit ts
-                self.commit_ts = self
-                    .cto_client
-                    .get_commit_ts(Echo::default())
-                    .await
-                    .unwrap()
-                    .into_inner()
-                    .ts;
-            } else if self.dtx_type == DtxType::ford {
+            if self.dtx_type == DtxType::ford {
                 // broadcast to lock the back
                 let lock = Msg {
                     txn_id: self.txn_id,
