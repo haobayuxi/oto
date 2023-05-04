@@ -124,7 +124,6 @@ impl DtxCoordinator {
         let mut locks = 0;
         // if self.dtx_type == DtxType::ford {
         let (sender, mut recv) = unbounded_channel::<Msg>();
-        let (commit_ts_channel, mut commit_ts_recv) = oneshot::channel();
         let need_lock = !self.write_to_execute.is_empty();
         if need_lock {
             // lock the write
@@ -156,19 +155,6 @@ impl DtxCoordinator {
                         s_.send(reply);
                     });
                 }
-                // get commit ts
-                if self.commit_ts == 0 {
-                    let mut cto_client = self.cto_client.clone();
-                    tokio::spawn(async move {
-                        let commit_ts = cto_client
-                            .get_commit_ts(Echo::default())
-                            .await
-                            .unwrap()
-                            .into_inner()
-                            .ts;
-                        commit_ts_channel.send(commit_ts);
-                    });
-                }
             }
         }
         let mut success = true;
@@ -195,10 +181,6 @@ impl DtxCoordinator {
                     success = false;
                 }
             }
-            if self.dtx_type == DtxType::oto && self.commit_ts == 0 {
-                // wait for cto
-                self.commit_ts = commit_ts_recv.await.unwrap();
-            }
         }
         self.read_set.extend(result.clone());
         self.write_set.extend(self.write_to_execute.clone());
@@ -216,16 +198,45 @@ impl DtxCoordinator {
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
             }
+            let mut write_set = Vec::new();
+            for iter in self.write_set.iter() {
+                write_set.push(iter.read().await.clone());
+            }
+            let mut commit = Msg {
+                txn_id: self.txn_id,
+                read_set: Vec::new(),
+                write_set: write_set.clone(),
+                op: TxnOp::Commit.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+            };
             if self.dtx_type == DtxType::oto {
                 let mut guard = self.local_ts.write().await;
                 if *guard < self.commit_ts {
                     *guard = self.commit_ts;
                 }
+                let mut cto_client = self.cto_client.clone();
+                let mut data_clients = self.data_clients.clone();
+                tokio::spawn(async move {
+                    let commit_ts = cto_client
+                        .get_commit_ts(Echo::default())
+                        .await
+                        .unwrap()
+                        .into_inner()
+                        .ts;
+                    commit.ts = Some(commit_ts);
+                    for iter in data_clients.iter() {
+                        let mut client = iter.clone();
+                        let msg_ = commit.clone();
+                        tokio::spawn(async move {
+                            client.communication(msg_).await.unwrap().into_inner();
+                        });
+                    }
+                });
+                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
+                return true;
             }
-            let mut write_set = Vec::new();
-            for iter in self.write_set.iter() {
-                write_set.push(iter.read().await.clone());
-            }
+
             if self.dtx_type == DtxType::ford {
                 // broadcast to lock the back
                 let lock = Msg {
@@ -238,14 +249,6 @@ impl DtxCoordinator {
                 };
                 self.sync_broadcast(lock).await;
             }
-            let commit = Msg {
-                txn_id: self.txn_id,
-                read_set: Vec::new(),
-                write_set,
-                op: TxnOp::Commit.into(),
-                success: true,
-                ts: Some(self.commit_ts),
-            };
             // broadcast
             self.async_broadcast_commit(commit).await;
 

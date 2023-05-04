@@ -14,13 +14,13 @@ use std::{
 use tonic::{transport::Server, Response};
 
 pub struct CTO {
-    ts: Arc<AtomicU64>,
+    ts: AtomicU64,
 }
 
 impl CTO {
     pub fn new() -> Self {
         Self {
-            ts: Arc::new(AtomicU64::new(1)),
+            ts: AtomicU64::new(1),
         }
     }
 }
@@ -42,10 +42,6 @@ impl CtoService for CTO {
         let ts = self.ts.fetch_add(1, Ordering::Relaxed);
         Ok(Response::new(Ts { ts }))
     }
-}
-#[derive(Deserialize)]
-struct CtoConfig {
-    pub addr: String,
 }
 
 #[tokio::main]
