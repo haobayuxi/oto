@@ -201,15 +201,25 @@ impl DtxCoordinator {
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());
             }
+            let mut commit = Msg {
+                txn_id: self.txn_id,
+                read_set: Vec::new(),
+                write_set: write_set.clone(),
+                op: TxnOp::Commit.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+            };
             if self.dtx_type == DtxType::oto {
                 // get commit ts
-                self.commit_ts = self
-                    .cto_client
+                let mut cto_client = self.cto_client.clone();
+                let commit_ts = cto_client
                     .get_commit_ts(Echo::default())
                     .await
                     .unwrap()
                     .into_inner()
                     .ts;
+                commit.ts = Some(commit_ts);
+                // tokio::spawn(async move {});
             } else if self.dtx_type == DtxType::ford {
                 // broadcast to lock the back
                 let lock = Msg {
@@ -222,14 +232,7 @@ impl DtxCoordinator {
                 };
                 self.sync_broadcast(lock).await;
             }
-            let commit = Msg {
-                txn_id: self.txn_id,
-                read_set: Vec::new(),
-                write_set,
-                op: TxnOp::Commit.into(),
-                success: true,
-                ts: Some(self.commit_ts),
-            };
+
             // broadcast
             self.async_broadcast_commit(commit).await;
 
