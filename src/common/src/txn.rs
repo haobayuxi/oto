@@ -216,7 +216,7 @@ impl DtxCoordinator {
                     *guard = self.commit_ts;
                 }
                 let mut cto_client = self.cto_client.clone();
-                let mut data_clients = self.data_clients.clone();
+                let data_clients = self.data_clients.clone();
                 tokio::spawn(async move {
                     let commit_ts = cto_client
                         .get_commit_ts(Echo::default())
