@@ -7,8 +7,8 @@ static TX_HOT_PERCENT: u64 = 90;
 static HOTSPOT_SIZE: u64 = 100;
 
 pub static NUM_ACCOUNTS: u64 = 100000;
-pub static MIN_BALANCE: u64 = 10000;
-pub static MAX_BALANCE: u64 = 50000;
+pub static MIN_BALANCE: u64 = 100000;
+pub static MAX_BALANCE: u64 = 500000;
 
 pub fn init_smallbank_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     let mut tables = Vec::new();
