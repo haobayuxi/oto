@@ -71,7 +71,6 @@ impl Checking {
 
 pub fn get_c_id() -> u64 {
     let is_hotspot = u64_rand(0, 99) < TX_HOT_PERCENT;
-    return u64_rand(0, HOTSPOT_SIZE - 1);
     if is_hotspot {
         return u64_rand(HOTSPOT_SIZE, NUM_ACCOUNTS - 1);
     } else {
