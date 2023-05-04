@@ -216,6 +216,12 @@ impl DtxCoordinator {
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
             }
+            if self.dtx_type == DtxType::oto {
+                let mut guard = self.local_ts.write().await;
+                if *guard < self.commit_ts {
+                    *guard = self.commit_ts;
+                }
+            }
             let mut write_set = Vec::new();
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());

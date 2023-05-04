@@ -50,6 +50,7 @@ async fn balance(coordinator: &mut DtxCoordinator) -> bool {
     let (status, result) = coordinator.tx_exe().await;
 
     if !status {
+        coordinator.tx_abort().await;
         return false;
     }
     return coordinator.tx_commit().await;
