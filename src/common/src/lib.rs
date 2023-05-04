@@ -5,6 +5,7 @@ pub mod txn;
 use std::{
     collections::BTreeSet,
     sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT},
+    vec,
 };
 
 use rand::*;
@@ -90,7 +91,7 @@ pub enum DbType {
 
 pub struct Config {
     pub server_addr: Vec<String>,
-    pub cto_addr: String,
+    pub cto_addr: Vec<String>,
     pub client_addr: Vec<String>,
     pub executor_num: u64,
 }
@@ -103,7 +104,10 @@ impl Default for Config {
                 "192.168.1.71:10001".to_string(),
                 "192.168.1.72:10001".to_string(),
             ],
-            cto_addr: "192.168.1.89:10001".to_string(),
+            cto_addr: vec![
+                "192.168.1.89:10001".to_string(),
+                "192.168.1.89:10002".to_string(),
+            ],
             executor_num: 30,
             client_addr: vec![
                 "192.168.1.70:10001".to_string(),

@@ -63,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 i,
                 loca_ts_bk,
                 dtx_type,
-                ip_addr_add_prefix(cto_addr),
+                ip_addr_add_prefix(cto_addr[(i % 2) as usize].clone()),
                 server_addr,
             )
             .await;
