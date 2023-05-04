@@ -211,10 +211,10 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
             };
             if self.dtx_type == DtxType::oto {
-                let mut guard = self.local_ts.write().await;
-                if *guard < self.commit_ts {
-                    *guard = self.commit_ts;
-                }
+                // let mut guard = self.local_ts.write().await;
+                // if *guard < self.commit_ts {
+                //     *guard = self.commit_ts;
+                // }
                 let mut cto_client = self.cto_client.clone();
                 let data_clients = self.data_clients.clone();
                 tokio::spawn(async move {
@@ -232,7 +232,6 @@ impl DtxCoordinator {
                             client.communication(msg_).await.unwrap().into_inner();
                         });
                     }
-                    sleep(Duration::from_millis(1)).await;
                 });
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
