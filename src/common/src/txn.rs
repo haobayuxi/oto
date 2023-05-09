@@ -281,7 +281,6 @@ impl DtxCoordinator {
 
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
-                // tokio::spawn(async move {});
             }
             // broadcast
             self.async_broadcast_commit(commit).await;
