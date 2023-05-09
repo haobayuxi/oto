@@ -54,7 +54,9 @@ impl Tuple {
         true
     }
     pub fn set_lock(&mut self, txn_id: u64) -> bool {
-        if self.lock_txn_id == 0 {
+        if self.lock_txn_id == txn_id {
+            return true;
+        } else if self.lock_txn_id == 0 {
             self.lock_txn_id = txn_id;
             return true;
         }

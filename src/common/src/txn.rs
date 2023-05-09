@@ -209,36 +209,37 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.commit_ts),
             };
-            if self.dtx_type == DtxType::oto {
-                // get commit ts
-                let mut cto_client = self.cto_client.clone();
-                let data_clients = self.data_clients.clone();
-                let local_ts = self.local_ts.clone();
-                tokio::spawn(async move {
-                    let commit_ts = cto_client
-                        .get_commit_ts(Echo::default())
-                        .await
-                        .unwrap()
-                        .into_inner()
-                        .ts;
-                    let mut guard = local_ts.write().await;
-                    if *guard < commit_ts {
-                        *guard = commit_ts;
-                    }
-                    commit.ts = Some(commit_ts);
-                    for iter in data_clients.iter() {
-                        let mut client = iter.clone();
-                        let msg_ = commit.clone();
-                        tokio::spawn(async move {
-                            client.communication(msg_).await;
-                        });
-                    }
-                });
+            // if self.dtx_type == DtxType::oto {
+            //     // get commit ts
+            //     let mut cto_client = self.cto_client.clone();
+            //     let data_clients = self.data_clients.clone();
+            //     let local_ts = self.local_ts.clone();
+            //     tokio::spawn(async move {
+            //         let commit_ts = cto_client
+            //             .get_commit_ts(Echo::default())
+            //             .await
+            //             .unwrap()
+            //             .into_inner()
+            //             .ts;
+            //         let mut guard = local_ts.write().await;
+            //         if *guard < commit_ts {
+            //             *guard = commit_ts;
+            //         }
+            //         commit.ts = Some(commit_ts);
+            //         for iter in data_clients.iter() {
+            //             let mut client = iter.clone();
+            //             let msg_ = commit.clone();
+            //             tokio::spawn(async move {
+            //                 client.communication(msg_).await;
+            //             });
+            //         }
+            //     });
 
-                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
-                return true;
-                // tokio::spawn(async move {});
-            } else if self.dtx_type == DtxType::ford {
+            //     GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
+            //     return true;
+            //     // tokio::spawn(async move {});
+            // } else
+            if self.dtx_type == DtxType::ford || self.dtx_type == DtxType::oto {
                 // broadcast to lock the back
                 let lock = Msg {
                     txn_id: self.txn_id,
