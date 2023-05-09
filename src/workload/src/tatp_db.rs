@@ -316,7 +316,7 @@ pub fn init_tatp_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
 
 static SUBSCRIBER_ROWS: u64 = 10000;
 pub fn get_sid() -> u64 {
-    return tatp_random(1, SUBSCRIBER_ROWS);
+    return u64_rand(1, SUBSCRIBER_ROWS);
 }
 
 fn tatp_random(x: u64, y: u64) -> u64 {
