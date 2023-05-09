@@ -134,7 +134,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.start_ts),
             };
-            if self.dtx_type == DtxType::ford {
+            if self.dtx_type == DtxType::ford || self.dtx_type == DtxType::oto {
                 // lock the primary
                 locks = 1;
                 let mut client = self.data_clients.get_mut(0).unwrap().clone();
@@ -142,19 +142,20 @@ impl DtxCoordinator {
                     let reply = client.communication(lock).await.unwrap().into_inner();
                     sender.send(reply);
                 });
-            } else if self.dtx_type == DtxType::oto {
-                // broadcast to lock
-                locks = 3;
-                for iter in self.data_clients.iter() {
-                    let mut client = iter.clone();
-                    let lock_msg = lock.clone();
-                    let s_ = sender.clone();
-                    tokio::spawn(async move {
-                        let reply = client.communication(lock_msg).await.unwrap().into_inner();
-                        s_.send(reply);
-                    });
-                }
             }
+            // else if self.dtx_type == DtxType::oto {
+            //     // broadcast to lock
+            //     locks = 3;
+            //     for iter in self.data_clients.iter() {
+            //         let mut client = iter.clone();
+            //         let lock_msg = lock.clone();
+            //         let s_ = sender.clone();
+            //         tokio::spawn(async move {
+            //             let reply = client.communication(lock_msg).await.unwrap().into_inner();
+            //             s_.send(reply);
+            //         });
+            //     }
+            // }
         }
         let mut success = true;
         let mut result = Vec::new();
@@ -252,6 +253,36 @@ impl DtxCoordinator {
                 self.sync_broadcast(lock).await;
             }
 
+            if self.dtx_type == DtxType::oto {
+                // get commit ts
+                let mut cto_client = self.cto_client.clone();
+                let data_clients = self.data_clients.clone();
+                let local_ts = self.local_ts.clone();
+                tokio::spawn(async move {
+                    let commit_ts = cto_client
+                        .get_commit_ts(Echo::default())
+                        .await
+                        .unwrap()
+                        .into_inner()
+                        .ts;
+                    let mut guard = local_ts.write().await;
+                    if *guard < commit_ts {
+                        *guard = commit_ts;
+                    }
+                    commit.ts = Some(commit_ts);
+                    for iter in data_clients.iter() {
+                        let mut client = iter.clone();
+                        let msg_ = commit.clone();
+                        tokio::spawn(async move {
+                            client.communication(msg_).await;
+                        });
+                    }
+                });
+
+                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
+                return true;
+                // tokio::spawn(async move {});
+            }
             // broadcast
             self.async_broadcast_commit(commit).await;
 
