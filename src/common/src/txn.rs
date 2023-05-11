@@ -433,6 +433,11 @@ impl DtxCoordinator {
             *guard = max_tx;
             return false;
         }
+        for iter in self.write_tuple_ts.iter() {
+            if *iter > self.commit_ts {
+                return false;
+            }
+        }
         true
     }
 
