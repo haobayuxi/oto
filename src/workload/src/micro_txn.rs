@@ -1,5 +1,5 @@
 use common::{txn::DtxCoordinator, TXNS_PER_CLIENT};
-use rpc::common::{ReadStruct, WriteStruct};
+use rpc::common::ReadStruct;
 use tokio::time::Instant;
 
 use crate::micro_db::MicroQuery;
@@ -35,7 +35,7 @@ pub async fn micro_run_transactions(
 async fn run_transaction(
     coordinator: &mut DtxCoordinator,
     read_set: Vec<ReadStruct>,
-    write_set: Vec<WriteStruct>,
+    write_set: Vec<ReadStruct>,
 ) -> bool {
     coordinator.tx_begin().await;
     for iter in read_set {

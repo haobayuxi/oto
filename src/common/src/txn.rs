@@ -1,9 +1,8 @@
 use chrono::Local;
 use rpc::common::{
     cto_service_client::CtoServiceClient, data_service_client::DataServiceClient, Echo, Msg,
-    ReadStruct, TxnOp, WriteStruct,
+    ReadStruct, TxnOp,
 };
-use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
@@ -56,9 +55,10 @@ pub struct DtxCoordinator {
     start_ts: u64,
     commit_ts: u64,
     pub read_set: Vec<ReadStruct>,
-    pub write_set: Vec<Arc<RwLock<WriteStruct>>>,
+    pub write_set: Vec<Arc<RwLock<ReadStruct>>>,
     read_to_execute: Vec<ReadStruct>,
-    write_to_execute: Vec<Arc<RwLock<WriteStruct>>>,
+    write_to_execute: Vec<Arc<RwLock<ReadStruct>>>,
+    write_tuple_ts: Vec<u64>,
     cto_client: CtoServiceClient<Channel>,
     data_clients: Vec<DataServiceClient<Channel>>,
     // committed: Arc<AtomicU64>,
@@ -89,6 +89,7 @@ impl DtxCoordinator {
             data_clients,
             read_to_execute: Vec::new(),
             write_to_execute: Vec::new(),
+            write_tuple_ts: Vec::new(),
             // committed,
         }
     }
@@ -100,6 +101,7 @@ impl DtxCoordinator {
         self.write_set.clear();
         self.read_to_execute.clear();
         self.write_to_execute.clear();
+        self.write_tuple_ts.clear();
         self.start_ts = 0;
         self.commit_ts = 0;
         match self.dtx_type {
@@ -149,7 +151,7 @@ impl DtxCoordinator {
         } else {
             false
         };
-        let (commit_ts_sender, mut commit_ts_recv) = oneshot::channel();
+        let (commit_ts_sender, commit_ts_recv) = oneshot::channel();
         if wait_for_cto {
             // get commit ts from cto
             let mut cto_client = self.cto_client.clone();
@@ -184,6 +186,10 @@ impl DtxCoordinator {
             let lock_reply = recv.recv().await.unwrap();
             if !lock_reply.success {
                 success = false;
+            } else {
+                for iter in lock_reply.write_set.iter() {
+                    self.write_tuple_ts.push(iter.timestamp());
+                }
             }
         }
         if wait_for_cto {
@@ -325,11 +331,12 @@ impl DtxCoordinator {
         key: u64,
         table_id: i32,
         value: String,
-    ) -> Arc<RwLock<WriteStruct>> {
-        let write_struct = WriteStruct {
+    ) -> Arc<RwLock<ReadStruct>> {
+        let write_struct = ReadStruct {
             key,
             table_id,
             value: Some(value),
+            timestamp: None,
         };
         let obj = Arc::new(RwLock::new(write_struct));
         self.write_to_execute.push(obj.clone());

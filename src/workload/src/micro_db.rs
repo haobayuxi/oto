@@ -4,7 +4,7 @@ use std::{
 };
 
 use common::{f64_rand, u64_rand, Tuple};
-use rpc::common::{ReadStruct, WriteStruct};
+use rpc::common::ReadStruct;
 use tokio::sync::RwLock;
 
 const MicroTableSize: u64 = 100000;
@@ -62,7 +62,7 @@ impl MicroQuery {
         }
     }
 
-    pub fn generate(&mut self) -> (Vec<ReadStruct>, Vec<WriteStruct>) {
+    pub fn generate(&mut self) -> (Vec<ReadStruct>, Vec<ReadStruct>) {
         self.read_only = true;
         let mut read_set = Vec::new();
         let mut write_set = Vec::new();
@@ -86,11 +86,11 @@ impl MicroQuery {
                     table_id: 0,
                 });
             } else {
-                write_set.push(WriteStruct {
+                write_set.push(ReadStruct {
                     key,
                     value: Some(self.write_value.clone()),
                     table_id: 0,
-                    // timestamp: None,
+                    timestamp: None,
                 });
                 self.read_only = false;
             }

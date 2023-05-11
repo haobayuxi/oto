@@ -10,22 +10,13 @@ pub struct ReadStruct {
     pub timestamp: ::core::option::Option<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct WriteStruct {
-    #[prost(uint64, tag = "1")]
-    pub key: u64,
-    #[prost(int32, tag = "2")]
-    pub table_id: i32,
-    #[prost(string, optional, tag = "3")]
-    pub value: ::core::option::Option<::prost::alloc::string::String>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Msg {
     #[prost(uint64, tag = "1")]
     pub txn_id: u64,
     #[prost(message, repeated, tag = "2")]
     pub read_set: ::prost::alloc::vec::Vec<ReadStruct>,
     #[prost(message, repeated, tag = "3")]
-    pub write_set: ::prost::alloc::vec::Vec<WriteStruct>,
+    pub write_set: ::prost::alloc::vec::Vec<ReadStruct>,
     #[prost(enumeration = "TxnOp", tag = "4")]
     pub op: i32,
     #[prost(bool, tag = "6")]

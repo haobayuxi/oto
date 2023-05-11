@@ -11,12 +11,6 @@ message Read_Struct{
     optional uint64 timestamp = 4;
 }
 
-message Write_Struct {
-    uint64 key = 1;
-    int32 table_id = 2;
-    optional string value = 3;
-}
-
 enum TxnOP {
     Execute = 0;
     Validate = 1;
@@ -28,7 +22,7 @@ enum TxnOP {
 message Msg {
     uint64 txn_id = 1;
     repeated common.Read_Struct read_set = 2;
-    repeated common.Write_Struct write_set = 3;
+    repeated common.Read_Struct write_set = 3;
     common.TxnOP op = 4;
     bool success = 6;
     optional uint64 ts = 7;

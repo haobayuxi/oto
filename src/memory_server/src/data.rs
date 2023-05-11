@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use common::{DbType, DtxType, Tuple};
-use rpc::common::{Msg, ReadStruct, WriteStruct};
+use rpc::common::{Msg, ReadStruct};
 use tokio::sync::RwLock;
 use workload::{
     micro_db::init_micro_db, small_bank_db::init_smallbank_db, tatp_db::init_tatp_data,
@@ -128,7 +128,7 @@ pub async fn get_read_set(
     }
 }
 
-pub async fn lock_write_set(write_set: Vec<WriteStruct>, txn_id: u64) -> bool {
+pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> bool {
     unsafe {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
