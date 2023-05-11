@@ -7,6 +7,7 @@ use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::oneshot;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::time::Duration;
@@ -120,10 +121,12 @@ impl DtxCoordinator {
         }
 
         let server_id = self.id % 3;
-        let mut locks = 0;
-        // if self.dtx_type == DtxType::ford {
         let (sender, mut recv) = unbounded_channel::<Msg>();
-        let need_lock = !self.write_to_execute.is_empty();
+        let need_lock = if !self.write_to_execute.is_empty() && self.dtx_type != DtxType::meerkat {
+            true
+        } else {
+            false
+        };
         if need_lock {
             // lock the write
             let lock = Msg {
@@ -134,28 +137,31 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.start_ts),
             };
-            if self.dtx_type == DtxType::ford || self.dtx_type == DtxType::oto {
-                // lock the primary
-                locks = 1;
-                let mut client = self.data_clients.get_mut(0).unwrap().clone();
-                tokio::spawn(async move {
-                    let reply = client.communication(lock).await.unwrap().into_inner();
-                    sender.send(reply);
-                });
-            }
-            // else if self.dtx_type == DtxType::oto {
-            //     // broadcast to lock
-            //     locks = 3;
-            //     for iter in self.data_clients.iter() {
-            //         let mut client = iter.clone();
-            //         let lock_msg = lock.clone();
-            //         let s_ = sender.clone();
-            //         tokio::spawn(async move {
-            //             let reply = client.communication(lock_msg).await.unwrap().into_inner();
-            //             s_.send(reply);
-            //         });
-            //     }
-            // }
+            // lock the primary
+            let mut client = self.data_clients.get_mut(0).unwrap().clone();
+            tokio::spawn(async move {
+                let reply = client.communication(lock).await.unwrap().into_inner();
+                sender.send(reply);
+            });
+        }
+        let wait_for_cto = if self.dtx_type == DtxType::oto && self.commit_ts == 0 {
+            true
+        } else {
+            false
+        };
+        let (commit_ts_sender, mut commit_ts_recv) = oneshot::channel();
+        if wait_for_cto {
+            // get commit ts from cto
+            let mut cto_client = self.cto_client.clone();
+            tokio::spawn(async move {
+                let commit_ts = cto_client
+                    .get_commit_ts(Echo::default())
+                    .await
+                    .unwrap()
+                    .into_inner()
+                    .ts;
+                commit_ts_sender.send(commit_ts);
+            });
         }
         let mut success = true;
         let mut result = Vec::new();
@@ -175,13 +181,15 @@ impl DtxCoordinator {
             result = reply.read_set;
         }
         if need_lock {
-            for _ in 0..locks {
-                let lock_reply = recv.recv().await.unwrap();
-                if !lock_reply.success {
-                    success = false;
-                }
+            let lock_reply = recv.recv().await.unwrap();
+            if !lock_reply.success {
+                success = false;
             }
         }
+        if wait_for_cto {
+            self.commit_ts = commit_ts_recv.await.unwrap();
+        }
+
         self.read_set.extend(result.clone());
         self.write_set.extend(self.write_to_execute.clone());
         self.read_to_execute.clear();
@@ -255,32 +263,10 @@ impl DtxCoordinator {
 
             if self.dtx_type == DtxType::oto {
                 // get commit ts
-                let mut cto_client = self.cto_client.clone();
-                let data_clients = self.data_clients.clone();
-                let local_ts = self.local_ts.clone();
-                tokio::spawn(async move {
-                    let commit_ts = cto_client
-                        .get_commit_ts(Echo::default())
-                        .await
-                        .unwrap()
-                        .into_inner()
-                        .ts;
-                    let mut guard = local_ts.write().await;
-                    if *guard < commit_ts {
-                        *guard = commit_ts;
-                    }
-                    commit.ts = Some(commit_ts);
-                    for iter in data_clients.iter() {
-                        let mut client = iter.clone();
-                        let msg_ = commit.clone();
-                        tokio::spawn(async move {
-                            client.communication(msg_).await;
-                        });
-                    }
-                });
-
-                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
-                return true;
+                let mut guard = self.local_ts.write().await;
+                if *guard < self.commit_ts {
+                    *guard = self.commit_ts;
+                }
             }
             // broadcast
             self.async_broadcast_commit(commit).await;
@@ -396,12 +382,32 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                 };
                 let reply = self.sync_broadcast(vadilate_msg).await;
+                // check fast path
+                let mut reply_success = 0;
                 for iter in reply.iter() {
-                    if !iter.success {
-                        return false;
+                    if iter.success {
+                        reply_success += 1;
                     }
                 }
-                return true;
+                if reply_success == 0 {
+                    // fast path abort
+                    return false;
+                } else if reply_success == 3 {
+                    // fast path commit
+                    return true;
+                }
+                // slow path
+                let success = if reply_success == 1 { false } else { true };
+                let vadilate_msg = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_set.clone(),
+                    write_set: write_set.clone(),
+                    op: TxnOp::Accept.into(),
+                    success,
+                    ts: Some(self.commit_ts),
+                };
+                let _reply = self.sync_broadcast(vadilate_msg).await;
+                return success;
             }
         }
     }

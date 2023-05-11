@@ -52,6 +52,7 @@ pub enum TxnOp {
     Validate = 1,
     Commit = 2,
     Abort = 3,
+    Accept = 4,
 }
 #[doc = r" Generated client implementations."]
 pub mod data_service_client {

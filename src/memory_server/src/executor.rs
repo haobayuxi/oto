@@ -88,6 +88,11 @@ impl Executor {
                             reply.success = success;
                             coor_msg.call_back.send(reply);
                         }
+                        rpc::common::TxnOp::Accept => {
+                            let mut reply = Msg::default();
+                            reply.success = true;
+                            coor_msg.call_back.send(reply);
+                        }
                     },
                     None => {}
                 }

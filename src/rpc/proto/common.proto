@@ -22,6 +22,7 @@ enum TxnOP {
     Validate = 1;
     Commit = 2;
     Abort = 3;
+    Accept = 4;
 }
 
 message Msg {
