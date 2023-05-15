@@ -8,32 +8,18 @@ use rpc::common::Msg;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::data::{
-    get_read_set, lock_write_set, releass_locks, update_and_release_locks, validate_read_set,
+    get_read_set, lock_write_set, releass_locks, update_and_release_locks, validate,
 };
 
 pub struct Executor {
     pub id: u64,
     pub recv: UnboundedReceiver<CoordnatorMsg>,
     dtx_type: DtxType,
-    // read_only_committed: Arc<AtomicU64>,
-    // read_write_committed: Arc<AtomicU64>,
 }
 
 impl Executor {
-    pub fn new(
-        id: u64,
-        recv: UnboundedReceiver<CoordnatorMsg>,
-        dtx_type: DtxType,
-        // read_only_committed: Arc<AtomicU64>,
-        // read_write_committed: Arc<AtomicU64>,
-    ) -> Self {
-        Self {
-            id,
-            recv,
-            dtx_type,
-            // read_only_committed,
-            // read_write_committed,
-        }
+    pub fn new(id: u64, recv: UnboundedReceiver<CoordnatorMsg>, dtx_type: DtxType) -> Self {
+        Self { id, recv, dtx_type }
     }
     pub async fn run(&mut self) {
         loop {
@@ -53,9 +39,10 @@ impl Executor {
                                 continue;
                             }
                             reply.read_set = read_result;
-                            // println!()
-                            reply.success =
+                            let (success, write_tuple_ts) =
                                 lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
+                            reply.success = success;
+                            reply.write_set = write_tuple_ts;
                             // if coor_msg.msg.write_set.len() != 0 {
                             //     self.txns.insert(coor_msg.msg.txn_id, coor_msg.msg);
                             // }
@@ -82,7 +69,7 @@ impl Executor {
                         }
                         rpc::common::TxnOp::Validate => {
                             // return read set ts
-                            let success = validate_read_set(coor_msg.msg, self.dtx_type).await;
+                            let success = validate(coor_msg.msg, self.dtx_type).await;
                             let mut reply = Msg::default();
                             // println!("validate  = {}", success);
                             reply.success = success;

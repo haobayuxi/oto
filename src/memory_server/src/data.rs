@@ -21,7 +21,7 @@ pub fn init_data(txn_type: DbType) {
     }
 }
 
-pub async fn validate_read_set(msg: Msg, dtx_type: DtxType) -> bool {
+pub async fn validate(msg: Msg, dtx_type: DtxType) -> bool {
     unsafe {
         match dtx_type {
             DtxType::meerkat => {
@@ -68,7 +68,7 @@ pub async fn validate_read_set(msg: Msg, dtx_type: DtxType) -> bool {
                 }
                 return !abort;
             }
-            _ => {
+            DtxType::ford => {
                 for iter in msg.read_set {
                     let table = &mut DATA[iter.table_id as usize];
                     match table.get_mut(&iter.key).unwrap().try_read() {
@@ -82,6 +82,22 @@ pub async fn validate_read_set(msg: Msg, dtx_type: DtxType) -> bool {
                             // has been locked
                             return false;
                         }
+                    }
+                }
+                return true;
+            }
+            DtxType::oto => {
+                for write in msg.write_set.iter() {
+                    let table = &mut DATA[write.table_id as usize];
+                    match table.get_mut(&write.key) {
+                        Some(lock) => {
+                            let guard = lock.write().await;
+                            if msg.ts() < guard.rts {
+                                // abort the txn
+                                return false;
+                            }
+                        }
+                        None => return false,
                     }
                 }
                 return true;
@@ -101,23 +117,20 @@ pub async fn get_read_set(
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(rwlock) => {
-                    match rwlock.try_read() {
-                        Ok(guard) => {
-                            // insert into result
-                            // if dtx_type == DtxType::oto && guard.ts > start_ts {
-                            //     return (false, result);
-                            // }
-                            let read_struct = ReadStruct {
-                                key: iter.key,
-                                table_id: iter.table_id,
-                                value: Some(guard.data.clone()),
-                                timestamp: Some(guard.ts),
-                            };
-                            result.push(read_struct);
-                        }
-                        Err(_) => {
-                            // has been locked
-                            return (false, result);
+                    let mut guard = rwlock.write().await;
+                    if guard.is_locked() {
+                        // has been locked
+                        return (false, result);
+                    } else {
+                        let read_struct = ReadStruct {
+                            key: iter.key,
+                            table_id: iter.table_id,
+                            value: Some(guard.data.clone()),
+                            timestamp: Some(guard.ts),
+                        };
+                        result.push(read_struct);
+                        if guard.rts < start_ts {
+                            guard.rts = start_ts;
                         }
                     }
                 }
@@ -128,21 +141,25 @@ pub async fn get_read_set(
     }
 }
 
-pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> bool {
+pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, Vec<ReadStruct>) {
     unsafe {
+        let mut result = Vec::new();
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(lock) => {
                     let mut guard = lock.write().await;
+                    let mut temp = iter.clone();
+                    temp.timestamp = Some(guard.ts);
+                    result.push(temp);
                     if !guard.set_lock(txn_id) {
-                        return false;
+                        return (false, result);
                     }
                 }
-                None => return false,
+                None => return (false, result),
             }
         }
-        true
+        (true, result)
     }
 }
 

@@ -216,7 +216,7 @@ impl DtxCoordinator {
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());
             }
-            let mut commit = Msg {
+            let commit = Msg {
                 txn_id: self.txn_id,
                 read_set: Vec::new(),
                 write_set: write_set.clone(),
@@ -224,37 +224,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.commit_ts),
             };
-            // if self.dtx_type == DtxType::oto {
-            //     // get commit ts
-            //     let mut cto_client = self.cto_client.clone();
-            //     let data_clients = self.data_clients.clone();
-            //     let local_ts = self.local_ts.clone();
-            //     tokio::spawn(async move {
-            //         let commit_ts = cto_client
-            //             .get_commit_ts(Echo::default())
-            //             .await
-            //             .unwrap()
-            //             .into_inner()
-            //             .ts;
-            //         let mut guard = local_ts.write().await;
-            //         if *guard < commit_ts {
-            //             *guard = commit_ts;
-            //         }
-            //         commit.ts = Some(commit_ts);
-            //         for iter in data_clients.iter() {
-            //             let mut client = iter.clone();
-            //             let msg_ = commit.clone();
-            //             tokio::spawn(async move {
-            //                 client.communication(msg_).await;
-            //             });
-            //         }
-            //     });
-
-            //     GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
-            //     return true;
-            //     // tokio::spawn(async move {});
-            // } else
-            if self.dtx_type == DtxType::ford || self.dtx_type == DtxType::oto {
+            if self.dtx_type == DtxType::ford {
                 // broadcast to lock the back
                 let lock = Msg {
                     txn_id: self.txn_id,
@@ -419,7 +389,7 @@ impl DtxCoordinator {
         }
     }
 
-    async fn oto_validate(&self) -> bool {
+    async fn oto_validate(&mut self) -> bool {
         let mut max_tx = self.start_ts;
         for iter in self.read_set.iter() {
             let ts = iter.timestamp();
@@ -436,6 +406,27 @@ impl DtxCoordinator {
         for iter in self.write_tuple_ts.iter() {
             if *iter > self.commit_ts {
                 return false;
+            }
+        }
+        if !self.write_set.is_empty() {
+            // broadcast to validate
+            let mut write_set = Vec::new();
+            for iter in self.write_set.iter() {
+                write_set.push(iter.read().await.clone());
+            }
+            let vadilate_msg = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_set.clone(),
+                write_set: write_set.clone(),
+                op: TxnOp::Validate.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+            };
+            let reply = self.sync_broadcast(vadilate_msg).await;
+            for iter in reply.iter() {
+                if !iter.success {
+                    return false;
+                }
             }
         }
         true
