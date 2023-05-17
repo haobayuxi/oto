@@ -11,9 +11,13 @@ use rpc::common::{
     throughput_statistics_service_server::{
         ThroughputStatisticsService, ThroughputStatisticsServiceServer,
     },
+    update_ts_server::{UpdateTs, UpdateTsServer},
     Echo, Throughput,
 };
-use tokio::{sync::mpsc::unbounded_channel, time::sleep};
+use tokio::{
+    sync::{mpsc::unbounded_channel, RwLock},
+    time::sleep,
+};
 use tonic::{
     transport::{Channel, Server},
     Request, Response, Status,
@@ -23,32 +27,59 @@ use crate::{ip_addr_add_prefix, GLOBAL_COMMITTED};
 
 //
 
-pub struct ThroughputStatisticsServer {
+pub struct coordinator_rpc_server {
     addr_to_listen: String,
 }
 
-impl ThroughputStatisticsServer {
+impl coordinator_rpc_server {
     pub fn new(addr_to_listen: String) -> Self {
         Self { addr_to_listen }
     }
 }
 
-pub async fn run_get_throughput_server(rpc_server: ThroughputStatisticsServer) {
+struct update_server {
+    local_ts: Arc<RwLock<u64>>,
+}
+
+impl update_server {
+    pub fn new(local_ts: Arc<RwLock<u64>>) -> Self {
+        Self { local_ts }
+    }
+}
+
+pub async fn run_coordinator_server(addr_to_listen: String, local_ts: Arc<RwLock<u64>>) {
+    let rpc_server = coordinator_rpc_server::new(addr_to_listen);
+    let update = update_server::new(local_ts);
+
     let addr = rpc_server.addr_to_listen.parse().unwrap();
 
     println!("rpc server listening on: {:?}", addr);
 
     let server = ThroughputStatisticsServiceServer::new(rpc_server);
+    let update_server = UpdateTsServer::new(update);
 
-    Server::builder().add_service(server).serve(addr).await;
+    Server::builder()
+        .add_service(server)
+        .add_service(update_server)
+        .serve(addr)
+        .await;
 }
 
 #[tonic::async_trait]
-impl ThroughputStatisticsService for ThroughputStatisticsServer {
+impl ThroughputStatisticsService for coordinator_rpc_server {
     async fn get(&self, request: Request<Echo>) -> Result<Response<Throughput>, Status> {
         Ok(Response::new(Throughput {
             committed: GLOBAL_COMMITTED.load(Ordering::Relaxed) as u64,
         }))
+    }
+}
+
+#[tonic::async_trait]
+impl UpdateTs for update_server {
+    async fn update(&self, request: Request<Echo>) -> Result<Response<Echo>, Status> {
+        let mut guard = self.local_ts.write().await;
+        *guard = request.into_inner().ts;
+        Ok(Response::new(Echo { ts: 0 }))
     }
 }
 

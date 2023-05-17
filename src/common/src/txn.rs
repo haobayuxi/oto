@@ -139,12 +139,16 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.start_ts),
             };
+            // if self.dtx_type == DtxType::ford {
             // lock the primary
             let mut client = self.data_clients.get_mut(0).unwrap().clone();
             tokio::spawn(async move {
                 let reply = client.communication(lock).await.unwrap().into_inner();
                 sender.send(reply);
             });
+            // }else if self.data_clients == DtxType::oto {
+
+            // }
         }
         let wait_for_cto = if self.dtx_type == DtxType::oto && self.commit_ts == 0 {
             true

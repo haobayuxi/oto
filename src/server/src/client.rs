@@ -1,5 +1,5 @@
 use common::throughput_statistics::{
-    run_get_throughput_server, ThroughputStatistics, ThroughputStatisticsServer,
+    coordinator_rpc_server, run_coordinator_server, ThroughputStatistics,
 };
 use common::{ip_addr_add_prefix, txn::DtxCoordinator, Config, ConfigInFile};
 use common::{DbType, GLOBAL_COMMITTED};
@@ -23,8 +23,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dtx_type = serde_yaml::from_str(&server_config.dtx_type).unwrap();
     let db_type: DbType = serde_yaml::from_str(&server_config.db_type).unwrap();
     let local_ts = Arc::new(RwLock::new(0));
+    let local_ts_tmp = local_ts.clone();
     let config = Config::default();
     // init throughput statistics rpc server
+    // let coordinator_server = coordinator_rpc_server::new(
+    //     config.client_addr.get(id as usize).unwrap().clone(),
+    //     local_ts.clone(),
+    // );
+    let addr_to_listen = config.client_addr.get(id as usize).unwrap().clone();
+    tokio::spawn(async move {
+        run_coordinator_server(addr_to_listen, local_ts_tmp).await;
+    });
     if id == 0 {
         // init client
         println!("init throughput client");
@@ -34,23 +43,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get_throughput_client.run().await;
             // }
         });
-    } else {
-        let get_throughput_server =
-            ThroughputStatisticsServer::new(config.client_addr.get(id as usize).unwrap().clone());
-        tokio::spawn(async move {
-            run_get_throughput_server(get_throughput_server).await;
-        });
     }
 
-    // tokio::spawn(async move {
-    //     let mut last_committed = 0;
-    //     loop {
-    //         sleep(Duration::from_millis(100)).await;
-    //         let result: usize = GLOBAL_COMMITTED.load(std::sync::atomic::Ordering::Relaxed);
-    //         println!("{}", result - last_committed);
-    //         last_committed = result;
-    //     }
-    // });
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(100);
     for i in 0..server_config.client_num {
         let loca_ts_bk = local_ts.clone();

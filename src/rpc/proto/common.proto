@@ -31,7 +31,7 @@ message Msg {
 
 
 message Echo {
-
+    uint64 ts = 1;
 }
 
 message Throughput {
@@ -51,4 +51,8 @@ service CtoService {
 
 service ThroughputStatisticsService {
     rpc get(Echo) returns (Throughput) {}
+}
+
+service UpdateTs {
+    rpc update(Echo) returns (Echo) {}
 }
