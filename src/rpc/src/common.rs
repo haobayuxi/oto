@@ -26,8 +26,8 @@ pub struct Msg {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Echo {
-    #[prost(uint64, tag = "1")]
-    pub ts: u64,
+    #[prost(bool, tag = "1")]
+    pub success: bool,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Throughput {
@@ -156,10 +156,10 @@ pub mod cto_service_client {
             let path = http::uri::PathAndQuery::from_static("/common.CtoService/get_start_ts");
             self.inner.unary(request.into_request(), path, codec).await
         }
-        pub async fn get_commit_ts(
+        pub async fn set_commit_ts(
             &mut self,
-            request: impl tonic::IntoRequest<super::Echo>,
-        ) -> Result<tonic::Response<super::Ts>, tonic::Status> {
+            request: impl tonic::IntoRequest<super::Ts>,
+        ) -> Result<tonic::Response<super::Echo>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
                     tonic::Code::Unknown,
@@ -167,7 +167,7 @@ pub mod cto_service_client {
                 )
             })?;
             let codec = tonic::codec::ProstCodec::default();
-            let path = http::uri::PathAndQuery::from_static("/common.CtoService/get_commit_ts");
+            let path = http::uri::PathAndQuery::from_static("/common.CtoService/set_commit_ts");
             self.inner.unary(request.into_request(), path, codec).await
         }
     }
@@ -281,7 +281,7 @@ pub mod update_ts_client {
         }
         pub async fn update(
             &mut self,
-            request: impl tonic::IntoRequest<super::Echo>,
+            request: impl tonic::IntoRequest<super::Ts>,
         ) -> Result<tonic::Response<super::Echo>, tonic::Status> {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::new(
@@ -421,10 +421,10 @@ pub mod cto_service_server {
             &self,
             request: tonic::Request<super::Echo>,
         ) -> Result<tonic::Response<super::Ts>, tonic::Status>;
-        async fn get_commit_ts(
+        async fn set_commit_ts(
             &self,
-            request: tonic::Request<super::Echo>,
-        ) -> Result<tonic::Response<super::Ts>, tonic::Status>;
+            request: tonic::Request<super::Ts>,
+        ) -> Result<tonic::Response<super::Echo>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct CtoServiceServer<T: CtoService> {
@@ -486,15 +486,15 @@ pub mod cto_service_server {
                     };
                     Box::pin(fut)
                 }
-                "/common.CtoService/get_commit_ts" => {
+                "/common.CtoService/set_commit_ts" => {
                     #[allow(non_camel_case_types)]
-                    struct get_commit_tsSvc<T: CtoService>(pub Arc<T>);
-                    impl<T: CtoService> tonic::server::UnaryService<super::Echo> for get_commit_tsSvc<T> {
-                        type Response = super::Ts;
+                    struct set_commit_tsSvc<T: CtoService>(pub Arc<T>);
+                    impl<T: CtoService> tonic::server::UnaryService<super::Ts> for set_commit_tsSvc<T> {
+                        type Response = super::Echo;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(&mut self, request: tonic::Request<super::Echo>) -> Self::Future {
+                        fn call(&mut self, request: tonic::Request<super::Ts>) -> Self::Future {
                             let inner = self.0.clone();
-                            let fut = async move { (*inner).get_commit_ts(request).await };
+                            let fut = async move { (*inner).set_commit_ts(request).await };
                             Box::pin(fut)
                         }
                     }
@@ -502,7 +502,7 @@ pub mod cto_service_server {
                     let fut = async move {
                         let interceptor = inner.1.clone();
                         let inner = inner.0;
-                        let method = get_commit_tsSvc(inner);
+                        let method = set_commit_tsSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = if let Some(interceptor) = interceptor {
                             tonic::server::Grpc::with_interceptor(codec, interceptor)
@@ -659,7 +659,7 @@ pub mod update_ts_server {
     pub trait UpdateTs: Send + Sync + 'static {
         async fn update(
             &self,
-            request: tonic::Request<super::Echo>,
+            request: tonic::Request<super::Ts>,
         ) -> Result<tonic::Response<super::Echo>, tonic::Status>;
     }
     #[derive(Debug)]
@@ -697,10 +697,10 @@ pub mod update_ts_server {
                 "/common.UpdateTs/update" => {
                     #[allow(non_camel_case_types)]
                     struct updateSvc<T: UpdateTs>(pub Arc<T>);
-                    impl<T: UpdateTs> tonic::server::UnaryService<super::Echo> for updateSvc<T> {
+                    impl<T: UpdateTs> tonic::server::UnaryService<super::Ts> for updateSvc<T> {
                         type Response = super::Echo;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
-                        fn call(&mut self, request: tonic::Request<super::Echo>) -> Self::Future {
+                        fn call(&mut self, request: tonic::Request<super::Ts>) -> Self::Future {
                             let inner = self.0.clone();
                             let fut = async move { (*inner).update(request).await };
                             Box::pin(fut)

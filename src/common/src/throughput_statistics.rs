@@ -12,7 +12,7 @@ use rpc::common::{
         ThroughputStatisticsService, ThroughputStatisticsServiceServer,
     },
     update_ts_server::{UpdateTs, UpdateTsServer},
-    Echo, Throughput,
+    Echo, Throughput, Ts,
 };
 use tokio::{
     sync::{mpsc::unbounded_channel, RwLock},
@@ -76,10 +76,10 @@ impl ThroughputStatisticsService for coordinator_rpc_server {
 
 #[tonic::async_trait]
 impl UpdateTs for update_server {
-    async fn update(&self, request: Request<Echo>) -> Result<Response<Echo>, Status> {
+    async fn update(&self, request: Request<Ts>) -> Result<Response<Echo>, Status> {
         let mut guard = self.local_ts.write().await;
         *guard = request.into_inner().ts;
-        Ok(Response::new(Echo { ts: 0 }))
+        Ok(Response::new(Echo { success: true }))
     }
 }
 

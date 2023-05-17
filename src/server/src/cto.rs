@@ -5,7 +5,7 @@ use rpc::common::{
     Echo, Ts,
 };
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     sync::{
         atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT},
         Arc,
@@ -52,19 +52,29 @@ impl update_coordinator {
                 // broadcast
                 let ts;
                 {
-                    let guard = STATUS[0].read().await;
+                    let mut guard = STATUS[0].write().await;
                     ts = guard.max_ts;
+                    guard.notified_max_ts = ts;
                 }
                 self.broadcast(ts).await;
 
                 // notify
                 {
                     let mut guard = STATUS[0].write().await;
-                    for i in guard.notified_max_ts..ts {
-                        let notify = guard.wait_list.remove(&i).unwrap();
-                        notify.notify_one();
+                    loop {
+                        let a = guard.wait_list.pop_first();
+                        match a {
+                            Some((ts, notify)) => {
+                                if ts <= guard.notified_max_ts {
+                                    notify.notify_one();
+                                } else {
+                                    guard.wait_list.insert(ts, notify);
+                                    break;
+                                }
+                            }
+                            None => break,
+                        }
                     }
-                    guard.notified_max_ts = ts;
                 }
             }
         }
@@ -75,7 +85,7 @@ impl update_coordinator {
         for i in 0..self.clients.len() {
             let mut client = self.clients[i].clone();
             let s_ = sender.clone();
-            let msg = Echo { ts };
+            let msg = Ts { ts };
             tokio::spawn(async move {
                 client.update(msg).await.unwrap().into_inner();
                 s_.send(true);
@@ -90,14 +100,14 @@ impl update_coordinator {
 struct CTO_Status {
     max_ts: u64,
     notified_max_ts: u64,
-    wait_list: HashMap<u64, Arc<Notify>>,
+    wait_list: BTreeMap<u64, Arc<Notify>>,
 }
 
 impl CTO_Status {
     pub fn new() -> Self {
         Self {
             max_ts: 0,
-            wait_list: HashMap::new(),
+            wait_list: BTreeMap::new(),
             notified_max_ts: 0,
         }
     }
@@ -124,24 +134,32 @@ impl CtoService for CTO_communication {
         }
     }
 
-    async fn get_commit_ts(
+    async fn set_commit_ts(
         &self,
-        request: tonic::Request<Echo>,
-    ) -> Result<tonic::Response<Ts>, tonic::Status> {
+        request: tonic::Request<Ts>,
+    ) -> Result<tonic::Response<Echo>, tonic::Status> {
         unsafe {
-            let commit_ts;
+            let commit_ts = request.into_inner().ts;
+            let mut success = true;
             let notify = Arc::new(Notify::new());
             let notify2 = notify.clone();
             {
                 let mut guard = STATUS[0].write().await;
-                guard.max_ts += 1;
-                commit_ts = guard.max_ts;
-                // insert into waitlist
-                guard.wait_list.insert(commit_ts, notify);
+                if guard.notified_max_ts > commit_ts {
+                    success = false;
+                } else {
+                    if guard.max_ts < commit_ts {
+                        guard.max_ts = commit_ts;
+                    }
+                    // insert into waitlist
+                    guard.wait_list.insert(commit_ts, notify);
+                }
             }
             // wait
-            notify2.notified().await;
-            Ok(Response::new(Ts { ts: commit_ts }))
+            if success {
+                notify2.notified().await;
+            }
+            Ok(Response::new(Echo { success }))
         }
     }
 }

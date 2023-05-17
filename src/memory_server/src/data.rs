@@ -108,17 +108,25 @@ pub async fn validate(msg: Msg, dtx_type: DtxType) -> bool {
 
 pub async fn get_read_set(
     read_set: Vec<ReadStruct>,
-    start_ts: u64,
+    ts: u64,
     dtx_type: DtxType,
 ) -> (bool, Vec<ReadStruct>) {
     let mut result = Vec::new();
     unsafe {
-        for iter in read_set {
+        for iter in read_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(rwlock) => {
                     let mut guard = rwlock.write().await;
-                    if guard.is_locked() {
+                    if dtx_type == DtxType::oto {
+                        if guard.ts > ts {
+                            // write by a larger ts
+                            return (false, result);
+                        }
+                        if guard.rts < ts {
+                            guard.rts = ts;
+                        }
+                    } else if dtx_type == DtxType::ford && guard.is_locked() {
                         // has been locked
                         return (false, result);
                     } else {
@@ -129,9 +137,6 @@ pub async fn get_read_set(
                             timestamp: Some(guard.ts),
                         };
                         result.push(read_struct);
-                        if guard.rts < start_ts {
-                            guard.rts = start_ts;
-                        }
                     }
                 }
                 None => return (false, result),
@@ -141,25 +146,33 @@ pub async fn get_read_set(
     }
 }
 
-pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, Vec<ReadStruct>) {
+pub async fn lock_write_set(
+    write_set: Vec<ReadStruct>,
+    txn_id: u64,
+    ts: u64,
+    dtx_type: DtxType,
+) -> bool {
     unsafe {
-        let mut result = Vec::new();
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(lock) => {
                     let mut guard = lock.write().await;
-                    let mut temp = iter.clone();
-                    temp.timestamp = Some(guard.ts);
-                    result.push(temp);
+                    if dtx_type == DtxType::oto {
+                        if guard.ts > ts || guard.rts > ts {
+                            return false;
+                        }
+                        guard.ts = ts;
+                        continue;
+                    }
                     if !guard.set_lock(txn_id) {
-                        return (false, result);
+                        return false;
                     }
                 }
-                None => return (false, result),
+                None => return false,
             }
         }
-        (true, result)
+        true
     }
 }
 

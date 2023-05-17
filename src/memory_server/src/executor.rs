@@ -29,9 +29,10 @@ impl Executor {
                         rpc::common::TxnOp::Execute => {
                             let mut reply = Msg::default();
                             // get the data and lock the write set
-                            let start_ts = coor_msg.msg.ts();
+                            let ts = coor_msg.msg.ts();
                             let (success, read_result) =
-                                get_read_set(coor_msg.msg.read_set, start_ts, self.dtx_type).await;
+                                get_read_set(coor_msg.msg.read_set.clone(), ts, self.dtx_type)
+                                    .await;
                             if !success {
                                 // send back failure
                                 reply.success = false;
@@ -39,13 +40,15 @@ impl Executor {
                                 continue;
                             }
                             reply.read_set = read_result;
-                            let (success, write_tuple_ts) =
-                                lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
+                            let success = lock_write_set(
+                                coor_msg.msg.write_set,
+                                coor_msg.msg.txn_id,
+                                ts,
+                                self.dtx_type,
+                            )
+                            .await;
                             reply.success = success;
-                            reply.write_set = write_tuple_ts;
-                            // if coor_msg.msg.write_set.len() != 0 {
-                            //     self.txns.insert(coor_msg.msg.txn_id, coor_msg.msg);
-                            // }
+
                             coor_msg.call_back.send(reply);
                         }
                         rpc::common::TxnOp::Commit => {

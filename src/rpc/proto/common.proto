@@ -31,7 +31,7 @@ message Msg {
 
 
 message Echo {
-    uint64 ts = 1;
+    bool success = 1;
 }
 
 message Throughput {
@@ -46,7 +46,7 @@ service DataService {
 }
 service CtoService {
     rpc get_start_ts(Echo) returns(TS) {}
-    rpc get_commit_ts(Echo) returns(TS) {}
+    rpc set_commit_ts(TS) returns(Echo) {}
 }
 
 service ThroughputStatisticsService {
@@ -54,5 +54,5 @@ service ThroughputStatisticsService {
 }
 
 service UpdateTs {
-    rpc update(Echo) returns (Echo) {}
+    rpc update(TS) returns (Echo) {}
 }
