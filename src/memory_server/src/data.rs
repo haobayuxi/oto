@@ -126,6 +126,13 @@ pub async fn get_read_set(
                         if guard.rts < ts {
                             guard.rts = ts;
                         }
+                        let read_struct = ReadStruct {
+                            key: iter.key,
+                            table_id: iter.table_id,
+                            value: Some(guard.data.clone()),
+                            timestamp: Some(guard.ts),
+                        };
+                        result.push(read_struct);
                     } else if dtx_type == DtxType::ford && guard.is_locked() {
                         // has been locked
                         return (false, result);
