@@ -131,19 +131,19 @@ impl DtxCoordinator {
                 }
                 if !self.write_to_execute.is_empty() {
                     // read write transaction
-                    let (commit_ts_sender, commit_ts_recv) = oneshot::channel();
-                    // set commit ts from cto
-                    let mut cto_client = self.cto_client.clone();
-                    let commit_ts = self.commit_ts;
-                    tokio::spawn(async move {
-                        let commit_ts_success = cto_client
-                            .set_commit_ts(Ts { ts: commit_ts })
-                            .await
-                            .unwrap()
-                            .into_inner()
-                            .success;
-                        commit_ts_sender.send(commit_ts_success);
-                    });
+                    // let (commit_ts_sender, commit_ts_recv) = oneshot::channel();
+                    // // set commit ts from cto
+                    // let mut cto_client = self.cto_client.clone();
+                    // let commit_ts = self.commit_ts;
+                    // tokio::spawn(async move {
+                    //     let commit_ts_success = cto_client
+                    //         .set_commit_ts(Ts { ts: commit_ts })
+                    //         .await
+                    //         .unwrap()
+                    //         .into_inner()
+                    //         .success;
+                    //     commit_ts_sender.send(commit_ts_success);
+                    // });
 
                     let execute = Msg {
                         txn_id: self.txn_id,
@@ -160,9 +160,9 @@ impl DtxCoordinator {
                         }
                     }
                     result = replies[0].read_set.clone();
-                    if !commit_ts_recv.await.unwrap() {
-                        success = false;
-                    }
+                    // if !commit_ts_recv.await.unwrap() {
+                    //     success = false;
+                    // }
                 } else {
                     let read = Msg {
                         txn_id: self.txn_id,
@@ -368,8 +368,7 @@ impl DtxCoordinator {
     async fn validate(&mut self) -> bool {
         match self.dtx_type {
             DtxType::oto => {
-                // return self.oto_validate().await;
-                return true;
+                return self.oto_validate().await;
             }
             DtxType::ford => {
                 if self.read_set.is_empty() {
@@ -442,48 +441,19 @@ impl DtxCoordinator {
         }
     }
 
-    // async fn oto_validate(&mut self) -> bool {
-    //     let mut max_tx = self.start_ts;
-    //     for iter in self.read_set.iter() {
-    //         let ts = iter.timestamp();
-    //         if ts > self.start_ts {
-    //             max_tx = ts;
-    //         }
-    //     }
-    //     if max_tx > self.start_ts {
-    //         // update local ts
-    //         let mut guard = self.local_ts.write().await;
-    //         *guard = max_tx;
-    //         return false;
-    //     }
-    //     for iter in self.write_tuple_ts.iter() {
-    //         if *iter > self.commit_ts {
-    //             return false;
-    //         }
-    //     }
-    //     if !self.write_set.is_empty() {
-    //         // broadcast to validate
-    //         let mut write_set = Vec::new();
-    //         for iter in self.write_set.iter() {
-    //             write_set.push(iter.read().await.clone());
-    //         }
-    //         let vadilate_msg = Msg {
-    //             txn_id: self.txn_id,
-    //             read_set: self.read_set.clone(),
-    //             write_set: write_set.clone(),
-    //             op: TxnOp::Validate.into(),
-    //             success: true,
-    //             ts: Some(self.commit_ts),
-    //         };
-    //         let reply = self.sync_broadcast(vadilate_msg).await;
-    //         for iter in reply.iter() {
-    //             if !iter.success {
-    //                 return false;
-    //             }
-    //         }
-    //     }
-    //     true
-    // }
+    async fn oto_validate(&mut self) -> bool {
+        if !self.write_set.is_empty() {
+            // validate ts
+            return self
+                .cto_client
+                .set_commit_ts(Ts { ts: self.commit_ts })
+                .await
+                .unwrap()
+                .into_inner()
+                .success;
+        }
+        true
+    }
 
     async fn sync_broadcast(&mut self, msg: Msg) -> Vec<Msg> {
         let mut result = Vec::new();
