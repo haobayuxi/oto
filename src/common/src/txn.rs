@@ -129,6 +129,7 @@ impl DtxCoordinator {
                             ((Local::now().timestamp_nanos() / 1000) as u64) << 10 + self.id;
                     }
                 }
+                println!("execution ts = {}", self.commit_ts);
                 if !self.write_to_execute.is_empty() {
                     // read write transaction
                     // let (commit_ts_sender, commit_ts_recv) = oneshot::channel();
@@ -462,7 +463,7 @@ impl DtxCoordinator {
                 .into_inner()
                 .success;
 
-            // println!("validate ts {}", success);
+            println!("validate ts {}", success);
             return success;
         }
         true
