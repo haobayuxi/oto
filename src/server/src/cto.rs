@@ -153,7 +153,7 @@ impl CtoService for CTO_communication {
                         guard.max_ts = commit_ts;
                     }
                     // insert into waitlist
-                    println!("maxts = {}", guard.max_ts);
+                    // println!("maxts = {}", guard.max_ts);
                     guard.wait_list.push(notify);
                 }
             }
@@ -177,12 +177,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cto = CTO_communication::new();
     println!("CTO listening on {}", addr);
 
-    // tokio::spawn(async move {
-    Server::builder()
-        .add_service(CtoServiceServer::new(cto))
-        .serve(addr)
-        .await;
-    // });
+    tokio::spawn(async move {
+        Server::builder()
+            .add_service(CtoServiceServer::new(cto))
+            .serve(addr)
+            .await;
+    });
     loop {
         sleep(Duration::from_micros(100)).await;
         unsafe {
@@ -196,7 +196,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 loop {
                     match guard.wait_list.pop() {
                         Some(notify) => {
-                            println!("notify");
+                            // println!("notify");
                             notify.notify_one();
                         }
                         None => break,
