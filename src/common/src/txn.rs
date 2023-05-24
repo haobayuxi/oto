@@ -451,13 +451,16 @@ impl DtxCoordinator {
     async fn oto_validate(&mut self) -> bool {
         if !self.write_set.is_empty() {
             // validate ts
-            return self
+            let success = self
                 .cto_client
                 .set_commit_ts(Ts { ts: self.commit_ts })
                 .await
                 .unwrap()
                 .into_inner()
                 .success;
+
+            println!("validate ts {}", success);
+            return success;
         }
         true
     }
