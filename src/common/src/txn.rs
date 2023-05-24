@@ -129,7 +129,6 @@ impl DtxCoordinator {
                             ((Local::now().timestamp_nanos() / 1000) as u64) << 10 + self.id;
                     }
                 }
-                println!("execution ts = {}", self.commit_ts);
                 if !self.write_to_execute.is_empty() {
                     // read write transaction
                     // let (commit_ts_sender, commit_ts_recv) = oneshot::channel();
@@ -250,9 +249,7 @@ impl DtxCoordinator {
         }
 
         self.read_set.extend(result.clone());
-        // println!("execute write size {}", self.write_to_execute.len());
         self.write_set.extend(self.write_to_execute.clone());
-        // println!("write size {}", self.write_set.len());
         self.read_to_execute.clear();
         self.write_to_execute.clear();
         return (success, result);
@@ -452,7 +449,6 @@ impl DtxCoordinator {
     }
 
     async fn oto_validate(&mut self) -> bool {
-        // println!("validate write set size {}", self.write_set.len());
         if self.write_set.len() > 0 {
             // validate ts
             let success = self
@@ -462,8 +458,6 @@ impl DtxCoordinator {
                 .unwrap()
                 .into_inner()
                 .success;
-
-            println!("validate ts {}", success);
             return success;
         }
         true
