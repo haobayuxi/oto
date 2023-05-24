@@ -249,9 +249,9 @@ impl DtxCoordinator {
         }
 
         self.read_set.extend(result.clone());
-        println!("execute write size {}", self.write_to_execute.len());
+        // println!("execute write size {}", self.write_to_execute.len());
         self.write_set.extend(self.write_to_execute.clone());
-        println!("write size {}", self.write_set.len());
+        // println!("write size {}", self.write_set.len());
         self.read_to_execute.clear();
         self.write_to_execute.clear();
         return (success, result);
@@ -451,7 +451,7 @@ impl DtxCoordinator {
     }
 
     async fn oto_validate(&mut self) -> bool {
-        println!("validate write set size {}", self.write_set.len());
+        // println!("validate write set size {}", self.write_set.len());
         if self.write_set.len() > 0 {
             // validate ts
             let success = self
@@ -462,7 +462,7 @@ impl DtxCoordinator {
                 .into_inner()
                 .success;
 
-            println!("validate ts {}", success);
+            // println!("validate ts {}", success);
             return success;
         }
         true
