@@ -154,13 +154,13 @@ impl CtoService for CTO_communication {
                     }
                     // insert into waitlist
                     // println!("maxts = {}", guard.max_ts);
-                    guard.wait_list.push(notify);
+                    // guard.wait_list.push(notify);
                 }
             }
             // wait
-            if success {
-                notify2.notified().await;
-            }
+            // if success {
+            //     notify2.notified().await;
+            // }
             Ok(Response::new(Echo { success }))
         }
     }
