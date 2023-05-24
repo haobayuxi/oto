@@ -153,6 +153,7 @@ impl CtoService for CTO_communication {
                         guard.max_ts = commit_ts;
                     }
                     // insert into waitlist
+                    println!("maxts = {}", guard.max_ts);
                     guard.wait_list.push(notify);
                 }
             }
@@ -186,21 +187,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_micros(100)).await;
         unsafe {
             // broadcast
-            let ts;
+            // let ts;
+            {
+                let mut guard = STATUS[0].write().await;
+                guard.notified_max_ts = guard.max_ts;
 
-            let mut guard = STATUS[0].write().await;
-            ts = guard.max_ts;
-            guard.notified_max_ts = ts;
-
-            // notify
-            loop {
-                match guard.wait_list.pop() {
-                    Some(notify) => {
-                        notify.notify_one();
+                // notify
+                loop {
+                    match guard.wait_list.pop() {
+                        Some(notify) => {
+                            println!("notify");
+                            notify.notify_one();
+                        }
+                        None => break,
                     }
-                    None => break,
                 }
             }
+
             // for iter in guard.wait_list.it {
             //     iter.notify_one();
             // }
