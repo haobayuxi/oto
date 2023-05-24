@@ -287,9 +287,16 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                 };
                 self.sync_broadcast(lock).await;
-            }
-
-            if self.dtx_type == DtxType::oto {
+            } else if self.dtx_type == DtxType::oto {
+                let accept = Msg {
+                    txn_id: self.txn_id,
+                    read_set: Vec::new(),
+                    write_set: Vec::new(),
+                    op: TxnOp::Accept.into(),
+                    success: true,
+                    ts: Some(self.commit_ts),
+                };
+                self.sync_broadcast(accept).await;
                 // get commit ts
                 let mut guard = self.local_ts.write().await;
                 if *guard < self.commit_ts {
