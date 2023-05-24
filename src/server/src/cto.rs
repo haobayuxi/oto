@@ -61,20 +61,20 @@ impl update_coordinator {
                 // notify
                 {
                     let mut guard = STATUS[0].write().await;
-                    loop {
-                        let a = guard.wait_list.pop_first();
-                        match a {
-                            Some((ts, notify)) => {
-                                if ts <= guard.notified_max_ts {
-                                    notify.notify_one();
-                                } else {
-                                    guard.wait_list.insert(ts, notify);
-                                    break;
-                                }
-                            }
-                            None => break,
-                        }
-                    }
+                    // loop {
+                    //     let a = guard.wait_list.pop_first();
+                    //     match a {
+                    //         Some((ts, notify)) => {
+                    //             if ts <= guard.notified_max_ts {
+                    //                 notify.notify_one();
+                    //             } else {
+                    //                 guard.wait_list.insert(ts, notify);
+                    //                 break;
+                    //             }
+                    //         }
+                    //         None => break,
+                    //     }
+                    // }
                 }
             }
         }
@@ -100,14 +100,15 @@ impl update_coordinator {
 struct CTO_Status {
     max_ts: u64,
     notified_max_ts: u64,
-    wait_list: BTreeMap<u64, Arc<Notify>>,
+    // wait_list: BTreeMap<u64, Arc<Notify>>,
+    wait_list: Vec<Arc<Notify>>,
 }
 
 impl CTO_Status {
     pub fn new() -> Self {
         Self {
             max_ts: 0,
-            wait_list: BTreeMap::new(),
+            wait_list: Vec::new(),
             notified_max_ts: 0,
         }
     }
@@ -152,7 +153,7 @@ impl CtoService for CTO_communication {
                         guard.max_ts = commit_ts;
                     }
                     // insert into waitlist
-                    guard.wait_list.insert(commit_ts, notify);
+                    guard.wait_list.push(notify);
                 }
             }
             // wait
@@ -175,15 +176,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cto = CTO_communication::new();
     println!("CTO listening on {}", addr);
 
-    tokio::spawn(async move {
-        Server::builder()
-            .add_service(CtoServiceServer::new(cto))
-            .serve(addr)
-            .await;
-    });
+    // tokio::spawn(async move {
+    Server::builder()
+        .add_service(CtoServiceServer::new(cto))
+        .serve(addr)
+        .await;
+    // });
+    loop {
+        sleep(Duration::from_micros(100)).await;
+        unsafe {
+            // broadcast
+            let ts;
 
-    let mut client = update_coordinator::new(config.client_addr).await;
-    client.run().await;
+            let mut guard = STATUS[0].write().await;
+            ts = guard.max_ts;
+            guard.notified_max_ts = ts;
+
+            // notify
+            loop {
+                match guard.wait_list.pop() {
+                    Some(notify) => {
+                        notify.notify_one();
+                    }
+                    None => break,
+                }
+            }
+            // for iter in guard.wait_list.it {
+            //     iter.notify_one();
+            // }
+            // let a = guard.wait_list.pop_first();
+            // match a {
+            //     Some((ts, notify)) => {
+            //         if ts <= guard.notified_max_ts {
+
+            //         } else {
+            //             guard.wait_list.insert(ts, notify);
+            //             break;
+            //         }
+            //     }
+            //     None => break,
+            // }
+        }
+    }
+    // let mut client = update_coordinator::new(config.client_addr).await;
+    // client.run().await;
 
     Ok(())
 }
