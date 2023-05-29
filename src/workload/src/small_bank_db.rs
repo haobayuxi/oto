@@ -14,6 +14,7 @@ pub fn init_smallbank_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     let mut tables = Vec::new();
     let mut saving_table = HashMap::new();
     let mut checking_table = HashMap::new();
+    let mut account_table = HashMap::new();
     for i in 0..NUM_ACCOUNTS {
         let saving = Saving {
             customer_id: i,
@@ -33,9 +34,14 @@ pub fn init_smallbank_db() -> Vec<HashMap<u64, RwLock<Tuple>>> {
             i,
             RwLock::new(Tuple::new(serde_json::to_string(&checking).unwrap())),
         );
+        account_table.insert(
+            i,
+            RwLock::new(Tuple::new(serde_json::to_string(&i).unwrap())),
+        );
     }
     tables.push(saving_table);
     tables.push(checking_table);
+    tables.push(account_table);
     tables
 }
 

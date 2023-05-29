@@ -21,6 +21,7 @@ pub static ACCESS_INFO_TABLE: i32 = 2;
 pub static CALL_FORWARDING_TABLE: i32 = 3;
 pub static SAVING_TABLE: i32 = 0;
 pub static CHECKING_TABLE: i32 = 1;
+pub static ACCOUNT_TABLE: i32 = 2;
 
 pub static TXNS_PER_CLIENT: u64 = 15000;
 
@@ -83,6 +84,7 @@ pub enum DtxType {
     oto,
     ford,
     meerkat,
+    // spanner,
 }
 
 #[derive(Clone, Serialize, Deserialize, Copy)]
