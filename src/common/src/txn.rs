@@ -382,7 +382,7 @@ impl DtxCoordinator {
                     // println!("read set is null");
                     return true;
                 }
-                let vadilate_msg = Msg {
+                let validate_msg = Msg {
                     txn_id: self.txn_id,
                     read_set: self.read_set.clone(),
                     write_set: Vec::new(),
@@ -393,15 +393,28 @@ impl DtxCoordinator {
                 let server_id = self.id % 3;
                 let client = self.data_clients.get_mut(0).unwrap();
                 let reply = client
-                    .communication(vadilate_msg)
+                    .communication(validate_msg.clone())
                     .await
                     .unwrap()
                     .into_inner();
-
+                let mut aclient = client.clone();
+                let (sender, recv) = oneshot::channel();
+                tokio::spawn(async move {
+                    sender.send(
+                        aclient
+                            .communication(validate_msg)
+                            .await
+                            .unwrap()
+                            .into_inner(),
+                    );
+                });
                 if !reply.success {
                     return false;
                 }
-
+                let r = recv.await.unwrap();
+                if !r.success {
+                    return false;
+                }
                 return true;
             }
             DtxType::meerkat => {
