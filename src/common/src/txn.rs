@@ -197,7 +197,11 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                     };
                     // lock the primary
-                    let mut client = self.data_clients.get_mut(0).unwrap().clone();
+                    let mut client = self
+                        .data_clients
+                        .get_mut(server_id as usize)
+                        .unwrap()
+                        .clone();
                     tokio::spawn(async move {
                         let reply = client.communication(lock).await.unwrap().into_inner();
                         sender.send(reply);
