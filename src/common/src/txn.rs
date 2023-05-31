@@ -18,35 +18,28 @@ use crate::DtxType;
 use crate::GLOBAL_COMMITTED;
 
 async fn init_coordinator_rpc(
-    cto_ip: String,
+    // cto_ip: String,
     data_ip: Vec<String>,
-) -> (CtoServiceClient<Channel>, Vec<DataServiceClient<Channel>>) {
-    loop {
-        match CtoServiceClient::connect(cto_ip.clone()).await {
-            Ok(cto_client) => {
-                let mut data_clients = Vec::new();
-                for iter in data_ip {
-                    let server_ip = ip_addr_add_prefix(iter);
-                    // println!("connecting {}", server_ip);
-                    loop {
-                        match DataServiceClient::connect(server_ip.clone()).await {
-                            Ok(data_client) => {
-                                data_clients.push(data_client);
-                                break;
-                            }
-                            Err(e) => {
-                                // println!("connect error {}-- {:?}", server_ip, e);
-                                sleep(Duration::from_millis(10)).await;
-                            }
-                        }
-                    }
+) -> Vec<DataServiceClient<Channel>> {
+    let mut data_clients = Vec::new();
+    for iter in data_ip {
+        let server_ip = ip_addr_add_prefix(iter);
+        // println!("connecting {}", server_ip);
+        loop {
+            match DataServiceClient::connect(server_ip.clone()).await {
+                Ok(data_client) => {
+                    data_clients.push(data_client);
+                    break;
                 }
-                // println!("connect server done");
-                return (cto_client, data_clients);
+                Err(e) => {
+                    // println!("connect error {}-- {:?}", server_ip, e);
+                    sleep(Duration::from_millis(10)).await;
+                }
             }
-            Err(_) => sleep(Duration::from_millis(10)).await,
         }
     }
+    // println!("connect server done");
+    return data_clients;
 }
 pub struct DtxCoordinator {
     pub id: u64,
@@ -61,7 +54,7 @@ pub struct DtxCoordinator {
     read_to_execute: Vec<ReadStruct>,
     write_to_execute: Vec<Arc<RwLock<ReadStruct>>>,
     write_tuple_ts: Vec<u64>,
-    cto_client: CtoServiceClient<Channel>,
+    // cto_client: CtoServiceClient<Channel>,
     data_clients: Vec<DataServiceClient<Channel>>,
     // committed: Arc<AtomicU64>,
 }
@@ -76,7 +69,7 @@ impl DtxCoordinator {
         // committed: Arc<AtomicU64>,
     ) -> Self {
         // init cto client & data client
-        let (cto_client, data_clients) = init_coordinator_rpc(cto_ip, data_ip).await;
+        let data_clients = init_coordinator_rpc(data_ip).await;
         // println!("init rpc done {}", id);
         Self {
             id,
@@ -87,7 +80,7 @@ impl DtxCoordinator {
             commit_ts: 0,
             read_set: Vec::new(),
             write_set: Vec::new(),
-            cto_client,
+            // cto_client,
             data_clients,
             read_to_execute: Vec::new(),
             write_to_execute: Vec::new(),
@@ -386,7 +379,7 @@ impl DtxCoordinator {
                 ts: None,
             };
             let server_id = self.id % 3;
-            let client = self.data_clients.get_mut(2 as usize).unwrap();
+            let client = self.data_clients.get_mut(server_id as usize).unwrap();
             let mut aclient = client.clone();
             // let (sender, recv) = oneshot::channel();
             let t_msg = validate_msg.clone();
