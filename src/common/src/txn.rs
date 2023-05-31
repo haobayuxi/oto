@@ -194,7 +194,7 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                     };
                     // lock the primary
-                    let mut client = self.data_clients.get_mut(0).unwrap().clone();
+                    let mut client = self.data_clients.get_mut(2).unwrap().clone();
                     tokio::spawn(async move {
                         let reply = client.communication(lock).await.unwrap().into_inner();
                         sender.send(reply);
@@ -210,7 +210,7 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                     };
                     let client: &mut DataServiceClient<Channel> =
-                        self.data_clients.get_mut(server_id as usize).unwrap();
+                        self.data_clients.get_mut(2 as usize).unwrap();
 
                     let reply: Msg = client.communication(read).await.unwrap().into_inner();
                     success = reply.success;
@@ -386,7 +386,7 @@ impl DtxCoordinator {
                 ts: None,
             };
             let server_id = self.id % 3;
-            let client = self.data_clients.get_mut(0 as usize).unwrap();
+            let client = self.data_clients.get_mut(2 as usize).unwrap();
             let mut aclient = client.clone();
             // let (sender, recv) = oneshot::channel();
             let t_msg = validate_msg.clone();
