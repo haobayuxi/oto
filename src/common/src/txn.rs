@@ -395,7 +395,7 @@ impl DtxCoordinator {
                     ts: None,
                 };
                 let server_id = self.id % 3;
-                let client = self.data_clients.get_mut(server_id as usize).unwrap();
+                let client = self.data_clients.get_mut(0 as usize).unwrap();
                 let mut aclient = client.clone();
                 // let (sender, recv) = oneshot::channel();
                 let t_msg = validate_msg.clone();
