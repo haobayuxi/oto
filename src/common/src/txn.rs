@@ -55,6 +55,7 @@ pub struct DtxCoordinator {
     txn_id: u64,
     // start_ts: u64,
     commit_ts: u64,
+    // <shard>
     pub read_set: Vec<ReadStruct>,
     pub write_set: Vec<Arc<RwLock<ReadStruct>>>,
     read_to_execute: Vec<ReadStruct>,
@@ -105,6 +106,9 @@ impl DtxCoordinator {
         self.write_tuple_ts.clear();
         // self.start_ts = 0;
         self.commit_ts = 0;
+        if self.dtx_type == DtxType::oto {
+            self.commit_ts = self.local_ts.read().await.clone();
+        }
     }
 
     pub async fn tx_exe(&mut self) -> (bool, Vec<ReadStruct>) {
@@ -119,16 +123,16 @@ impl DtxCoordinator {
         let mut result = Vec::new();
         let server_id = self.id % 3;
         match self.dtx_type {
-            DtxType::oto => {
-                if self.commit_ts == 0 {
-                    if self.write_to_execute.is_empty() {
-                        // get ts from local
-                        self.commit_ts = self.local_ts.read().await.clone();
-                    } else {
-                        self.commit_ts =
-                            ((Local::now().timestamp_nanos() / 1000) as u64) << 10 + self.id;
-                    }
-                }
+            DtxType::ford => {
+                // if self.commit_ts == 0 {
+                //     if self.write_to_execute.is_empty() {
+                //         // get ts from local
+                //         self.commit_ts = self.local_ts.read().await.clone();
+                //     } else {
+                //         self.commit_ts =
+                //             ((Local::now().timestamp_nanos() / 1000) as u64) << 10 + self.id;
+                //     }
+                // }
                 if !self.write_to_execute.is_empty() {
                     // read write transaction
                     // let (commit_ts_sender, commit_ts_recv) = oneshot::channel();
@@ -179,7 +183,7 @@ impl DtxCoordinator {
                     result = reply.read_set;
                 }
             }
-            DtxType::ford => {
+            DtxType::oto => {
                 let (sender, mut recv) = unbounded_channel::<Msg>();
                 let need_lock = if !self.write_to_execute.is_empty() {
                     true
@@ -391,13 +395,13 @@ impl DtxCoordinator {
                     ts: None,
                 };
                 let server_id = self.id % 3;
-                let client = self.data_clients.get_mut(0).unwrap();
+                let client = self.data_clients.get_mut(server_id as usize).unwrap();
                 let mut aclient = client.clone();
-                let (sender, recv) = oneshot::channel();
+                // let (sender, recv) = oneshot::channel();
                 let t_msg = validate_msg.clone();
-                tokio::spawn(async move {
-                    sender.send(aclient.communication(t_msg).await.unwrap().into_inner());
-                });
+                // tokio::spawn(async move {
+                //     sender.send(aclient.communication(t_msg).await.unwrap().into_inner());
+                // });
                 let reply = client
                     .communication(validate_msg)
                     .await
@@ -407,10 +411,10 @@ impl DtxCoordinator {
                 if !reply.success {
                     return false;
                 }
-                let r = recv.await.unwrap();
-                if !r.success {
-                    return false;
-                }
+                // let r = recv.await.unwrap();
+                // if !r.success {
+                //     return false;
+                // }
                 return true;
             }
             DtxType::meerkat => {
