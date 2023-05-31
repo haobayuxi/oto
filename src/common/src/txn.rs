@@ -53,7 +53,7 @@ pub struct DtxCoordinator {
     pub local_ts: Arc<RwLock<u64>>,
     pub dtx_type: DtxType,
     txn_id: u64,
-    // start_ts: u64,
+    read_only: bool,
     commit_ts: u64,
     // <shard>
     pub read_set: Vec<ReadStruct>,
@@ -92,11 +92,12 @@ impl DtxCoordinator {
             read_to_execute: Vec::new(),
             write_to_execute: Vec::new(),
             write_tuple_ts: Vec::new(),
+            read_only: false,
             // committed,
         }
     }
 
-    pub async fn tx_begin(&mut self) {
+    pub async fn tx_begin(&mut self, read_only: bool) {
         // init coordinator
         self.txn_id += self.id;
         self.read_set.clear();
@@ -104,9 +105,9 @@ impl DtxCoordinator {
         self.read_to_execute.clear();
         self.write_to_execute.clear();
         self.write_tuple_ts.clear();
-        // self.start_ts = 0;
+        self.read_only = read_only;
         self.commit_ts = 0;
-        if self.dtx_type == DtxType::oto {
+        if self.dtx_type == DtxType::rocc {
             self.commit_ts = self.local_ts.read().await.clone();
         }
     }
@@ -123,51 +124,8 @@ impl DtxCoordinator {
         let mut result = Vec::new();
         let server_id = self.id % 3;
         match self.dtx_type {
-            DtxType::ford => {
-                // if self.commit_ts == 0 {
-                //     if self.write_to_execute.is_empty() {
-                //         // get ts from local
-                //         self.commit_ts = self.local_ts.read().await.clone();
-                //     } else {
-                //         self.commit_ts =
-                //             ((Local::now().timestamp_nanos() / 1000) as u64) << 10 + self.id;
-                //     }
-                // }
-                if !self.write_to_execute.is_empty() {
-                    // read write transaction
-                    // let (commit_ts_sender, commit_ts_recv) = oneshot::channel();
-                    // // set commit ts from cto
-                    // let mut cto_client = self.cto_client.clone();
-                    // let commit_ts = self.commit_ts;
-                    // tokio::spawn(async move {
-                    //     let commit_ts_success = cto_client
-                    //         .set_commit_ts(Ts { ts: commit_ts })
-                    //         .await
-                    //         .unwrap()
-                    //         .into_inner()
-                    //         .success;
-                    //     commit_ts_sender.send(commit_ts_success);
-                    // });
-
-                    let execute = Msg {
-                        txn_id: self.txn_id,
-                        read_set: self.read_to_execute.clone(),
-                        write_set,
-                        op: TxnOp::Execute.into(),
-                        success: true,
-                        ts: Some(self.commit_ts),
-                    };
-                    let replies = self.sync_broadcast(execute).await;
-                    for iter in replies.iter() {
-                        if !iter.success {
-                            success = false;
-                        }
-                    }
-                    result = replies[0].read_set.clone();
-                    // if !commit_ts_recv.await.unwrap() {
-                    //     success = false;
-                    // }
-                } else {
+            DtxType::rocc => {
+                if self.read_only {
                     let read = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
@@ -181,9 +139,44 @@ impl DtxCoordinator {
                     let reply: Msg = client.communication(read).await.unwrap().into_inner();
                     success = reply.success;
                     result = reply.read_set;
+                } else {
+                    if !self.write_to_execute.is_empty() {
+                        let execute = Msg {
+                            txn_id: self.txn_id,
+                            read_set: self.read_to_execute.clone(),
+                            write_set,
+                            op: TxnOp::Execute.into(),
+                            success: true,
+                            ts: Some(self.commit_ts),
+                        };
+                        let replies = self.sync_broadcast(execute).await;
+                        for iter in replies.iter() {
+                            if !iter.success {
+                                success = false;
+                            }
+                        }
+                        result = replies[0].read_set.clone();
+                        // if !commit_ts_recv.await.unwrap() {
+                        //     success = false;
+                        // }
+                    } else {
+                        let read = Msg {
+                            txn_id: self.txn_id,
+                            read_set: self.read_to_execute.clone(),
+                            write_set: Vec::new(),
+                            op: TxnOp::Execute.into(),
+                            success: true,
+                            ts: Some(self.commit_ts),
+                        };
+                        let client = self.data_clients.get_mut(server_id as usize).unwrap();
+
+                        let reply: Msg = client.communication(read).await.unwrap().into_inner();
+                        success = reply.success;
+                        result = reply.read_set;
+                    }
                 }
             }
-            DtxType::oto => {
+            DtxType::ford => {
                 let (sender, mut recv) = unbounded_channel::<Msg>();
                 let need_lock = if !self.write_to_execute.is_empty() {
                     true
@@ -250,6 +243,7 @@ impl DtxCoordinator {
                     result = reply.read_set;
                 }
             }
+            DtxType::r2pl => todo!(),
         }
 
         self.read_set.extend(result.clone());
@@ -291,7 +285,7 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                 };
                 self.sync_broadcast(lock).await;
-            } else if self.dtx_type == DtxType::oto {
+            } else if self.dtx_type == DtxType::rocc {
                 let accept = Msg {
                     txn_id: self.txn_id,
                     read_set: Vec::new(),
@@ -319,7 +313,7 @@ impl DtxCoordinator {
     }
 
     pub async fn tx_abort(&mut self) {
-        if self.write_set.is_empty() || self.dtx_type == DtxType::oto {
+        if self.write_set.is_empty() || self.dtx_type == DtxType::rocc {
             return;
         }
         let mut write_set = Vec::new();
@@ -377,103 +371,83 @@ impl DtxCoordinator {
     }
 
     async fn validate(&mut self) -> bool {
-        match self.dtx_type {
-            DtxType::oto => {
-                return self.oto_validate().await;
-            }
-            DtxType::ford => {
-                if self.read_set.is_empty() {
-                    // println!("read set is null");
-                    return true;
-                }
-                let validate_msg = Msg {
-                    txn_id: self.txn_id,
-                    read_set: self.read_set.clone(),
-                    write_set: Vec::new(),
-                    op: TxnOp::Validate.into(),
-                    success: true,
-                    ts: None,
-                };
-                let server_id = self.id % 3;
-                let client = self.data_clients.get_mut(0 as usize).unwrap();
-                let mut aclient = client.clone();
-                // let (sender, recv) = oneshot::channel();
-                let t_msg = validate_msg.clone();
-                // tokio::spawn(async move {
-                //     sender.send(aclient.communication(t_msg).await.unwrap().into_inner());
-                // });
-                let reply = client
-                    .communication(validate_msg)
-                    .await
-                    .unwrap()
-                    .into_inner();
-
-                if !reply.success {
-                    return false;
-                }
-                // let r = recv.await.unwrap();
-                // if !r.success {
-                //     return false;
-                // }
+        if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::ford {
+            if self.read_set.is_empty() {
+                // println!("read set is null");
                 return true;
             }
-            DtxType::meerkat => {
-                let mut write_set = Vec::new();
-                for iter in self.write_set.iter() {
-                    write_set.push(iter.read().await.clone());
-                }
-                let vadilate_msg = Msg {
-                    txn_id: self.txn_id,
-                    read_set: self.read_set.clone(),
-                    write_set: write_set.clone(),
-                    op: TxnOp::Validate.into(),
-                    success: true,
-                    ts: Some(self.commit_ts),
-                };
-                let reply = self.sync_broadcast(vadilate_msg).await;
-                // check fast path
-                let mut reply_success = 0;
-                for iter in reply.iter() {
-                    if iter.success {
-                        reply_success += 1;
-                    }
-                }
-                if reply_success == 0 {
-                    // fast path abort
-                    return false;
-                } else if reply_success == 3 {
-                    // fast path commit
-                    return true;
-                }
-                // slow path
-                let success = if reply_success == 1 { false } else { true };
-                let vadilate_msg = Msg {
-                    txn_id: self.txn_id,
-                    read_set: self.read_set.clone(),
-                    write_set: write_set.clone(),
-                    op: TxnOp::Accept.into(),
-                    success,
-                    ts: Some(self.commit_ts),
-                };
-                let _reply = self.sync_broadcast(vadilate_msg).await;
-                return success;
-            }
-        }
-    }
-
-    async fn oto_validate(&mut self) -> bool {
-        if self.write_set.len() > 0 {
-            // validate ts
-            let success = self
-                .cto_client
-                .set_commit_ts(Ts { ts: self.commit_ts })
+            let validate_msg = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_set.clone(),
+                write_set: Vec::new(),
+                op: TxnOp::Validate.into(),
+                success: true,
+                ts: None,
+            };
+            let server_id = self.id % 3;
+            let client = self.data_clients.get_mut(0 as usize).unwrap();
+            let mut aclient = client.clone();
+            // let (sender, recv) = oneshot::channel();
+            let t_msg = validate_msg.clone();
+            // tokio::spawn(async move {
+            //     sender.send(aclient.communication(t_msg).await.unwrap().into_inner());
+            // });
+            let reply = client
+                .communication(validate_msg)
                 .await
                 .unwrap()
-                .into_inner()
-                .success;
+                .into_inner();
+
+            if !reply.success {
+                return false;
+            }
+            // let r = recv.await.unwrap();
+            // if !r.success {
+            //     return false;
+            // }
+            return true;
+        } else if self.dtx_type == DtxType::meerkat {
+            let mut write_set = Vec::new();
+            for iter in self.write_set.iter() {
+                write_set.push(iter.read().await.clone());
+            }
+            let vadilate_msg = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_set.clone(),
+                write_set: write_set.clone(),
+                op: TxnOp::Validate.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+            };
+            let reply = self.sync_broadcast(vadilate_msg).await;
+            // check fast path
+            let mut reply_success = 0;
+            for iter in reply.iter() {
+                if iter.success {
+                    reply_success += 1;
+                }
+            }
+            if reply_success == 0 {
+                // fast path abort
+                return false;
+            } else if reply_success == 3 {
+                // fast path commit
+                return true;
+            }
+            // slow path
+            let success = if reply_success == 1 { false } else { true };
+            let vadilate_msg = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_set.clone(),
+                write_set: write_set.clone(),
+                op: TxnOp::Accept.into(),
+                success,
+                ts: Some(self.commit_ts),
+            };
+            let _reply = self.sync_broadcast(vadilate_msg).await;
             return success;
         }
-        true
+        return true;
     }
 
     async fn sync_broadcast(&mut self, msg: Msg) -> Vec<Msg> {

@@ -45,7 +45,7 @@ async fn small_bank_run_transaction(coordinator: &mut DtxCoordinator) -> bool {
 
 // It returns the sum of savings and checking balances for the specified customer
 async fn balance(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(true).await;
     // get cid
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
@@ -68,7 +68,7 @@ async fn balance(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn deposit_checking(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(false).await;
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
     let (status, result) = coordinator.tx_exe().await;
@@ -94,7 +94,7 @@ async fn deposit_checking(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn transac_saving(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(false).await;
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
     let (status, result) = coordinator.tx_exe().await;
@@ -125,7 +125,7 @@ async fn transac_saving(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(false).await;
     let c_name_from = get_c_id();
     let c_name_to = get_c_id();
     coordinator.add_read_to_execute(c_name_from, ACCOUNT_TABLE);
@@ -169,7 +169,7 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn write_check(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(false).await;
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
     let (status, result) = coordinator.tx_exe().await;

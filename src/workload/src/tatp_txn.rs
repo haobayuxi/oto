@@ -46,7 +46,7 @@ pub async fn tatp_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u12
 }
 
 async fn tx_get_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(true).await;
 
     // build key
     let s_id = get_sid();
@@ -61,7 +61,7 @@ async fn tx_get_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(true).await;
 
     // build key
     let s_id = get_sid();
@@ -102,7 +102,7 @@ async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn tx_get_access_data(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(true).await;
 
     // build key
     let s_id = get_sid();
@@ -119,7 +119,7 @@ async fn tx_get_access_data(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(false).await;
     // build key
     let s_id = get_sid();
     coordinator.add_read_to_execute(s_id, SUBSCRIBER_TABLE);
@@ -152,7 +152,7 @@ async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
 }
 
 async fn tx_update_lcoation(coordinator: &mut DtxCoordinator) -> bool {
-    coordinator.tx_begin().await;
+    coordinator.tx_begin(false).await;
     // build key
     let s_id = get_sid();
     coordinator.add_read_to_execute(s_id, SUBSCRIBER_TABLE);

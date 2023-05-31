@@ -37,7 +37,8 @@ async fn run_transaction(
     read_set: Vec<ReadStruct>,
     write_set: Vec<ReadStruct>,
 ) -> bool {
-    coordinator.tx_begin().await;
+    let read_only = write_set.is_empty();
+    coordinator.tx_begin(read_only).await;
     for iter in read_set {
         coordinator.add_read_to_execute(iter.key, iter.table_id);
     }

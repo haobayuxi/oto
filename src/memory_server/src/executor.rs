@@ -40,13 +40,8 @@ impl Executor {
                                 continue;
                             }
                             reply.read_set = read_result;
-                            let success = lock_write_set(
-                                coor_msg.msg.write_set,
-                                coor_msg.msg.txn_id,
-                                ts,
-                                self.dtx_type,
-                            )
-                            .await;
+                            let success =
+                                lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id).await;
                             reply.success = success;
 
                             coor_msg.call_back.send(reply);

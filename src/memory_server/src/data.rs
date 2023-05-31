@@ -23,86 +23,68 @@ pub fn init_data(txn_type: DbType) {
 
 pub async fn validate(msg: Msg, dtx_type: DtxType) -> bool {
     unsafe {
-        match dtx_type {
-            DtxType::meerkat => {
-                let mut abort = false;
-                for read in msg.read_set.iter() {
-                    let key = read.key;
-                    let table = &mut DATA[read.table_id as usize];
-                    match table.get_mut(&read.key) {
-                        Some(lock) => {
-                            let mut guard = lock.write().await;
+        if dtx_type == DtxType::meerkat {
+            let mut abort = false;
+            for read in msg.read_set.iter() {
+                let key = read.key;
+                let table = &mut DATA[read.table_id as usize];
+                match table.get_mut(&read.key) {
+                    Some(lock) => {
+                        let mut guard = lock.write().await;
 
-                            if msg.ts() < guard.ts
-                                || (guard.prepared_write.len() > 0
-                                    && msg.ts() < *guard.prepared_write.iter().min().unwrap())
-                            {
-                                abort = true;
-                                break;
-                            }
-                            // insert ts to prepared read
-                            guard.prepared_read.insert(msg.ts());
+                        if msg.ts() < guard.ts
+                            || (guard.prepared_write.len() > 0
+                                && msg.ts() < *guard.prepared_write.iter().min().unwrap())
+                        {
+                            abort = true;
+                            break;
                         }
-                        None => return false,
+                        // insert ts to prepared read
+                        guard.prepared_read.insert(msg.ts());
                     }
+                    None => return false,
                 }
-                if !abort {
-                    for write in msg.write_set.iter() {
-                        let table = &mut DATA[write.table_id as usize];
-                        match table.get_mut(&write.key) {
-                            Some(lock) => {
-                                let mut guard = lock.write().await;
-                                if msg.ts() < guard.rts
-                                    || (guard.prepared_read.len() > 0
-                                        && msg.ts() < *guard.prepared_read.iter().max().unwrap())
-                                {
-                                    // abort the txn
-                                    abort = true;
-                                    break;
-                                }
-                                guard.prepared_write.insert(msg.ts());
-                            }
-                            None => return false,
-                        }
-                    }
-                }
-                return !abort;
             }
-            DtxType::ford => {
-                for iter in msg.read_set {
-                    let table = &mut DATA[iter.table_id as usize];
-                    match table.get_mut(&iter.key).unwrap().try_read() {
-                        Ok(guard) => {
-                            // insert into result
-                            if guard.ts < iter.timestamp() {
-                                return false;
-                            }
-                        }
-                        Err(_) => {
-                            // has been locked
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            }
-            DtxType::oto => {
+            if !abort {
                 for write in msg.write_set.iter() {
                     let table = &mut DATA[write.table_id as usize];
                     match table.get_mut(&write.key) {
                         Some(lock) => {
-                            let guard = lock.write().await;
-                            if msg.ts() < guard.rts {
+                            let mut guard = lock.write().await;
+                            if msg.ts() < guard.rts
+                                || (guard.prepared_read.len() > 0
+                                    && msg.ts() < *guard.prepared_read.iter().max().unwrap())
+                            {
                                 // abort the txn
-                                return false;
+                                abort = true;
+                                break;
                             }
+                            guard.prepared_write.insert(msg.ts());
                         }
                         None => return false,
                     }
                 }
-                return true;
             }
+            return !abort;
+        } else if (dtx_type == DtxType::ford || dtx_type == DtxType::rocc) {
+            for iter in msg.read_set {
+                let table = &mut DATA[iter.table_id as usize];
+                match table.get_mut(&iter.key).unwrap().try_read() {
+                    Ok(guard) => {
+                        // insert into result
+                        if guard.ts < iter.timestamp() {
+                            return false;
+                        }
+                    }
+                    Err(_) => {
+                        // has been locked
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
+        return true;
     }
 }
 
@@ -117,24 +99,9 @@ pub async fn get_read_set(
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(rwlock) => {
-                    let mut guard = rwlock.write().await;
-                    if dtx_type == DtxType::oto {
-                        if guard.ts > ts {
-                            // write by a larger ts
-                            return (false, result);
-                        }
-                        if guard.rts < ts {
-                            guard.rts = ts;
-                        }
-                        let read_struct = ReadStruct {
-                            key: iter.key,
-                            table_id: iter.table_id,
-                            value: Some(guard.data.clone()),
-                            timestamp: Some(guard.ts),
-                        };
-                        result.push(read_struct);
-                    } else if dtx_type == DtxType::ford && guard.is_locked() {
-                        // has been locked
+                    let guard = rwlock.write().await;
+                    if (dtx_type == DtxType::rocc || dtx_type == DtxType::ford) && guard.is_locked()
+                    {
                         return (false, result);
                     } else {
                         let read_struct = ReadStruct {
@@ -153,25 +120,13 @@ pub async fn get_read_set(
     }
 }
 
-pub async fn lock_write_set(
-    write_set: Vec<ReadStruct>,
-    txn_id: u64,
-    ts: u64,
-    dtx_type: DtxType,
-) -> bool {
+pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> bool {
     unsafe {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(lock) => {
                     let mut guard = lock.write().await;
-                    if dtx_type == DtxType::oto {
-                        if guard.ts > ts || guard.rts > ts {
-                            return false;
-                        }
-                        guard.ts = ts;
-                        continue;
-                    }
                     if !guard.set_lock(txn_id) {
                         return false;
                     }
