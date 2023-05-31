@@ -61,6 +61,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 server_addr,
             )
             .await;
+
             match db_type {
                 DbType::micro => {
                     sender
