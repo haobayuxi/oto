@@ -168,7 +168,7 @@ impl DtxCoordinator {
                             success: true,
                             ts: Some(self.commit_ts),
                         };
-                        let client = self.data_clients.get_mut(server_id as usize).unwrap();
+                        let client = self.data_clients.get_mut(0 as usize).unwrap();
 
                         let reply: Msg = client.communication(read).await.unwrap().into_inner();
                         success = reply.success;
