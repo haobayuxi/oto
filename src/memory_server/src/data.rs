@@ -91,6 +91,7 @@ pub async fn validate(msg: Msg, dtx_type: DtxType) -> bool {
 pub async fn get_read_set(
     read_set: Vec<ReadStruct>,
     ts: u64,
+    txn_id: u64,
     dtx_type: DtxType,
 ) -> (bool, Vec<ReadStruct>) {
     let mut result = Vec::new();
@@ -99,19 +100,24 @@ pub async fn get_read_set(
             let table = &mut DATA[iter.table_id as usize];
             match table.get_mut(&iter.key) {
                 Some(rwlock) => {
-                    let guard = rwlock.write().await;
+                    let mut guard = rwlock.write().await;
                     if (dtx_type == DtxType::rocc || dtx_type == DtxType::ford) && guard.is_locked()
                     {
                         return (false, result);
-                    } else {
-                        let read_struct = ReadStruct {
-                            key: iter.key,
-                            table_id: iter.table_id,
-                            value: Some(guard.data.clone()),
-                            timestamp: Some(guard.ts),
-                        };
-                        result.push(read_struct);
                     }
+                    if dtx_type == DtxType::r2pl {
+                        // set read lock
+                        if !guard.set_read_lock(txn_id) {
+                            return (false, result);
+                        }
+                    }
+                    let read_struct = ReadStruct {
+                        key: iter.key,
+                        table_id: iter.table_id,
+                        value: Some(guard.data.clone()),
+                        timestamp: Some(guard.ts),
+                    };
+                    result.push(read_struct);
                 }
                 None => return (false, result),
             }
@@ -128,6 +134,24 @@ pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> bool {
                 Some(lock) => {
                     let mut guard = lock.write().await;
                     if !guard.set_lock(txn_id) {
+                        return false;
+                    }
+                }
+                None => return false,
+            }
+        }
+        true
+    }
+}
+
+pub async fn release_read_set(read_set: Vec<ReadStruct>, txn_id: u64) -> bool {
+    unsafe {
+        for iter in read_set.iter() {
+            let table = &mut DATA[iter.table_id as usize];
+            match table.get_mut(&iter.key) {
+                Some(lock) => {
+                    let mut guard = lock.write().await;
+                    if !guard.release_read_lock(txn_id) {
                         return false;
                     }
                 }

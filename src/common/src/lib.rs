@@ -3,7 +3,7 @@ pub mod throughput_statistics;
 pub mod txn;
 
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeSet, HashSet},
     sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT},
     vec,
 };
@@ -28,6 +28,7 @@ pub static TXNS_PER_CLIENT: u64 = 15000;
 #[derive(Clone)]
 pub struct Tuple {
     lock_txn_id: u64, // 0 state for no lock
+    read_lock: HashSet<u64>,
     pub ts: u64,
     pub data: String,
     // meerkat meta
@@ -45,6 +46,7 @@ impl Tuple {
             prepared_read: BTreeSet::new(),
             prepared_write: BTreeSet::new(),
             rts: 0,
+            read_lock: HashSet::new(),
         }
     }
 
@@ -68,6 +70,18 @@ impl Tuple {
             self.lock_txn_id = 0;
         }
     }
+
+    pub fn set_read_lock(&mut self, txn_id: u64) -> bool {
+        if self.lock_txn_id != 0 {
+            return false;
+        }
+        self.read_lock.insert(txn_id);
+        return true;
+    }
+    pub fn release_read_lock(&mut self, txn_id: u64) -> bool {
+        self.read_lock.remove(&txn_id);
+        return true;
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -83,6 +97,7 @@ pub struct ConfigInFile {
 pub enum DtxType {
     rocc,
     r2pl,
+    spanner,
     ford,
     meerkat,
 }

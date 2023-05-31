@@ -8,7 +8,8 @@ use rpc::common::Msg;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 use crate::data::{
-    get_read_set, lock_write_set, releass_locks, update_and_release_locks, validate,
+    get_read_set, lock_write_set, release_read_set, releass_locks, update_and_release_locks,
+    validate,
 };
 
 pub struct Executor {
@@ -30,9 +31,13 @@ impl Executor {
                             let mut reply = Msg::default();
                             // get the data and lock the write set
                             let ts = coor_msg.msg.ts();
-                            let (success, read_result) =
-                                get_read_set(coor_msg.msg.read_set.clone(), ts, self.dtx_type)
-                                    .await;
+                            let (success, read_result) = get_read_set(
+                                coor_msg.msg.read_set.clone(),
+                                ts,
+                                coor_msg.msg.txn_id,
+                                self.dtx_type,
+                            )
+                            .await;
                             if !success {
                                 // send back failure
                                 reply.success = false;
@@ -50,6 +55,13 @@ impl Executor {
                             // update and release the lock
                             // let txn_id = coor_msg.msg.txn_id;
                             // let msg = self.txns.remove(&txn_id).unwrap();
+                            if self.dtx_type == DtxType::r2pl {
+                                release_read_set(
+                                    coor_msg.msg.read_set.clone(),
+                                    coor_msg.msg.txn_id,
+                                )
+                                .await;
+                            }
                             update_and_release_locks(coor_msg.msg, self.dtx_type).await;
                             let mut reply = Msg::default();
                             reply.success = true;

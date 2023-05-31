@@ -116,112 +116,42 @@ impl DtxCoordinator {
         let mut success = true;
         let mut result = Vec::new();
         let server_id = self.id % 3;
-        match self.dtx_type {
-            DtxType::rocc => {
-                if self.read_only {
-                    let read = Msg {
+        if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::r2pl {
+            if self.read_only {
+                let read = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_to_execute.clone(),
+                    write_set: Vec::new(),
+                    op: TxnOp::Execute.into(),
+                    success: true,
+                    ts: Some(self.commit_ts),
+                };
+                let client = self.data_clients.get_mut(server_id as usize).unwrap();
+
+                let reply: Msg = client.communication(read).await.unwrap().into_inner();
+                success = reply.success;
+                result = reply.read_set;
+            } else {
+                if !self.write_to_execute.is_empty() {
+                    let execute = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
-                        write_set: Vec::new(),
-                        op: TxnOp::Execute.into(),
-                        success: true,
-                        ts: Some(self.commit_ts),
-                    };
-                    let client = self.data_clients.get_mut(server_id as usize).unwrap();
-
-                    let reply: Msg = client.communication(read).await.unwrap().into_inner();
-                    success = reply.success;
-                    result = reply.read_set;
-                } else {
-                    if !self.write_to_execute.is_empty() {
-                        let execute = Msg {
-                            txn_id: self.txn_id,
-                            read_set: self.read_to_execute.clone(),
-                            write_set,
-                            op: TxnOp::Execute.into(),
-                            success: true,
-                            ts: Some(self.commit_ts),
-                        };
-                        let replies = self.sync_broadcast(execute).await;
-                        for iter in replies.iter() {
-                            if !iter.success {
-                                success = false;
-                            }
-                        }
-                        result = replies[0].read_set.clone();
-                        // if !commit_ts_recv.await.unwrap() {
-                        //     success = false;
-                        // }
-                    } else {
-                        let read = Msg {
-                            txn_id: self.txn_id,
-                            read_set: self.read_to_execute.clone(),
-                            write_set: Vec::new(),
-                            op: TxnOp::Execute.into(),
-                            success: true,
-                            ts: Some(self.commit_ts),
-                        };
-                        let client = self.data_clients.get_mut(server_id as usize).unwrap();
-
-                        let reply: Msg = client.communication(read).await.unwrap().into_inner();
-                        success = reply.success;
-                        result = reply.read_set;
-                    }
-                }
-            }
-            DtxType::ford => {
-                let (sender, mut recv) = unbounded_channel::<Msg>();
-                let need_lock = if !self.write_to_execute.is_empty() {
-                    true
-                } else {
-                    false
-                };
-                if need_lock {
-                    // lock the write
-                    let lock = Msg {
-                        txn_id: self.txn_id,
-                        read_set: Vec::new(),
                         write_set,
                         op: TxnOp::Execute.into(),
                         success: true,
                         ts: Some(self.commit_ts),
                     };
-                    // lock the primary
-                    let mut client = self.data_clients.get_mut(2).unwrap().clone();
-                    tokio::spawn(async move {
-                        let reply = client.communication(lock).await.unwrap().into_inner();
-                        sender.send(reply);
-                    });
-                }
-                if !self.read_to_execute.is_empty() {
-                    let read = Msg {
-                        txn_id: self.txn_id,
-                        read_set: self.read_to_execute.clone(),
-                        write_set: Vec::new(),
-                        op: TxnOp::Execute.into(),
-                        success: true,
-                        ts: Some(self.commit_ts),
-                    };
-                    let client: &mut DataServiceClient<Channel> =
-                        self.data_clients.get_mut(2 as usize).unwrap();
-
-                    let reply: Msg = client.communication(read).await.unwrap().into_inner();
-                    success = reply.success;
-                    result = reply.read_set;
-                }
-                if need_lock {
-                    let lock_reply = recv.recv().await.unwrap();
-                    if !lock_reply.success {
-                        success = false;
-                    } else {
-                        for iter in lock_reply.write_set.iter() {
-                            self.write_tuple_ts.push(iter.timestamp());
+                    let replies = self.sync_broadcast(execute).await;
+                    for iter in replies.iter() {
+                        if !iter.success {
+                            success = false;
                         }
                     }
-                }
-            }
-            DtxType::meerkat => {
-                if !self.read_to_execute.is_empty() {
+                    result = replies[0].read_set.clone();
+                    // if !commit_ts_recv.await.unwrap() {
+                    //     success = false;
+                    // }
+                } else {
                     let read = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
@@ -237,7 +167,72 @@ impl DtxCoordinator {
                     result = reply.read_set;
                 }
             }
-            DtxType::r2pl => todo!(),
+        } else if self.dtx_type == DtxType::ford {
+            let (sender, mut recv) = unbounded_channel::<Msg>();
+            let need_lock = if !self.write_to_execute.is_empty() {
+                true
+            } else {
+                false
+            };
+            if need_lock {
+                // lock the write
+                let lock = Msg {
+                    txn_id: self.txn_id,
+                    read_set: Vec::new(),
+                    write_set,
+                    op: TxnOp::Execute.into(),
+                    success: true,
+                    ts: Some(self.commit_ts),
+                };
+                // lock the primary
+                let mut client = self.data_clients.get_mut(2).unwrap().clone();
+                tokio::spawn(async move {
+                    let reply = client.communication(lock).await.unwrap().into_inner();
+                    sender.send(reply);
+                });
+            }
+            if !self.read_to_execute.is_empty() {
+                let read = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_to_execute.clone(),
+                    write_set: Vec::new(),
+                    op: TxnOp::Execute.into(),
+                    success: true,
+                    ts: Some(self.commit_ts),
+                };
+                let client: &mut DataServiceClient<Channel> =
+                    self.data_clients.get_mut(2 as usize).unwrap();
+
+                let reply: Msg = client.communication(read).await.unwrap().into_inner();
+                success = reply.success;
+                result = reply.read_set;
+            }
+            if need_lock {
+                let lock_reply = recv.recv().await.unwrap();
+                if !lock_reply.success {
+                    success = false;
+                } else {
+                    for iter in lock_reply.write_set.iter() {
+                        self.write_tuple_ts.push(iter.timestamp());
+                    }
+                }
+            }
+        } else if self.dtx_type == DtxType::meerkat {
+            if !self.read_to_execute.is_empty() {
+                let read = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_to_execute.clone(),
+                    write_set: Vec::new(),
+                    op: TxnOp::Execute.into(),
+                    success: true,
+                    ts: Some(self.commit_ts),
+                };
+                let client = self.data_clients.get_mut(server_id as usize).unwrap();
+
+                let reply: Msg = client.communication(read).await.unwrap().into_inner();
+                success = reply.success;
+                result = reply.read_set;
+            }
         }
 
         self.read_set.extend(result.clone());
@@ -262,7 +257,7 @@ impl DtxCoordinator {
             }
             let commit = Msg {
                 txn_id: self.txn_id,
-                read_set: Vec::new(),
+                read_set: self.read_set.clone(),
                 write_set: write_set.clone(),
                 op: TxnOp::Commit.into(),
                 success: true,
@@ -279,7 +274,7 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                 };
                 self.sync_broadcast(lock).await;
-            } else if self.dtx_type == DtxType::rocc {
+            } else if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::r2pl {
                 let accept = Msg {
                     txn_id: self.txn_id,
                     read_set: Vec::new(),
@@ -365,7 +360,9 @@ impl DtxCoordinator {
     }
 
     async fn validate(&mut self) -> bool {
-        if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::ford {
+        if self.dtx_type == DtxType::r2pl {
+            return true;
+        } else if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::ford {
             if self.read_set.is_empty() {
                 // println!("read set is null");
                 return true;
