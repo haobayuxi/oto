@@ -6,6 +6,7 @@ use rpc::common::{
 };
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::thread::sleep as STDSleep;
 use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::oneshot;
 use tokio::sync::RwLock;
@@ -201,7 +202,7 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                 };
                 let client: &mut DataServiceClient<Channel> =
-                    self.data_clients.get_mut(2 as usize).unwrap();
+                    self.data_clients.get_mut(server_id as usize).unwrap();
 
                 let reply: Msg = client.communication(read).await.unwrap().into_inner();
                 success = reply.success;
@@ -243,9 +244,7 @@ impl DtxCoordinator {
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
-        if self.dtx_type == DtxType::meerkat {
-            self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
-        }
+        self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
         if self.validate().await {
             if self.write_set.is_empty() && self.dtx_type != DtxType::meerkat {
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
@@ -284,11 +283,7 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                 };
                 self.sync_broadcast(accept).await;
-                // get commit ts
-                // let mut guard = self.local_ts.write().await;
-                // if *guard < self.commit_ts {
-                //     *guard = self.commit_ts;
-                // }
+                STDSleep(Duration::from_micros(1));
             }
             // broadcast
             self.async_broadcast_commit(commit).await;
@@ -377,12 +372,12 @@ impl DtxCoordinator {
             };
             let server_id = self.id % 3;
             let client = self.data_clients.get_mut(server_id as usize).unwrap();
-            let mut aclient = client.clone();
-            // let (sender, recv) = oneshot::channel();
-            let t_msg = validate_msg.clone();
-            // tokio::spawn(async move {
-            //     sender.send(aclient.communication(t_msg).await.unwrap().into_inner());
-            // });
+            // let mut aclient = client.clone();
+            // // let (sender, recv) = oneshot::channel();
+            // let t_msg = validate_msg.clone();
+            // // tokio::spawn(async move {
+            // //     sender.send(aclient.communication(t_msg).await.unwrap().into_inner());
+            // // });
             let reply = client
                 .communication(validate_msg)
                 .await
