@@ -12,19 +12,17 @@ use rpc::common::{
     Echo, Msg, Throughput,
 };
 use tokio::sync::{
-    mpsc::{unbounded_channel, UnboundedSender},
+    mpsc::{channel, unbounded_channel, UnboundedSender},
     oneshot,
 };
 use tonic::{transport::Server, Request, Response, Status};
 
-use crate::{data::init_data, executor::Executor};
+use crate::{data::init_data, dep_graph::DepGraph, executor::Executor};
 
 pub struct RpcServer {
     executor_num: u64,
     addr_to_listen: String,
     sender: Arc<HashMap<u64, UnboundedSender<CoordnatorMsg>>>,
-    // read_only_committed: Arc<AtomicU64>,
-    // read_write_committed: Arc<AtomicU64>,
 }
 
 impl RpcServer {
@@ -32,15 +30,11 @@ impl RpcServer {
         executor_num: u64,
         addr_to_listen: String,
         sender: Arc<HashMap<u64, UnboundedSender<CoordnatorMsg>>>,
-        read_only_committed: Arc<AtomicU64>,
-        read_write_committed: Arc<AtomicU64>,
     ) -> Self {
         Self {
             executor_num,
             sender,
             addr_to_listen,
-            // read_only_committed,
-            // read_write_committed,
         }
     }
 }
@@ -76,19 +70,17 @@ pub struct DataServer {
     executor_num: u64,
     executor_senders: HashMap<u64, UnboundedSender<CoordnatorMsg>>,
     config: Config,
-    read_only_committed: Arc<AtomicU64>,
-    read_write_committed: Arc<AtomicU64>,
+    client_num: u64,
 }
 
 impl DataServer {
-    pub fn new(server_id: u32, config: Config) -> Self {
+    pub fn new(server_id: u32, config: Config, client_num: u64) -> Self {
         Self {
             server_id,
             executor_num: config.executor_num,
             executor_senders: HashMap::new(),
             config,
-            read_only_committed: Arc::new(AtomicU64::new(0)),
-            read_write_committed: Arc::new(AtomicU64::new(0)),
+            client_num,
         }
     }
 
@@ -99,35 +91,31 @@ impl DataServer {
         // start server for client to connect
         let listen_ip = self.config.server_addr[self.server_id as usize].clone();
         println!("server listen ip {}", listen_ip);
-        let server = RpcServer::new(
-            self.executor_num,
-            listen_ip,
-            executor_senders,
-            self.read_only_committed.clone(),
-            self.read_write_committed.clone(),
-        );
+        let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
         run_rpc_server(server).await;
     }
 
     fn init_executors(&mut self, db_type: DbType, dtx_type: DtxType) {
+        let (dep_sender, dep_recv) = channel(1000);
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(
-                i, receiver,
-                dtx_type,
-                // self.read_only_committed.clone(),
-                // self.read_write_committed.clone(),
-            );
+            let mut exec = Executor::new(i, receiver, dtx_type, dep_sender.clone());
             tokio::spawn(async move {
                 exec.run().await;
+            });
+        }
+        if dtx_type == DtxType::janus {
+            let mut dep = DepGraph::new(dep_recv, 0);
+            tokio::spawn(async move {
+                dep.run().await;
             });
         }
     }
 
     pub async fn init_and_run(&mut self, db_type: DbType, dtx_type: DtxType) {
-        init_data(db_type);
+        init_data(db_type, self.client_num);
         self.init_executors(db_type, dtx_type);
         self.init_rpc(Arc::new(self.executor_senders.clone())).await;
     }

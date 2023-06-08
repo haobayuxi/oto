@@ -26,6 +26,7 @@ message Msg {
     common.TxnOP op = 4;
     bool success = 6;
     optional uint64 ts = 7;
+    repeated uint64 deps = 8;
 }
 
 

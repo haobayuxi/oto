@@ -23,12 +23,15 @@ pub static SAVING_TABLE: i32 = 0;
 pub static CHECKING_TABLE: i32 = 1;
 pub static ACCOUNT_TABLE: i32 = 2;
 
-pub static TXNS_PER_CLIENT: u64 = 15000;
+pub static TXNS_PER_CLIENT: u64 = 10000;
+pub static CID_LEN: u32 = 50;
 
 #[derive(Clone)]
 pub struct Tuple {
     lock_txn_id: u64, // 0 state for no lock
     read_lock: HashSet<u64>,
+    // janus meta
+    pub last_accessed: u64,
     pub ts: u64,
     pub data: String,
     // meerkat meta
@@ -47,6 +50,7 @@ impl Tuple {
             prepared_write: BTreeSet::new(),
             rts: 0,
             read_lock: HashSet::new(),
+            last_accessed: 0,
         }
     }
 
@@ -100,6 +104,7 @@ pub enum DtxType {
     spanner,
     ford,
     meerkat,
+    janus,
 }
 
 #[derive(Clone, Serialize, Deserialize, Copy)]

@@ -23,6 +23,8 @@ pub struct Msg {
     pub success: bool,
     #[prost(uint64, optional, tag = "7")]
     pub ts: ::core::option::Option<u64>,
+    #[prost(uint64, repeated, tag = "8")]
+    pub deps: ::prost::alloc::vec::Vec<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Echo {

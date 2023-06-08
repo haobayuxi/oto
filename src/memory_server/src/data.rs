@@ -7,10 +7,16 @@ use workload::{
     micro_db::init_micro_db, small_bank_db::init_smallbank_db, tatp_db::init_tatp_data,
 };
 
+use crate::dep_graph::TXNS;
+
 pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
 
-pub fn init_data(txn_type: DbType) {
+pub fn init_data(txn_type: DbType, client_num: u64) {
     unsafe {
+        for _ in 0..client_num {
+            let in_memory_node = Vec::new();
+            TXNS.push(in_memory_node);
+        }
         match txn_type {
             DbType::micro => {
                 DATA = init_micro_db();
@@ -256,5 +262,45 @@ pub async fn releass_locks(msg: Msg, dtx_type: DtxType) {
                 }
             }
         }
+    }
+}
+
+pub async fn get_deps(msg: Msg) -> (bool, Vec<u64>) {
+    unsafe {
+        let mut result = Vec::new();
+
+        for read in msg.read_set.iter() {
+            let table = &mut DATA[read.table_id as usize];
+            match table.get_mut(&read.key) {
+                Some(lock) => {
+                    let mut guard = lock.write().await;
+                    if !result.contains(&guard.last_accessed) {
+                        result.push(guard.last_accessed);
+                    }
+                    guard.last_accessed = msg.txn_id;
+                }
+                None => {
+                    return (false, result);
+                }
+            }
+        }
+
+        for write in msg.write_set.iter() {
+            let table = &mut DATA[write.table_id as usize];
+            match table.get_mut(&write.key) {
+                Some(lock) => {
+                    let mut guard = lock.write().await;
+                    if !result.contains(&guard.last_accessed) {
+                        result.push(guard.last_accessed);
+                    }
+                    guard.last_accessed = msg.txn_id;
+                }
+                None => {
+                    return (false, result);
+                }
+            }
+        }
+
+        return (true, result);
     }
 }

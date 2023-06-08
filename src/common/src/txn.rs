@@ -14,9 +14,9 @@ use tokio::time::sleep;
 use tokio::time::Duration;
 use tonic::transport::Channel;
 
-use crate::ip_addr_add_prefix;
 use crate::DtxType;
 use crate::GLOBAL_COMMITTED;
+use crate::{ip_addr_add_prefix, CID_LEN};
 
 async fn init_coordinator_rpc(
     // cto_ip: String,
@@ -55,7 +55,10 @@ pub struct DtxCoordinator {
     read_to_execute: Vec<ReadStruct>,
     write_to_execute: Vec<Arc<RwLock<ReadStruct>>>,
     write_tuple_ts: Vec<u64>,
-    // cto_client: CtoServiceClient<Channel>,
+    // janus
+    fast_commit: bool,
+    deps: Vec<u64>,
+
     data_clients: Vec<DataServiceClient<Channel>>,
     // committed: Arc<AtomicU64>,
 }
@@ -76,7 +79,7 @@ impl DtxCoordinator {
             id,
             local_ts,
             dtx_type,
-            txn_id: id,
+            txn_id: id << CID_LEN,
             // start_ts: 0,
             commit_ts: 0,
             read_set: Vec::new(),
@@ -87,6 +90,8 @@ impl DtxCoordinator {
             write_to_execute: Vec::new(),
             write_tuple_ts: Vec::new(),
             read_only: false,
+            fast_commit: true,
+            deps: Vec::new(),
             // committed,
         }
     }
@@ -100,13 +105,33 @@ impl DtxCoordinator {
         self.write_to_execute.clear();
         self.write_tuple_ts.clear();
         self.read_only = read_only;
+        self.fast_commit = true;
+        self.deps.clear();
         self.commit_ts = 0;
         if self.dtx_type == DtxType::rocc {
             self.commit_ts = self.local_ts.read().await.clone();
         }
     }
 
-    pub async fn tx_exe(&mut self) -> (bool, Vec<ReadStruct>) {
+    pub async fn tx_exe(&mut self, dep_read: bool) -> (bool, Vec<ReadStruct>) {
+        if dep_read {
+            // janus
+            let read = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_to_execute.clone(),
+                write_set: Vec::new(),
+                op: TxnOp::Execute.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+                deps: Vec::new(),
+            };
+            let client = self.data_clients.get_mut(2).unwrap();
+
+            let reply: Msg = client.communication(read).await.unwrap().into_inner();
+            let success = reply.success;
+            let result = reply.read_set;
+            return (success, result);
+        }
         if self.read_to_execute.is_empty() && self.write_to_execute.is_empty() {
             return (true, Vec::new());
         }
@@ -126,6 +151,7 @@ impl DtxCoordinator {
                     op: TxnOp::Execute.into(),
                     success: true,
                     ts: Some(self.commit_ts),
+                    deps: Vec::new(),
                 };
                 let client = self.data_clients.get_mut(server_id as usize).unwrap();
 
@@ -141,6 +167,7 @@ impl DtxCoordinator {
                         op: TxnOp::Execute.into(),
                         success: true,
                         ts: Some(self.commit_ts),
+                        deps: Vec::new(),
                     };
                     let replies = self.sync_broadcast(execute).await;
                     for iter in replies.iter() {
@@ -157,9 +184,10 @@ impl DtxCoordinator {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
                         write_set: Vec::new(),
-                        op: TxnOp::Execute.into(),
                         success: true,
+                        op: TxnOp::Execute.into(),
                         ts: Some(self.commit_ts),
+                        deps: Vec::new(),
                     };
                     let client = self.data_clients.get_mut(server_id as usize).unwrap();
 
@@ -184,6 +212,7 @@ impl DtxCoordinator {
                     op: TxnOp::Execute.into(),
                     success: true,
                     ts: Some(self.commit_ts),
+                    deps: Vec::new(),
                 };
                 // lock the primary
                 let mut client = self.data_clients.get_mut(2).unwrap().clone();
@@ -200,6 +229,7 @@ impl DtxCoordinator {
                     op: TxnOp::Execute.into(),
                     success: true,
                     ts: Some(self.commit_ts),
+                    deps: Vec::new(),
                 };
                 let client: &mut DataServiceClient<Channel> =
                     self.data_clients.get_mut(server_id as usize).unwrap();
@@ -227,6 +257,7 @@ impl DtxCoordinator {
                     op: TxnOp::Execute.into(),
                     success: true,
                     ts: Some(self.commit_ts),
+                    deps: Vec::new(),
                 };
                 let client = self.data_clients.get_mut(server_id as usize).unwrap();
 
@@ -234,6 +265,33 @@ impl DtxCoordinator {
                 success = reply.success;
                 result = reply.read_set;
             }
+        } else if self.dtx_type == DtxType::janus {
+            let execute = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_to_execute.clone(),
+                write_set,
+                op: TxnOp::Execute.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+                deps: Vec::new(),
+            };
+            let replies = self.sync_broadcast(execute).await;
+            self.deps = replies[0].deps.clone();
+            for i in 1..=2 {
+                if !replies[i].success {
+                    success = false;
+                }
+                if replies[i].deps != self.deps {
+                    self.fast_commit = false;
+                    for iter in replies[i].deps.iter() {
+                        if !self.deps.contains(iter) {
+                            self.deps.push(*iter);
+                        }
+                    }
+                }
+            }
+
+            result = replies[0].read_set.clone();
         }
 
         self.read_set.extend(result.clone());
@@ -261,6 +319,7 @@ impl DtxCoordinator {
                 op: TxnOp::Commit.into(),
                 success: true,
                 ts: Some(self.commit_ts),
+                deps: self.deps.clone(),
             };
             if self.dtx_type == DtxType::ford {
                 // broadcast to lock the back
@@ -271,6 +330,7 @@ impl DtxCoordinator {
                     op: TxnOp::Execute.into(),
                     success: true,
                     ts: Some(self.commit_ts),
+                    deps: Vec::new(),
                 };
                 self.sync_broadcast(lock).await;
             } else if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::r2pl {
@@ -281,9 +341,26 @@ impl DtxCoordinator {
                     op: TxnOp::Accept.into(),
                     success: true,
                     ts: Some(self.commit_ts),
+                    deps: Vec::new(),
                 };
                 self.sync_broadcast(accept).await;
                 STDSleep(Duration::from_micros(1));
+            } else if self.dtx_type == DtxType::janus {
+                if !self.fast_commit {
+                    let accept = Msg {
+                        txn_id: self.txn_id,
+                        read_set: Vec::new(),
+                        write_set: Vec::new(),
+                        op: TxnOp::Accept.into(),
+                        success: true,
+                        ts: Some(self.commit_ts),
+                        deps: self.deps.clone(),
+                    };
+                    self.sync_broadcast(accept).await;
+                }
+                self.sync_broadcast(commit).await;
+                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
+                return true;
             }
             // broadcast
             self.async_broadcast_commit(commit).await;
@@ -312,6 +389,7 @@ impl DtxCoordinator {
                 op: TxnOp::Abort.into(),
                 success: true,
                 ts: Some(self.commit_ts),
+                deps: Vec::new(),
             };
             self.async_broadcast_commit(abort).await;
         } else {
@@ -322,6 +400,7 @@ impl DtxCoordinator {
                 op: TxnOp::Abort.into(),
                 success: true,
                 ts: Some(self.commit_ts),
+                deps: Vec::new(),
             };
             self.async_broadcast_commit(abort).await;
         }
@@ -355,7 +434,7 @@ impl DtxCoordinator {
     }
 
     async fn validate(&mut self) -> bool {
-        if self.dtx_type == DtxType::r2pl {
+        if self.dtx_type == DtxType::r2pl || self.dtx_type == DtxType::janus {
             return true;
         } else if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::ford {
             if self.read_set.is_empty() {
@@ -369,6 +448,7 @@ impl DtxCoordinator {
                 op: TxnOp::Validate.into(),
                 success: true,
                 ts: None,
+                deps: Vec::new(),
             };
             let server_id = self.id % 3;
             let client = self.data_clients.get_mut(server_id as usize).unwrap();
@@ -404,6 +484,7 @@ impl DtxCoordinator {
                 op: TxnOp::Validate.into(),
                 success: true,
                 ts: Some(self.commit_ts),
+                deps: Vec::new(),
             };
             let reply = self.sync_broadcast(vadilate_msg).await;
             // check fast path
@@ -429,6 +510,7 @@ impl DtxCoordinator {
                 op: TxnOp::Accept.into(),
                 success,
                 ts: Some(self.commit_ts),
+                deps: Vec::new(),
             };
             let _reply = self.sync_broadcast(vadilate_msg).await;
             return success;
