@@ -97,7 +97,7 @@ pub struct ConfigInFile {
     pub read_only: bool,
 }
 
-#[derive(PartialEq, Eq, Deserialize, Clone, Copy)]
+#[derive(PartialEq, Eq, Deserialize, Clone, Debug, Copy)]
 pub enum DtxType {
     rocc,
     r2pl,

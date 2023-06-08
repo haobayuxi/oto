@@ -302,6 +302,7 @@ impl DtxCoordinator {
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
+        println!("type = {:?}", self.dtx_type);
         self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
         if self.validate().await {
             if self.write_set.is_empty() && self.dtx_type != DtxType::meerkat {
