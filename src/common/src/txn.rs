@@ -302,13 +302,8 @@ impl DtxCoordinator {
     }
     pub async fn tx_commit(&mut self) -> bool {
         // validate
-        println!("type = {:?}", self.dtx_type);
         self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
         if self.validate().await {
-            if self.write_set.is_empty() && self.dtx_type != DtxType::meerkat {
-                GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
-                return true;
-            }
             let mut write_set = Vec::new();
             for iter in self.write_set.iter() {
                 write_set.push(iter.read().await.clone());
@@ -323,31 +318,34 @@ impl DtxCoordinator {
                 deps: self.deps.clone(),
             };
             if self.dtx_type == DtxType::ford {
-                // broadcast to lock the back
-                let lock = Msg {
-                    txn_id: self.txn_id,
-                    read_set: Vec::new(),
-                    write_set: write_set.clone(),
-                    op: TxnOp::Execute.into(),
-                    success: true,
-                    ts: Some(self.commit_ts),
-                    deps: Vec::new(),
-                };
-                self.sync_broadcast(lock).await;
+                if !self.write_set.is_empty() {
+                    // broadcast to lock the back
+                    let lock = Msg {
+                        txn_id: self.txn_id,
+                        read_set: Vec::new(),
+                        write_set: write_set.clone(),
+                        op: TxnOp::Execute.into(),
+                        success: true,
+                        ts: Some(self.commit_ts),
+                        deps: Vec::new(),
+                    };
+                    self.sync_broadcast(lock).await;
+                }
             } else if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::r2pl {
-                let accept = Msg {
-                    txn_id: self.txn_id,
-                    read_set: Vec::new(),
-                    write_set: Vec::new(),
-                    op: TxnOp::Accept.into(),
-                    success: true,
-                    ts: Some(self.commit_ts),
-                    deps: Vec::new(),
-                };
-                self.sync_broadcast(accept).await;
-                STDSleep(Duration::from_micros(1));
+                if !self.write_set.is_empty() {
+                    let accept = Msg {
+                        txn_id: self.txn_id,
+                        read_set: Vec::new(),
+                        write_set: Vec::new(),
+                        op: TxnOp::Accept.into(),
+                        success: true,
+                        ts: Some(self.commit_ts),
+                        deps: Vec::new(),
+                    };
+                    self.sync_broadcast(accept).await;
+                    STDSleep(Duration::from_micros(1));
+                }
             } else if self.dtx_type == DtxType::janus {
-                println!("janus commit");
                 if !self.fast_commit {
                     let accept = Msg {
                         txn_id: self.txn_id,
@@ -358,23 +356,18 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: self.deps.clone(),
                     };
-                    println!("accept ");
                     self.sync_broadcast(accept).await;
                 }
-                println!("broadcast");
                 self.sync_broadcast(commit).await;
-                println!("commit done");
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
             }
             // broadcast
-            println!("not ");
             self.async_broadcast_commit(commit).await;
 
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
         } else {
-            println!("abort");
             self.tx_abort().await;
             return false;
         }
