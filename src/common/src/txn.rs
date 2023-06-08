@@ -290,7 +290,7 @@ impl DtxCoordinator {
                     }
                 }
             }
-
+            println!("prepare done {}", self.fast_commit);
             result = replies[0].read_set.clone();
         }
 
@@ -356,9 +356,11 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: self.deps.clone(),
                     };
+                    println!("accept ");
                     self.sync_broadcast(accept).await;
                 }
                 self.sync_broadcast(commit).await;
+                println!("commit done");
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
             }
