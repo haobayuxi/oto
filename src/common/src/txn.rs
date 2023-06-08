@@ -366,11 +366,13 @@ impl DtxCoordinator {
                 return true;
             }
             // broadcast
+            println!("not ");
             self.async_broadcast_commit(commit).await;
 
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
         } else {
+            println!("abort");
             self.tx_abort().await;
             return false;
         }
