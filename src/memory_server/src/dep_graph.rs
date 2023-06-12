@@ -10,7 +10,6 @@ use tokio::{
     },
     time::sleep,
 };
-use tonic::Status;
 
 use crate::data::DATA;
 
@@ -51,8 +50,8 @@ impl Node {
     }
     pub fn default() -> Self {
         Self {
-            executed: false,
-            committed: false,
+            executed: true,
+            committed: true,
             txn: None,
             callback: None,
             notify: RwLock::new(Vec::new()),

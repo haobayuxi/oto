@@ -7,14 +7,15 @@ use workload::{
     micro_db::init_micro_db, small_bank_db::init_smallbank_db, tatp_db::init_tatp_data,
 };
 
-use crate::dep_graph::TXNS;
+use crate::dep_graph::{Node, TXNS};
 
 pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
 
 pub fn init_data(txn_type: DbType, client_num: u64) {
     unsafe {
         for _ in 0..client_num {
-            let in_memory_node = Vec::new();
+            let mut in_memory_node = Vec::new();
+            in_memory_node.push(Node::default());
             TXNS.push(in_memory_node);
         }
         match txn_type {

@@ -98,7 +98,7 @@ impl DtxCoordinator {
 
     pub async fn tx_begin(&mut self, read_only: bool) {
         // init coordinator
-        self.txn_id += self.id;
+        self.txn_id += 1;
         self.read_set.clear();
         self.write_set.clear();
         self.read_to_execute.clear();
