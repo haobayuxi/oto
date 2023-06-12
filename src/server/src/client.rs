@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(100);
     let client_num = server_config.client_num;
-    for i in 0..server_config.client_num {
+    for i in 0..client_num {
         let loca_ts_bk = local_ts.clone();
         let cto_addr = config.cto_addr.clone();
         let server_addr = config.server_addr.clone();
