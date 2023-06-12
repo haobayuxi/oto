@@ -106,7 +106,7 @@ impl Executor {
                                 node.txn = Some(coor_msg.msg);
                                 node.committed = true;
                                 node.callback = Some(coor_msg.call_back);
-                                // println!("commit cid={},index={}", client_id, index);
+                                println!("commit cid={},index={}", client_id, index);
                                 // send commit txn to dep_graph
                                 self.send_commit_to_dep_graph.send(txn_id).await;
                                 // }
@@ -124,7 +124,7 @@ impl Executor {
                                 let node = &mut TXNS[client_id as usize][index as usize];
                                 node.executed = true;
                                 node.committed = true;
-                                // println!("abort cid={},index={}", client_id, index);
+                                println!("abort cid={},index={}", client_id, index);
                             } else {
                                 releass_locks(coor_msg.msg, self.dtx_type).await;
                             }
