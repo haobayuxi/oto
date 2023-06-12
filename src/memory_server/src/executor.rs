@@ -111,7 +111,16 @@ impl Executor {
 
                             // let txn_id = coor_msg.msg.txn_id;
                             // let msg = self.txns.remove(&txn_id).unwrap();
-                            releass_locks(coor_msg.msg, self.dtx_type).await;
+                            if self.dtx_type == DtxType::janus {
+                                // mark as executed
+                                let txn_id = coor_msg.msg.txn_id;
+                                let (client_id, index) = get_txnid(txn_id);
+                                let node = &mut TXNS[client_id as usize][index as usize];
+                                node.executed = true;
+                                node.committed = true;
+                            } else {
+                                releass_locks(coor_msg.msg, self.dtx_type).await;
+                            }
                             let mut reply = Msg::default();
                             reply.success = true;
                             coor_msg.call_back.send(reply);
