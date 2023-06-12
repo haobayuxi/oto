@@ -152,8 +152,15 @@ impl DepGraph {
         unsafe {
             let (client_id, index) = get_txnid(txnid);
 
-            println!("commit execute {},{}", client_id, index);
             let node = &TXNS[client_id as usize][index as usize];
+
+            println!(
+                "commit execute {},{}, executed{},deps ={:?}",
+                client_id,
+                index,
+                node.executed,
+                node.txn.as_ref().unwrap().deps
+            );
             if !node.executed {
                 self.find_scc(txnid).await;
             }
