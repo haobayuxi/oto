@@ -99,7 +99,7 @@ impl DepGraph {
             for txnid in txnids {
                 let (client_id, index) = get_txnid(txnid);
 
-                println!("try to execute {},{}", client_id, index);
+                // println!("try to execute {},{}", client_id, index);
                 let node = &mut TXNS[client_id as usize][index as usize];
                 {
                     let notifies = node.notify.write().await;
@@ -154,13 +154,13 @@ impl DepGraph {
 
             let node = &TXNS[client_id as usize][index as usize];
 
-            println!(
-                "commit execute {},{}, executed{},deps ={:?}",
-                client_id,
-                index,
-                node.executed,
-                node.txn.as_ref().unwrap().deps
-            );
+            // println!(
+            //     "commit execute {},{}, executed{},deps ={:?}",
+            //     client_id,
+            //     index,
+            //     node.executed,
+            //     node.txn.as_ref().unwrap().deps
+            // );
             if !node.executed {
                 self.find_scc(txnid).await;
             }
