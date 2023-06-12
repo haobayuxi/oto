@@ -190,7 +190,6 @@ impl DepGraph {
                             sleep(Duration::from_nanos(100)).await;
                         }
                         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
-                        println!("wait for cid={},index={}", dep_clientid, dep_index);
                         while !next.committed {
                             // not committed
                             // sleep(Duration::from_nanos(100)).await;
