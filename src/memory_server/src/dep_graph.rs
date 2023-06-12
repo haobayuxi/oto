@@ -4,7 +4,8 @@ use common::CID_LEN;
 use rpc::common::{Msg, ReadStruct};
 use tokio::{
     sync::{
-        mpsc::{Receiver, Sender, UnboundedSender},
+        mpsc::{Receiver, UnboundedSender},
+        oneshot::Sender,
         RwLock,
     },
     time::sleep,
@@ -133,7 +134,7 @@ impl DepGraph {
                         }
                     }
                 }
-                node.callback.take().unwrap().send(reply).await;
+                node.callback.take().unwrap().send(reply);
                 for iter in txn.write_set.iter() {
                     let table = &mut DATA[iter.table_id as usize];
                     match table.get_mut(&iter.key) {
