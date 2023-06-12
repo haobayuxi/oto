@@ -131,7 +131,7 @@ async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
     let sf_write_obj =
         coordinator.add_write_to_execute(sf_id, SPECIAL_FACILITY_TABLE, "".to_string());
 
-    let (status, read) = coordinator.tx_exe(false).await;
+    let (status, read) = coordinator.tx_exe(true).await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -157,7 +157,7 @@ async fn tx_update_lcoation(coordinator: &mut DtxCoordinator) -> bool {
     let s_id = get_sid();
     coordinator.add_read_to_execute(s_id, SUBSCRIBER_TABLE);
     let sub_write_obj = coordinator.add_write_to_execute(s_id, SUBSCRIBER_TABLE, "".to_string());
-    let (status, read) = coordinator.tx_exe(false).await;
+    let (status, read) = coordinator.tx_exe(true).await;
 
     if !status {
         coordinator.tx_abort().await;
