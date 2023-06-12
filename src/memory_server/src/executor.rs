@@ -68,13 +68,17 @@ impl Executor {
                                 // init node
                                 let txn_id = coor_msg.msg.txn_id;
                                 let (client_id, index) = get_txnid(txn_id);
-                                println!("cid= {}, index={}", client_id, index);
                                 let node = Node::new(coor_msg.msg.clone());
                                 TXNS[client_id as usize].push(node);
                                 let (success, deps, read_results) = get_deps(coor_msg.msg).await;
                                 reply.success = success;
                                 reply.deps = deps;
                                 reply.read_set = read_results;
+
+                                println!(
+                                    "cid= {}, index={}, success = {}",
+                                    client_id, index, success
+                                );
                             }
 
                             coor_msg.call_back.send(reply);
