@@ -70,9 +70,10 @@ impl Executor {
                                 let (client_id, index) = get_txnid(txn_id);
                                 let node = Node::new(coor_msg.msg.clone());
                                 TXNS[client_id as usize].push(node);
-                                let (success, deps) = get_deps(coor_msg.msg).await;
+                                let (success, deps, read_results) = get_deps(coor_msg.msg).await;
                                 reply.success = success;
                                 reply.deps = deps;
+                                reply.read_set = read_results;
                             }
 
                             coor_msg.call_back.send(reply);

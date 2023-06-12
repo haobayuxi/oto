@@ -266,22 +266,30 @@ pub async fn releass_locks(msg: Msg, dtx_type: DtxType) {
     }
 }
 
-pub async fn get_deps(msg: Msg) -> (bool, Vec<u64>) {
+pub async fn get_deps(msg: Msg) -> (bool, Vec<u64>, Vec<ReadStruct>) {
     unsafe {
-        let mut result = Vec::new();
+        let mut deps = Vec::new();
+        let mut read_results = Vec::new();
 
         for read in msg.read_set.iter() {
             let table = &mut DATA[read.table_id as usize];
             match table.get_mut(&read.key) {
                 Some(lock) => {
                     let mut guard = lock.write().await;
-                    if !result.contains(&guard.last_accessed) {
-                        result.push(guard.last_accessed);
+                    if !deps.contains(&guard.last_accessed) {
+                        deps.push(guard.last_accessed);
                     }
                     guard.last_accessed = msg.txn_id;
+                    let read_struct = ReadStruct {
+                        key: read.key,
+                        table_id: read.table_id,
+                        value: Some(guard.data.clone()),
+                        timestamp: Some(guard.ts),
+                    };
+                    read_results.push(read_struct);
                 }
                 None => {
-                    return (false, result);
+                    return (false, deps, read_results);
                 }
             }
         }
@@ -291,17 +299,17 @@ pub async fn get_deps(msg: Msg) -> (bool, Vec<u64>) {
             match table.get_mut(&write.key) {
                 Some(lock) => {
                     let mut guard = lock.write().await;
-                    if !result.contains(&guard.last_accessed) {
-                        result.push(guard.last_accessed);
+                    if !deps.contains(&guard.last_accessed) {
+                        deps.push(guard.last_accessed);
                     }
                     guard.last_accessed = msg.txn_id;
                 }
                 None => {
-                    return (false, result);
+                    return (false, deps, read_results);
                 }
             }
         }
 
-        return (true, result);
+        return (true, deps, read_results);
     }
 }
