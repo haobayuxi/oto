@@ -193,6 +193,13 @@ impl DepGraph {
                             continue;
                         }
                         let (dep_clientid, dep_index) = get_txnid(dep);
+
+                        println!(
+                            " dep {}, {}, len = {}",
+                            dep_clientid,
+                            dep_index,
+                            TXNS[dep_clientid as usize].len()
+                        );
                         while TXNS[dep_clientid as usize].len() + 1 < dep_index as usize {
                             sleep(Duration::from_nanos(100)).await;
                         }
@@ -208,7 +215,6 @@ impl DepGraph {
                         // check if next in the stack
                         if next.dfn < 0 {
                             // not in stack
-                            // println!("push into stack {}, {}", dep_clientid, dep_index);
                             next.dfn = 0;
                             self.stack.push(dep);
                             self.visit += 1;
