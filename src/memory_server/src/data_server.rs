@@ -63,7 +63,10 @@ impl DataService for RpcServer {
         let mut reply = Msg::default();
         match receiver.await {
             Ok(r) => reply = r,
-            Err(e) => println!("err {:?}", e),
+            Err(e) => {
+                println!("err {:?}", e);
+                reply.success = false;
+            }
         }
         Ok(Response::new(reply))
     }
