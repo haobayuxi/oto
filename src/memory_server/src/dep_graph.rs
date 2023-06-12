@@ -193,7 +193,8 @@ impl DepGraph {
                         println!("wait for cid={},index={}", dep_clientid, dep_index);
                         while !next.committed {
                             // not committed
-                            sleep(Duration::from_nanos(100)).await;
+                            // sleep(Duration::from_nanos(100)).await;
+                            continue;
                         }
                         // println!("wait done cid={},index={}", dep_clientid, dep_index);
                         if next.executed {
