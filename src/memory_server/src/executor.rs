@@ -106,7 +106,7 @@ impl Executor {
                                 node.txn = Some(coor_msg.msg);
                                 node.committed = true;
                                 node.callback = Some(coor_msg.call_back);
-                                println!("commit cid={},index={}", client_id, index);
+                                // println!("commit cid={},index={}", client_id, index);
                                 // send commit txn to dep_graph
                                 self.send_commit_to_dep_graph.send(txn_id).await;
                                 // }
