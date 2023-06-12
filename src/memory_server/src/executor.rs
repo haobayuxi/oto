@@ -75,10 +75,10 @@ impl Executor {
                                 reply.deps = deps.clone();
                                 reply.read_set = read_results;
 
-                                println!(
-                                    "cid= {}, index={}, success = {}, dep={:?}",
-                                    client_id, index, success, deps
-                                );
+                                // println!(
+                                //     "cid= {}, index={}, success = {}, dep={:?}",
+                                //     client_id, index, success, deps
+                                // );
                             }
 
                             coor_msg.call_back.send(reply);
@@ -106,6 +106,7 @@ impl Executor {
                                 node.txn = Some(coor_msg.msg);
                                 node.committed = true;
                                 node.callback = Some(coor_msg.call_back);
+                                println!("commit cid={},index={}", client_id, index);
                                 // send commit txn to dep_graph
                                 self.send_commit_to_dep_graph.send(txn_id).await;
                                 // }
