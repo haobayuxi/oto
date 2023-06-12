@@ -195,7 +195,6 @@ impl DepGraph {
                             // sleep(Duration::from_nanos(100)).await;
                             continue;
                         }
-                        // println!("wait done cid={},index={}", dep_clientid, dep_index);
                         if next.executed {
                             continue;
                         }
