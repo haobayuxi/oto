@@ -72,12 +72,12 @@ impl Executor {
                                 TXNS[client_id as usize].push(node);
                                 let (success, deps, read_results) = get_deps(coor_msg.msg).await;
                                 reply.success = success;
-                                reply.deps = deps;
+                                reply.deps = deps.clone();
                                 reply.read_set = read_results;
 
                                 println!(
-                                    "cid= {}, index={}, success = {}",
-                                    client_id, index, success
+                                    "cid= {}, index={}, success = {}, dep={:?}",
+                                    client_id, index, success, deps
                                 );
                             }
 
