@@ -113,25 +113,7 @@ impl DtxCoordinator {
         }
     }
 
-    pub async fn tx_exe(&mut self, dep_read: bool) -> (bool, Vec<ReadStruct>) {
-        // if dep_read {
-        //     // janus
-        //     let read = Msg {
-        //         txn_id: self.txn_id,
-        //         read_set: self.read_to_execute.clone(),
-        //         write_set: Vec::new(),
-        //         op: TxnOp::Execute.into(),
-        //         success: true,
-        //         ts: Some(self.commit_ts),
-        //         deps: Vec::new(),
-        //     };
-        //     let client = self.data_clients.get_mut(2).unwrap();
-
-        //     let reply: Msg = client.communication(read).await.unwrap().into_inner();
-        //     let success = reply.success;
-        //     let result = reply.read_set;
-        //     return (success, result);
-        // }
+    pub async fn tx_exe(&mut self) -> (bool, Vec<ReadStruct>) {
         if self.read_to_execute.is_empty() && self.write_to_execute.is_empty() {
             return (true, Vec::new());
         }

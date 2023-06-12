@@ -60,7 +60,11 @@ impl DataService for RpcServer {
             call_back: callback_sender,
         };
         self.sender.get(&executor_id).unwrap().send(coor_msg);
-        let reply = receiver.await.unwrap();
+        let mut reply = Msg::default();
+        match receiver.await {
+            Ok(r) => reply = r,
+            Err(e) => println!("err {:?}", e),
+        }
         Ok(Response::new(reply))
     }
 }

@@ -49,7 +49,7 @@ async fn balance(coordinator: &mut DtxCoordinator) -> bool {
     // get cid
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
-    let (status, result) = coordinator.tx_exe(true).await;
+    let (status, result) = coordinator.tx_exe().await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -58,7 +58,7 @@ async fn balance(coordinator: &mut DtxCoordinator) -> bool {
     let c_id: u64 = serde_json::from_str(result[0].value()).unwrap();
     coordinator.add_read_to_execute(c_id, SAVING_TABLE);
     coordinator.add_read_to_execute(c_id, CHECKING_TABLE);
-    let (status, result) = coordinator.tx_exe(false).await;
+    let (status, result) = coordinator.tx_exe().await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -71,7 +71,7 @@ async fn deposit_checking(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.tx_begin(false).await;
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
-    let (status, result) = coordinator.tx_exe(true).await;
+    let (status, result) = coordinator.tx_exe().await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -82,7 +82,7 @@ async fn deposit_checking(coordinator: &mut DtxCoordinator) -> bool {
 
     let check_obj = coordinator.add_write_to_execute(c_id, CHECKING_TABLE, "".to_string());
 
-    let (status, result) = coordinator.tx_exe(false).await;
+    let (status, result) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
         return false;
@@ -97,7 +97,7 @@ async fn transac_saving(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.tx_begin(false).await;
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
-    let (status, result) = coordinator.tx_exe(true).await;
+    let (status, result) = coordinator.tx_exe().await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -108,7 +108,7 @@ async fn transac_saving(coordinator: &mut DtxCoordinator) -> bool {
 
     let save_obj = coordinator.add_write_to_execute(c_id, SAVING_TABLE, "".to_string());
 
-    let (status, result) = coordinator.tx_exe(false).await;
+    let (status, result) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
         return false;
@@ -130,7 +130,7 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
     let c_name_to = get_c_id();
     coordinator.add_read_to_execute(c_name_from, ACCOUNT_TABLE);
     coordinator.add_read_to_execute(c_name_to, ACCOUNT_TABLE);
-    let (status, result) = coordinator.tx_exe(true).await;
+    let (status, result) = coordinator.tx_exe().await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -146,7 +146,7 @@ async fn amalgamate(coordinator: &mut DtxCoordinator) -> bool {
     let check_obj_from = coordinator.add_write_to_execute(c_from, CHECKING_TABLE, "".to_string());
     let check_obj_to = coordinator.add_write_to_execute(c_to, CHECKING_TABLE, "".to_string());
 
-    let (status, result) = coordinator.tx_exe(false).await;
+    let (status, result) = coordinator.tx_exe().await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -172,7 +172,7 @@ async fn write_check(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.tx_begin(false).await;
     let c_name = get_c_id();
     coordinator.add_read_to_execute(c_name, ACCOUNT_TABLE);
-    let (status, result) = coordinator.tx_exe(true).await;
+    let (status, result) = coordinator.tx_exe().await;
 
     if !status {
         coordinator.tx_abort().await;
@@ -183,7 +183,7 @@ async fn write_check(coordinator: &mut DtxCoordinator) -> bool {
 
     let check_obj = coordinator.add_write_to_execute(c_id, CHECKING_TABLE, "".to_string());
 
-    let (status, result) = coordinator.tx_exe(false).await;
+    let (status, result) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
         return false;
