@@ -30,17 +30,17 @@ pub async fn small_bank_run_transactions(coordinator: &mut DtxCoordinator) -> (V
 
 async fn small_bank_run_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(1, 100);
-    if op < FREQUENCY_AMALGAMATE {
-        return amalgamate(coordinator).await;
-    } else if op < FREQUENCY_BALANCE {
-        return balance(coordinator).await;
-    } else if op < FREQUENCY_DEPOSIT_CHECKING {
-        return deposit_checking(coordinator).await;
-    } else if op < FREQUENCY_TRANSACT_SAVINGS {
-        return transac_saving(coordinator).await;
-    } else {
-        return write_check(coordinator).await;
-    }
+    // if op < FREQUENCY_AMALGAMATE {
+    //     return amalgamate(coordinator).await;
+    // } else if op < FREQUENCY_BALANCE {
+    //     return balance(coordinator).await;
+    // } else if op < FREQUENCY_DEPOSIT_CHECKING {
+    //     return deposit_checking(coordinator).await;
+    // } else if op < FREQUENCY_TRANSACT_SAVINGS {
+    return transac_saving(coordinator).await;
+    // } else {
+    //     return write_check(coordinator).await;
+    // }
 }
 
 // It returns the sum of savings and checking balances for the specified customer
