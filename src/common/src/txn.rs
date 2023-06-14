@@ -139,6 +139,7 @@ impl DtxCoordinator {
                 result = reply.read_set;
             } else {
                 if !self.write_to_execute.is_empty() {
+                    println!("write set size = {}", write_set.len());
                     let execute = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
