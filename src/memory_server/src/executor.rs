@@ -110,19 +110,22 @@ impl Executor {
                                         continue;
                                     }
                                     reply.read_set = read_result;
-                                    if !coor_msg.msg.write_set.is_empty() {
-                                        let success = lock_write_set(
-                                            coor_msg.msg.write_set.clone(),
-                                            coor_msg.msg.txn_id,
-                                        )
-                                        .await;
-                                        if success {
-                                            // lock the backup
-                                            self.accept(coor_msg.msg, coor_msg.call_back).await;
-                                        }
-                                    } else {
-                                        coor_msg.call_back.send(reply);
-                                    }
+                                    // if !coor_msg.msg.write_set.is_empty() {
+                                    //     let success = lock_write_set(
+                                    //         coor_msg.msg.write_set.clone(),
+                                    //         coor_msg.msg.txn_id,
+                                    //     )
+                                    //     .await;
+                                    //     if success {
+                                    //         // lock the backup
+                                    //         self.accept(coor_msg.msg, coor_msg.call_back).await;
+                                    //     } else {
+                                    //         reply.success = false;
+                                    //         coor_msg.call_back.send(reply);
+                                    //     }
+                                    // } else {
+                                    //     coor_msg.call_back.send(reply);
+                                    // }
                                 } else {
                                     // get the data and lock the write set
                                     let ts = coor_msg.msg.ts();
