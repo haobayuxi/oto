@@ -129,7 +129,8 @@ impl Executor {
                                         // println!("recv execute write {}", success);
                                         if success {
                                             // lock the backup
-                                            self.accept(coor_msg.msg, coor_msg.call_back).await;
+                                            reply.write_set = coor_msg.msg.write_set.clone();
+                                            self.accept(reply, coor_msg.call_back).await;
                                         } else {
                                             reply.success = false;
                                             coor_msg.call_back.send(reply);
