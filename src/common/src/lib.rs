@@ -105,6 +105,7 @@ pub enum DtxType {
     ford,
     meerkat,
     janus,
+    rjanus,
 }
 
 #[derive(Clone, Serialize, Deserialize, Copy)]

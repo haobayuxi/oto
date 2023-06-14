@@ -124,7 +124,10 @@ impl DtxCoordinator {
         let mut success = true;
         let mut result = Vec::new();
         let server_id = self.id % 3;
-        if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::r2pl {
+        if self.dtx_type == DtxType::rocc
+            || self.dtx_type == DtxType::r2pl
+            || self.dtx_type == DtxType::rjanus
+        {
             if self.read_only {
                 let read = Msg {
                     txn_id: self.txn_id,
@@ -152,16 +155,24 @@ impl DtxCoordinator {
                         deps: Vec::new(),
                     };
                     let replies = self.sync_broadcast(execute).await;
-                    for iter in replies.iter() {
-                        if !iter.success {
+                    self.deps = replies[0].deps.clone();
+                    for i in 0..=2 {
+                        if !replies[i].success {
                             success = false;
                         }
+                        if replies[i].deps != self.deps {
+                            self.fast_commit = false;
+                            for iter in replies[i].deps.iter() {
+                                if !self.deps.contains(iter) {
+                                    self.deps.push(*iter);
+                                }
+                            }
+                        }
                     }
+
                     result = replies[0].read_set.clone();
-                    // if !commit_ts_recv.await.unwrap() {
-                    //     success = false;
-                    // }
                 } else {
+                    // simple read
                     let read = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
