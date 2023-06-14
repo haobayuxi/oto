@@ -46,14 +46,12 @@ impl Executor {
 
     async fn accept(&mut self, msg: Msg, call_back: OneShotSender<Msg>) {
         let data_clients = self.peer_senders.clone();
-        println!("accept txnid ={}", msg.txn_id);
         tokio::spawn(async move {
             let mut accept = msg.clone();
             accept.op = TxnOp::Accept.into();
             accept.success = true;
             // broadcast lock
             sync_broadcast(accept.clone(), data_clients.clone()).await;
-            println!("commit txnid ={}", msg.txn_id);
             // commit
             call_back.send(accept.clone());
             accept.op = TxnOp::Commit.into();
@@ -67,7 +65,7 @@ impl Executor {
                 match self.recv.recv().await {
                     Some(coor_msg) => match coor_msg.msg.op() {
                         rpc::common::TxnOp::Execute => {
-                            let mut reply = Msg::default();
+                            let mut reply = coor_msg.msg.clone();
                             let ts = coor_msg.msg.ts();
                             if coor_msg.msg.read_only {
                                 let (success, read_result) = get_read_set(
@@ -105,12 +103,7 @@ impl Executor {
                                     )
                                     .await;
                                     // lock the write set
-                                    println!(
-                                        "recv execute read {},txnid{}, write size {}",
-                                        success,
-                                        coor_msg.msg.txn_id,
-                                        coor_msg.msg.write_set.len()
-                                    );
+
                                     reply.success = success;
                                     if !success {
                                         // send back failure

@@ -113,12 +113,6 @@ impl DtxCoordinator {
         for iter in self.write_to_execute.iter() {
             write_set.push(iter.read().await.clone());
         }
-        println!(
-            "write set len = {} txnid{},{}",
-            write_set.len(),
-            self.txn_id,
-            self.write_to_execute.len()
-        );
         let mut success = true;
         let mut result = Vec::new();
         let server_id = self.id % 3;
@@ -145,7 +139,6 @@ impl DtxCoordinator {
                 result = reply.read_set;
             } else {
                 if !self.write_to_execute.is_empty() {
-                    println!("write set size = {}", write_set.len());
                     let execute = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
@@ -205,7 +198,6 @@ impl DtxCoordinator {
                     let reply: Msg = client.communication(read).await.unwrap().into_inner();
                     success = reply.success;
                     result = reply.read_set;
-                    println!("read success{}", success);
                 }
             }
         } else if self.dtx_type == DtxType::ford {
