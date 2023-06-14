@@ -114,7 +114,6 @@ impl DataServer {
             let mut data_ip = self.config.server_addr.clone();
             data_ip.pop();
             self.peer_senders = connect_to_peer(data_ip).await;
-            println!("peer sender {}", self.peer_senders.len());
         }
         run_rpc_server(server).await;
     }

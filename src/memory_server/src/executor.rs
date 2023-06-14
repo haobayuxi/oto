@@ -51,7 +51,8 @@ impl Executor {
             accept.op = TxnOp::Accept.into();
             accept.success = true;
             // broadcast lock
-            sync_broadcast(accept.clone(), data_clients.clone()).await;
+            let result = sync_broadcast(accept.clone(), data_clients.clone()).await;
+            println!("accept result {}", result.len());
             // commit
             call_back.send(accept.clone());
             accept.op = TxnOp::Commit.into();
