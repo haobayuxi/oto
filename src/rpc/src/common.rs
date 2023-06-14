@@ -21,9 +21,11 @@ pub struct Msg {
     pub op: i32,
     #[prost(bool, tag = "6")]
     pub success: bool,
-    #[prost(uint64, optional, tag = "7")]
+    #[prost(bool, tag = "7")]
+    pub read_only: bool,
+    #[prost(uint64, optional, tag = "8")]
     pub ts: ::core::option::Option<u64>,
-    #[prost(uint64, repeated, tag = "8")]
+    #[prost(uint64, repeated, tag = "9")]
     pub deps: ::prost::alloc::vec::Vec<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

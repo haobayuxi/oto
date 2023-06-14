@@ -58,7 +58,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 i + (id as u64 * client_num),
                 loca_ts_bk,
                 dtx_type,
-                ip_addr_add_prefix(cto_addr),
                 server_addr,
             )
             .await;

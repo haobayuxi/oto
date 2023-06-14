@@ -6,8 +6,9 @@ use std::{
     },
 };
 
-use common::{Config, CoordnatorMsg, DbType, DtxType};
+use common::{txn::connect_to_peer, Config, CoordnatorMsg, DbType, DtxType};
 use rpc::common::{
+    data_service_client::DataServiceClient,
     data_service_server::{DataService, DataServiceServer},
     Echo, Msg, Throughput,
 };
@@ -15,7 +16,10 @@ use tokio::sync::{
     mpsc::{channel, unbounded_channel, UnboundedSender},
     oneshot,
 };
-use tonic::{transport::Server, Request, Response, Status};
+use tonic::{
+    transport::{Channel, Server},
+    Request, Response, Status,
+};
 
 use crate::{data::init_data, dep_graph::DepGraph, executor::Executor};
 
@@ -78,6 +82,8 @@ pub struct DataServer {
     executor_senders: HashMap<u64, UnboundedSender<CoordnatorMsg>>,
     config: Config,
     client_num: u64,
+    //spanner
+    peer_senders: Vec<DataServiceClient<Channel>>,
 }
 
 impl DataServer {
@@ -88,6 +94,7 @@ impl DataServer {
             executor_senders: HashMap::new(),
             config,
             client_num,
+            peer_senders: Vec::new(),
         }
     }
 
@@ -101,14 +108,26 @@ impl DataServer {
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
         run_rpc_server(server).await;
+        if self.server_id == 2 {
+            //
+            let mut data_ip = self.config.server_addr.clone();
+            data_ip.pop();
+            self.peer_senders = connect_to_peer(data_ip).await;
+        }
     }
 
-    fn init_executors(&mut self, db_type: DbType, dtx_type: DtxType) {
+    fn init_executors(&mut self, dtx_type: DtxType) {
         let (dep_sender, dep_recv) = channel(1000);
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(i, receiver, dtx_type, dep_sender.clone());
+            let mut exec = Executor::new(
+                i,
+                receiver,
+                dtx_type,
+                dep_sender.clone(),
+                self.peer_senders.clone(),
+            );
             tokio::spawn(async move {
                 exec.run().await;
             });
@@ -123,7 +142,7 @@ impl DataServer {
 
     pub async fn init_and_run(&mut self, db_type: DbType, dtx_type: DtxType) {
         init_data(db_type, self.client_num);
-        self.init_executors(db_type, dtx_type);
+        self.init_executors(dtx_type);
         self.init_rpc(Arc::new(self.executor_senders.clone())).await;
     }
 }

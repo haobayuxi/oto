@@ -18,14 +18,10 @@ use crate::DtxType;
 use crate::GLOBAL_COMMITTED;
 use crate::{ip_addr_add_prefix, CID_LEN};
 
-async fn init_coordinator_rpc(
-    // cto_ip: String,
-    data_ip: Vec<String>,
-) -> Vec<DataServiceClient<Channel>> {
+pub async fn connect_to_peer(data_ip: Vec<String>) -> Vec<DataServiceClient<Channel>> {
     let mut data_clients = Vec::new();
     for iter in data_ip {
         let server_ip = ip_addr_add_prefix(iter);
-        // println!("connecting {}", server_ip);
         loop {
             match DataServiceClient::connect(server_ip.clone()).await {
                 Ok(data_client) => {
@@ -39,7 +35,6 @@ async fn init_coordinator_rpc(
             }
         }
     }
-    // println!("connect server done");
     return data_clients;
 }
 pub struct DtxCoordinator {
@@ -68,13 +63,10 @@ impl DtxCoordinator {
         id: u64,
         local_ts: Arc<RwLock<u64>>,
         dtx_type: DtxType,
-        cto_ip: String,
         data_ip: Vec<String>,
-        // committed: Arc<AtomicU64>,
     ) -> Self {
-        // init cto client & data client
-        let data_clients = init_coordinator_rpc(data_ip).await;
-        // println!("init rpc done {}", id);
+        // init  data client
+        let data_clients = connect_to_peer(data_ip).await;
         Self {
             id,
             local_ts,
@@ -127,6 +119,7 @@ impl DtxCoordinator {
         if self.dtx_type == DtxType::rocc
             || self.dtx_type == DtxType::r2pl
             || self.dtx_type == DtxType::rjanus
+            || self.dtx_type == DtxType::spanner
         {
             if self.read_only {
                 let read = Msg {
@@ -154,23 +147,33 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                     };
-                    let replies = self.sync_broadcast(execute).await;
-                    self.deps = replies[0].deps.clone();
-                    for i in 0..=2 {
-                        if !replies[i].success {
-                            success = false;
-                        }
-                        if replies[i].deps != self.deps {
-                            self.fast_commit = false;
-                            for iter in replies[i].deps.iter() {
-                                if !self.deps.contains(iter) {
-                                    self.deps.push(*iter);
+                    if self.dtx_type == DtxType::spanner {
+                        let reply = self.data_clients[2]
+                            .communication(execute)
+                            .await
+                            .unwrap()
+                            .into_inner();
+                        success = reply.success;
+                        result = reply.read_set.clone();
+                    } else {
+                        let replies = self.sync_broadcast(execute).await;
+                        self.deps = replies[0].deps.clone();
+                        for i in 0..=2 {
+                            if !replies[i].success {
+                                success = false;
+                            }
+                            if replies[i].deps != self.deps {
+                                self.fast_commit = false;
+                                for iter in replies[i].deps.iter() {
+                                    if !self.deps.contains(iter) {
+                                        self.deps.push(*iter);
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    result = replies[0].read_set.clone();
+                        result = replies[0].read_set.clone();
+                    }
                 } else {
                     // simple read
                     let read = Msg {
@@ -182,7 +185,12 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                     };
-                    let client = self.data_clients.get_mut(server_id as usize).unwrap();
+                    let client = if self.dtx_type == DtxType::spanner {
+                        // read lock at leader
+                        self.data_clients.get_mut(2 as usize).unwrap()
+                    } else {
+                        self.data_clients.get_mut(server_id as usize).unwrap()
+                    };
 
                     let reply: Msg = client.communication(read).await.unwrap().into_inner();
                     success = reply.success;
