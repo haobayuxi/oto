@@ -84,7 +84,9 @@ impl Executor {
 
                                 coor_msg.call_back.send(reply);
                             } else {
-                                if self.dtx_type == DtxType::janus {
+                                if self.dtx_type == DtxType::janus
+                                    || self.dtx_type == DtxType::rjanus
+                                {
                                     // init node
                                     let txn_id = coor_msg.msg.txn_id;
                                     let (client_id, index) = get_txnid(txn_id);
