@@ -46,12 +46,14 @@ impl Executor {
 
     async fn accept(&mut self, msg: Msg, call_back: OneShotSender<Msg>) {
         let data_clients = self.peer_senders.clone();
+        println!("accept txnid ={}", msg.txn_id);
         tokio::spawn(async move {
             let mut accept = msg.clone();
             accept.op = TxnOp::Accept.into();
             accept.success = true;
             // broadcast lock
             sync_broadcast(accept.clone(), data_clients.clone()).await;
+            println!("commit txnid ={}", msg.txn_id);
             // commit
             call_back.send(accept.clone());
             accept.op = TxnOp::Commit.into();
@@ -110,22 +112,22 @@ impl Executor {
                                         continue;
                                     }
                                     reply.read_set = read_result;
-                                    // if !coor_msg.msg.write_set.is_empty() {
-                                    //     let success = lock_write_set(
-                                    //         coor_msg.msg.write_set.clone(),
-                                    //         coor_msg.msg.txn_id,
-                                    //     )
-                                    //     .await;
-                                    //     if success {
-                                    //         // lock the backup
-                                    //         self.accept(coor_msg.msg, coor_msg.call_back).await;
-                                    //     } else {
-                                    //         reply.success = false;
-                                    //         coor_msg.call_back.send(reply);
-                                    //     }
-                                    // } else {
-                                    //     coor_msg.call_back.send(reply);
-                                    // }
+                                    if !coor_msg.msg.write_set.is_empty() {
+                                        let success = lock_write_set(
+                                            coor_msg.msg.write_set.clone(),
+                                            coor_msg.msg.txn_id,
+                                        )
+                                        .await;
+                                        if success {
+                                            // lock the backup
+                                            self.accept(coor_msg.msg, coor_msg.call_back).await;
+                                        } else {
+                                            reply.success = false;
+                                            coor_msg.call_back.send(reply);
+                                        }
+                                    } else {
+                                        coor_msg.call_back.send(reply);
+                                    }
                                 } else {
                                     // get the data and lock the write set
                                     let ts = coor_msg.msg.ts();
