@@ -113,6 +113,7 @@ impl DtxCoordinator {
         for iter in self.write_to_execute.iter() {
             write_set.push(iter.read().await.clone());
         }
+        println!("write set len = {}", write_set.len());
         let mut success = true;
         let mut result = Vec::new();
         let server_id = self.id % 3;
