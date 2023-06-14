@@ -113,9 +113,6 @@ impl DataServer {
         let listen_ip = self.config.server_addr[self.server_id as usize].clone();
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
-
-        run_rpc_server(server).await;
-
         if self.server_id == 2 {
             //
             let mut data_ip = self.config.server_addr.clone();
@@ -124,6 +121,7 @@ impl DataServer {
                 PEER = connect_to_peer(data_ip).await;
             }
         }
+        run_rpc_server(server).await;
     }
 
     async fn init_executors(&mut self, dtx_type: DtxType) {
