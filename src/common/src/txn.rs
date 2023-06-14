@@ -309,17 +309,35 @@ impl DtxCoordinator {
         return (success, result);
     }
     pub async fn tx_commit(&mut self) -> bool {
-        if self.read_only || self.dtx_type == DtxType::spanner {
+        if self.read_only {
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
+            return true;
+        }
+        let mut write_set = Vec::new();
+        for iter in self.write_set.iter() {
+            write_set.push(iter.read().await.clone());
+        }
+        if self.dtx_type == DtxType::spanner {
+            GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
+            let commit = Msg {
+                txn_id: self.txn_id,
+                read_set: self.read_set.clone(),
+                write_set: write_set.clone(),
+                op: TxnOp::Commit.into(),
+                success: true,
+                ts: Some(self.commit_ts),
+                deps: self.deps.clone(),
+                read_only: false,
+            };
+            let mut client = self.data_clients[2].clone();
+            tokio::spawn(async move {
+                client.communication(commit).await;
+            });
             return true;
         }
         // validate
         self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
         if self.validate().await {
-            let mut write_set = Vec::new();
-            for iter in self.write_set.iter() {
-                write_set.push(iter.read().await.clone());
-            }
             let commit = Msg {
                 txn_id: self.txn_id,
                 read_set: self.read_set.clone(),
