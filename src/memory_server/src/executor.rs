@@ -164,20 +164,7 @@ impl Executor {
                         rpc::common::TxnOp::Commit => {
                             // update and release the lock
                             let mut reply = Msg::default();
-                            if self.dtx_type != DtxType::janus {
-                                if self.dtx_type == DtxType::r2pl
-                                    || self.dtx_type == DtxType::spanner
-                                {
-                                    release_read_set(
-                                        coor_msg.msg.read_set.clone(),
-                                        coor_msg.msg.txn_id,
-                                    )
-                                    .await;
-                                }
-                                update_and_release_locks(coor_msg.msg, self.dtx_type).await;
-                                reply.success = true;
-                                coor_msg.call_back.send(reply);
-                            } else {
+                            if self.dtx_type == DtxType::janus || self.dtx_type == DtxType::rjanus {
                                 // insert callback to node
                                 // unsafe {
                                 let txn_id = coor_msg.msg.txn_id;
@@ -190,6 +177,19 @@ impl Executor {
                                 // send commit txn to dep_graph
                                 self.send_commit_to_dep_graph.send(txn_id).await;
                                 // }
+                            } else {
+                                if self.dtx_type == DtxType::r2pl
+                                    || self.dtx_type == DtxType::spanner
+                                {
+                                    release_read_set(
+                                        coor_msg.msg.read_set.clone(),
+                                        coor_msg.msg.txn_id,
+                                    )
+                                    .await;
+                                }
+                                update_and_release_locks(coor_msg.msg, self.dtx_type).await;
+                                reply.success = true;
+                                coor_msg.call_back.send(reply);
                             }
                         }
                         rpc::common::TxnOp::Abort => {
