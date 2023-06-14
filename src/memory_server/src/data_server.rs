@@ -108,6 +108,7 @@ impl DataServer {
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
         run_rpc_server(server).await;
+        println!("id {}, ip {:?}", self.server_id, self.config.server_addr);
         if self.server_id == 2 {
             //
             let mut data_ip = self.config.server_addr.clone();
