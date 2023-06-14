@@ -99,7 +99,7 @@ impl DepGraph {
             for txnid in txnids {
                 let (client_id, index) = get_txnid(txnid);
 
-                // println!("try to execute {},{}", client_id, index);
+                println!("try to execute {},{}", client_id, index);
                 let node = &mut TXNS[client_id as usize][index as usize];
                 {
                     let notifies = node.notify.write().await;

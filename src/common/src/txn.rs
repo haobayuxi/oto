@@ -472,9 +472,7 @@ impl DtxCoordinator {
     }
 
     async fn validate(&mut self) -> bool {
-        if self.dtx_type == DtxType::r2pl || self.dtx_type == DtxType::janus {
-            return true;
-        } else if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::ford {
+        if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::ford {
             if self.read_set.is_empty() {
                 // println!("read set is null");
                 return true;
