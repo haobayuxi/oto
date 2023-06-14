@@ -111,6 +111,7 @@ impl Executor {
                                         coor_msg.msg.txn_id,
                                         coor_msg.msg.write_set.len()
                                     );
+                                    reply.success = success;
                                     if !success {
                                         // send back failure
                                         reply.success = false;
@@ -119,13 +120,13 @@ impl Executor {
                                     }
                                     reply.read_set = read_result;
                                     if !coor_msg.msg.write_set.is_empty() {
-                                        println!("recv execute write {}", success);
+                                        // println!("recv execute write {}", success);
                                         let success = lock_write_set(
                                             coor_msg.msg.write_set.clone(),
                                             coor_msg.msg.txn_id,
                                         )
                                         .await;
-                                        println!("recv execute write {}", success);
+                                        // println!("recv execute write {}", success);
                                         if success {
                                             // lock the backup
                                             self.accept(coor_msg.msg, coor_msg.call_back).await;
