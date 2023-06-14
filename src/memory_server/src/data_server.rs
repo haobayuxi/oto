@@ -81,6 +81,7 @@ impl DataService for RpcServer {
 }
 
 pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
+pub static mut PEER: Vec<DataServiceClient<Channel>> = Vec::new();
 
 pub struct DataServer {
     server_id: u32,
@@ -89,7 +90,7 @@ pub struct DataServer {
     config: Config,
     client_num: u64,
     //spanner
-    peer_senders: Vec<DataServiceClient<Channel>>,
+    // peer_senders: Vec<DataServiceClient<Channel>>,
 }
 
 impl DataServer {
@@ -100,7 +101,7 @@ impl DataServer {
             executor_senders: HashMap::new(),
             config,
             client_num,
-            peer_senders: Vec::new(),
+            // peer_senders: Vec::new(),
         }
     }
 
@@ -113,15 +114,15 @@ impl DataServer {
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
-        // println!("id {}, ip {:?}", self.server_id, self.config.server_addr);
-        tokio::spawn(async move {
-            run_rpc_server(server).await;
-        });
+        run_rpc_server(server).await;
+
         if self.server_id == 2 {
             //
             let mut data_ip = self.config.server_addr.clone();
             data_ip.pop();
-            self.peer_senders = connect_to_peer(data_ip).await;
+            unsafe {
+                PEER = connect_to_peer(data_ip).await;
+            }
         }
     }
 
@@ -130,13 +131,7 @@ impl DataServer {
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(
-                i,
-                receiver,
-                dtx_type,
-                dep_sender.clone(),
-                self.peer_senders.clone(),
-            );
+            let mut exec = Executor::new(i, receiver, dtx_type, dep_sender.clone());
             tokio::spawn(async move {
                 exec.run().await;
             });
@@ -151,10 +146,10 @@ impl DataServer {
 
     pub async fn init_and_run(&mut self, db_type: DbType, dtx_type: DtxType) {
         init_data(db_type, self.client_num);
-        self.init_rpc(Arc::new(self.executor_senders.clone())).await;
         self.init_executors(dtx_type).await;
-        while (true) {
-            sleep(Duration::from_millis(1)).await;
-        }
+        self.init_rpc(Arc::new(self.executor_senders.clone())).await;
+        // while (true) {
+        //     sleep(Duration::from_millis(1)).await;
+        // }
     }
 }

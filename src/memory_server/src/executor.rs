@@ -14,6 +14,7 @@ use crate::{
         get_deps, get_read_set, lock_write_set, release_read_set, releass_locks,
         update_and_release_locks, validate,
     },
+    data_server::PEER,
     dep_graph::{get_txnid, Node, TXNS},
 };
 
@@ -24,7 +25,7 @@ pub struct Executor {
     // janus
     send_commit_to_dep_graph: Sender<u64>,
     // spanner
-    peer_senders: Vec<DataServiceClient<Channel>>,
+    // peer_senders: Vec<DataServiceClient<Channel>>,
 }
 
 impl Executor {
@@ -33,31 +34,33 @@ impl Executor {
         recv: UnboundedReceiver<CoordnatorMsg>,
         dtx_type: DtxType,
         sender: Sender<u64>,
-        peer_senders: Vec<DataServiceClient<Channel>>,
+        // peer_senders: Vec<DataServiceClient<Channel>>,
     ) -> Self {
         Self {
             id,
             recv,
             dtx_type,
             send_commit_to_dep_graph: sender,
-            peer_senders,
+            // peer_senders,
         }
     }
 
     async fn accept(&mut self, msg: Msg, call_back: OneShotSender<Msg>) {
-        let data_clients = self.peer_senders.clone();
-        tokio::spawn(async move {
-            let mut accept = msg.clone();
-            accept.op = TxnOp::Accept.into();
-            accept.success = true;
-            // broadcast lock
-            let result = sync_broadcast(accept.clone(), data_clients.clone()).await;
-            println!("accept result {}", result.len());
-            // commit
-            call_back.send(accept.clone());
-            accept.op = TxnOp::Commit.into();
-            async_broadcast_commit(accept, data_clients).await;
-        });
+        unsafe {
+            let data_clients = PEER.clone();
+            tokio::spawn(async move {
+                let mut accept = msg.clone();
+                accept.op = TxnOp::Accept.into();
+                accept.success = true;
+                // broadcast lock
+                let result = sync_broadcast(accept.clone(), data_clients.clone()).await;
+                println!("accept result {}", result.len());
+                // commit
+                call_back.send(accept.clone());
+                accept.op = TxnOp::Commit.into();
+                async_broadcast_commit(accept, data_clients).await;
+            });
+        }
     }
 
     pub async fn run(&mut self) {
