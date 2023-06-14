@@ -164,11 +164,13 @@ impl DtxCoordinator {
                             if !replies[i].success {
                                 success = false;
                             }
-                            if replies[i].deps != self.deps {
-                                self.fast_commit = false;
-                                for iter in replies[i].deps.iter() {
-                                    if !self.deps.contains(iter) {
-                                        self.deps.push(*iter);
+                            if self.dtx_type == DtxType::rjanus {
+                                if replies[i].deps != self.deps {
+                                    self.fast_commit = false;
+                                    for iter in replies[i].deps.iter() {
+                                        if !self.deps.contains(iter) {
+                                            self.deps.push(*iter);
+                                        }
                                     }
                                 }
                             }
