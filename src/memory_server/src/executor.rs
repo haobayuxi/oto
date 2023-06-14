@@ -105,7 +105,12 @@ impl Executor {
                                     )
                                     .await;
                                     // lock the write set
-                                    println!("recv execute read {}", success);
+                                    println!(
+                                        "recv execute read {},txnid{}, write size {}",
+                                        success,
+                                        coor_msg.msg.txn_id,
+                                        coor_msg.msg.write_set.len()
+                                    );
                                     if !success {
                                         // send back failure
                                         reply.success = false;
