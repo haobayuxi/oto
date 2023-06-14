@@ -197,7 +197,7 @@ impl Executor {
                         rpc::common::TxnOp::Abort => {
                             // release the lock
 
-                            if self.dtx_type == DtxType::janus {
+                            if self.dtx_type == DtxType::janus || self.dtx_type == DtxType::rjanus {
                                 // mark as executed
                                 let txn_id = coor_msg.msg.txn_id;
                                 let (client_id, index) = get_txnid(txn_id);
