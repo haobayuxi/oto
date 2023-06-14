@@ -380,7 +380,7 @@ impl DtxCoordinator {
                     self.sync_broadcast(accept).await;
                     STDSleep(Duration::from_micros(1));
                 }
-            } else if self.dtx_type == DtxType::janus {
+            } else if self.dtx_type == DtxType::janus || self.dtx_type == DtxType::rjanus {
                 if !self.fast_commit {
                     let accept = Msg {
                         txn_id: self.txn_id,
