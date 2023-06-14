@@ -107,9 +107,6 @@ impl DataServer {
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
-        tokio::spawn(async move {
-            run_rpc_server(server).await;
-        });
         println!("id {}, ip {:?}", self.server_id, self.config.server_addr);
 
         if self.server_id == 2 {
@@ -119,6 +116,7 @@ impl DataServer {
             self.peer_senders = connect_to_peer(data_ip).await;
             println!("peer sender {}", self.peer_senders.len());
         }
+        run_rpc_server(server).await;
     }
 
     fn init_executors(&mut self, dtx_type: DtxType) {
