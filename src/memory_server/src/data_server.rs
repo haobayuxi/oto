@@ -109,6 +109,7 @@ impl DataServer {
 
         run_rpc_server(server).await;
         println!("id {}, ip {:?}", self.server_id, self.config.server_addr);
+
         if self.server_id == 2 {
             //
             let mut data_ip = self.config.server_addr.clone();
