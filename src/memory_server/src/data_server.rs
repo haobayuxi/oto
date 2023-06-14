@@ -107,7 +107,9 @@ impl DataServer {
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
-        run_rpc_server(server).await;
+        tokio::spawn(async move {
+            run_rpc_server(server).await;
+        });
         println!("id {}, ip {:?}", self.server_id, self.config.server_addr);
 
         if self.server_id == 2 {
