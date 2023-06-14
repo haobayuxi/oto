@@ -130,6 +130,7 @@ impl DtxCoordinator {
                     success: true,
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
+                    read_only: true,
                 };
                 let client = self.data_clients.get_mut(server_id as usize).unwrap();
 
@@ -146,6 +147,7 @@ impl DtxCoordinator {
                         success: true,
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
+                        read_only: false,
                     };
                     if self.dtx_type == DtxType::spanner {
                         let reply = self.data_clients[2]
@@ -184,6 +186,7 @@ impl DtxCoordinator {
                         op: TxnOp::Execute.into(),
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
+                        read_only: false,
                     };
                     let client = if self.dtx_type == DtxType::spanner {
                         // read lock at leader
@@ -214,6 +217,7 @@ impl DtxCoordinator {
                     success: true,
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
+                    read_only: false,
                 };
                 // lock the primary
                 let mut client = self.data_clients.get_mut(2).unwrap().clone();
@@ -231,6 +235,7 @@ impl DtxCoordinator {
                     success: true,
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
+                    read_only: false,
                 };
                 let client: &mut DataServiceClient<Channel> =
                     self.data_clients.get_mut(server_id as usize).unwrap();
@@ -259,6 +264,7 @@ impl DtxCoordinator {
                     success: true,
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
+                    read_only: false,
                 };
                 let client = self.data_clients.get_mut(server_id as usize).unwrap();
 
@@ -275,6 +281,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
+                read_only: false,
             };
             let replies = self.sync_broadcast(execute).await;
             self.deps = replies[0].deps.clone();
@@ -302,6 +309,9 @@ impl DtxCoordinator {
         return (success, result);
     }
     pub async fn tx_commit(&mut self) -> bool {
+        if self.read_only || self.dtx_type == DtxType::spanner {
+            return true;
+        }
         // validate
         self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
         if self.validate().await {
@@ -317,6 +327,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.commit_ts),
                 deps: self.deps.clone(),
+                read_only: false,
             };
             if self.dtx_type == DtxType::ford {
                 if !self.write_set.is_empty() {
@@ -329,6 +340,7 @@ impl DtxCoordinator {
                         success: true,
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
+                        read_only: false,
                     };
                     self.sync_broadcast(lock).await;
                 }
@@ -342,6 +354,7 @@ impl DtxCoordinator {
                         success: true,
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
+                        read_only: false,
                     };
                     self.sync_broadcast(accept).await;
                     STDSleep(Duration::from_micros(1));
@@ -356,6 +369,7 @@ impl DtxCoordinator {
                         success: true,
                         ts: Some(self.commit_ts),
                         deps: self.deps.clone(),
+                        read_only: false,
                     };
                     self.sync_broadcast(accept).await;
                 }
@@ -391,6 +405,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
+                read_only: false,
             };
             self.async_broadcast_commit(abort).await;
         } else {
@@ -402,6 +417,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
+                read_only: false,
             };
             self.async_broadcast_commit(abort).await;
         }
@@ -450,6 +466,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: None,
                 deps: Vec::new(),
+                read_only: false,
             };
             let server_id = self.id % 3;
             let client = self.data_clients.get_mut(server_id as usize).unwrap();
@@ -486,6 +503,7 @@ impl DtxCoordinator {
                 success: true,
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
+                read_only: false,
             };
             let reply = self.sync_broadcast(vadilate_msg).await;
             // check fast path
@@ -512,6 +530,7 @@ impl DtxCoordinator {
                 success,
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
+                read_only: false,
             };
             let _reply = self.sync_broadcast(vadilate_msg).await;
             return success;

@@ -66,8 +66,8 @@ impl Executor {
                     Some(coor_msg) => match coor_msg.msg.op() {
                         rpc::common::TxnOp::Execute => {
                             let mut reply = Msg::default();
+                            let ts = coor_msg.msg.ts();
                             if coor_msg.msg.read_only {
-                                let ts = coor_msg.msg.ts();
                                 let (success, read_result) = get_read_set(
                                     coor_msg.msg.read_set.clone(),
                                     ts,
@@ -77,6 +77,8 @@ impl Executor {
                                 .await;
                                 reply.success = success;
                                 reply.read_set = read_result;
+
+                                coor_msg.call_back.send(reply);
                             } else {
                                 if self.dtx_type == DtxType::janus {
                                     // init node
@@ -89,6 +91,8 @@ impl Executor {
                                     reply.success = success;
                                     reply.deps = deps.clone();
                                     reply.read_set = read_results;
+
+                                    coor_msg.call_back.send(reply);
                                 } else if self.dtx_type == DtxType::spanner {
                                     // lock the read set
                                     let (success, read_result) = get_read_set(
@@ -106,9 +110,11 @@ impl Executor {
                                         continue;
                                     }
                                     reply.read_set = read_result;
-                                    let success =
-                                        lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
-                                            .await;
+                                    let success = lock_write_set(
+                                        coor_msg.msg.write_set.clone(),
+                                        coor_msg.msg.txn_id,
+                                    )
+                                    .await;
                                     if success {
                                         // lock the backup
                                         self.accept(coor_msg.msg, coor_msg.call_back).await;
@@ -134,10 +140,10 @@ impl Executor {
                                         lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
                                             .await;
                                     reply.success = success;
+
+                                    coor_msg.call_back.send(reply);
                                 }
                             }
-
-                            coor_msg.call_back.send(reply);
                         }
                         rpc::common::TxnOp::Commit => {
                             // update and release the lock
