@@ -4,17 +4,21 @@ use std::{
         atomic::{AtomicU64, Ordering},
         Arc,
     },
+    time::Duration,
 };
 
-use common::{txn::connect_to_peer, Config, CoordnatorMsg, DbType, DtxType};
+use common::{txn::connect_to_peer, Config, CoordnatorMsg, DbType, DtxType, Tuple};
 use rpc::common::{
     data_service_client::DataServiceClient,
     data_service_server::{DataService, DataServiceServer},
     Echo, Msg, Throughput,
 };
-use tokio::sync::{
-    mpsc::{channel, unbounded_channel, UnboundedSender},
-    oneshot,
+use tokio::{
+    sync::{
+        mpsc::{channel, unbounded_channel, UnboundedSender},
+        oneshot, RwLock,
+    },
+    time::sleep,
 };
 use tonic::{
     transport::{Channel, Server},
@@ -76,6 +80,8 @@ impl DataService for RpcServer {
     }
 }
 
+pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
+
 pub struct DataServer {
     server_id: u32,
     executor_num: u64,
@@ -108,17 +114,18 @@ impl DataServer {
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
 
         // println!("id {}, ip {:?}", self.server_id, self.config.server_addr);
-
+        tokio::spawn(async move {
+            run_rpc_server(server).await;
+        });
         if self.server_id == 2 {
             //
             let mut data_ip = self.config.server_addr.clone();
             data_ip.pop();
             self.peer_senders = connect_to_peer(data_ip).await;
         }
-        run_rpc_server(server).await;
     }
 
-    fn init_executors(&mut self, dtx_type: DtxType) {
+    async fn init_executors(&mut self, dtx_type: DtxType) {
         let (dep_sender, dep_recv) = channel(1000);
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
@@ -144,7 +151,10 @@ impl DataServer {
 
     pub async fn init_and_run(&mut self, db_type: DbType, dtx_type: DtxType) {
         init_data(db_type, self.client_num);
-        self.init_executors(dtx_type);
         self.init_rpc(Arc::new(self.executor_senders.clone())).await;
+        self.init_executors(dtx_type).await;
+        while (true) {
+            sleep(Duration::from_millis(1)).await;
+        }
     }
 }
