@@ -14,8 +14,8 @@ use tokio::time::sleep;
 use tokio::time::Duration;
 use tonic::transport::Channel;
 
-use crate::DtxType;
 use crate::GLOBAL_COMMITTED;
+use crate::{get_txnid, DtxType};
 use crate::{ip_addr_add_prefix, CID_LEN};
 
 pub async fn connect_to_peer(data_ip: Vec<String>) -> Vec<DataServiceClient<Channel>> {

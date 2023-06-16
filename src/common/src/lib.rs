@@ -166,3 +166,9 @@ pub struct CoordnatorMsg {
     pub msg: Msg,
     pub call_back: OneShotSender<Msg>,
 }
+
+pub fn get_txnid(txnid: u64) -> (u64, u64) {
+    let cid = (txnid >> CID_LEN) as u64;
+    let tid = txnid - (cid << CID_LEN);
+    (cid, tid)
+}

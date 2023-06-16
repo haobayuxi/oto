@@ -3,7 +3,7 @@ use std::{
     sync::{atomic::AtomicU64, Arc},
 };
 
-use common::{CoordnatorMsg, DtxType};
+use common::{get_txnid, CoordnatorMsg, DtxType};
 use rpc::common::{data_service_client::DataServiceClient, Msg, TxnOp};
 use tokio::sync::mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot::Sender as OneShotSender;
@@ -15,7 +15,7 @@ use crate::{
         update_and_release_locks, validate,
     },
     data_server::PEER,
-    dep_graph::{get_txnid, Node, TXNS},
+    dep_graph::{Node, TXNS},
 };
 
 pub struct Executor {

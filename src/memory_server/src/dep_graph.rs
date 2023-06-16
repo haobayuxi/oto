@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use common::CID_LEN;
+use common::{get_txnid, CID_LEN};
 use rpc::common::{Msg, ReadStruct};
 use tokio::{
     sync::{
@@ -12,12 +12,6 @@ use tokio::{
 };
 
 use crate::data::DATA;
-
-pub fn get_txnid(txnid: u64) -> (u64, u64) {
-    let cid = (txnid >> CID_LEN) as u64;
-    let tid = txnid - (cid << CID_LEN);
-    (cid, tid)
-}
 
 pub static mut TXNS: Vec<Vec<Node>> = Vec::new();
 
