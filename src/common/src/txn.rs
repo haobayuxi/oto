@@ -138,7 +138,6 @@ impl DtxCoordinator {
                 success = reply.success;
                 result = reply.read_set;
             } else {
-                let (client_id, index) = get_txnid(self.txn_id);
                 if !self.write_to_execute.is_empty() {
                     let execute = Msg {
                         txn_id: self.txn_id,
@@ -313,6 +312,7 @@ impl DtxCoordinator {
     }
     pub async fn tx_commit(&mut self) -> bool {
         if self.read_only {
+            println!("read only not validate");
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
         }
@@ -413,7 +413,7 @@ impl DtxCoordinator {
     pub async fn tx_abort(&mut self) {
         let (client_id, index) = get_txnid(self.txn_id);
         // println!("abort {},{}", client_id, index);
-        if self.write_set.is_empty() || self.dtx_type == DtxType::rocc {
+        if self.write_set.is_empty() {
             return;
         }
         let mut write_set = Vec::new();
