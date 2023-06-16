@@ -148,14 +148,8 @@ impl DepGraph {
 
             let node = &TXNS[client_id as usize][index as usize];
 
-            // println!(
-            //     "commit execute {},{}, executed{},deps ={:?}",
-            //     client_id,
-            //     index,
-            //     node.executed,
-            //     node.txn.as_ref().unwrap().deps
-            // );
             if !node.executed {
+                println!("find scc {},{}", client_id, index);
                 self.find_scc(txnid).await;
             }
         }
