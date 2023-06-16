@@ -103,7 +103,6 @@ impl Executor {
                                     reply.success = success;
                                     reply.deps = deps.clone();
                                     reply.read_set = read_results;
-                                    println!("rjanus execute {},{}", client_id, index);
                                     coor_msg.call_back.send(reply);
                                 } else if self.dtx_type == DtxType::spanner {
                                     // lock the read set
@@ -184,7 +183,7 @@ impl Executor {
                                 // send commit txn to dep_graph
                                 self.send_commit_to_dep_graph.send(txn_id).await;
 
-                                println!("commit cid={},index={}", client_id, index);
+                                // println!("commit cid={},index={}", client_id, index);
                             } else {
                                 if self.dtx_type == DtxType::r2pl
                                     || self.dtx_type == DtxType::spanner
@@ -210,7 +209,7 @@ impl Executor {
                                 let node = &mut TXNS[client_id as usize][index as usize];
                                 node.executed = true;
                                 node.committed = true;
-                                println!("abort cid={},index={}", client_id, index);
+                                // println!("abort cid={},index={}", client_id, index);
                             } else {
                                 releass_locks(coor_msg.msg, self.dtx_type).await;
                             }

@@ -76,7 +76,6 @@ impl DepGraph {
     }
 
     pub async fn run(&mut self) {
-        println!("dep run");
         loop {
             match self.wait_list.recv().await {
                 Some(txnid) => {
@@ -94,7 +93,7 @@ impl DepGraph {
             for txnid in txnids {
                 let (client_id, index) = get_txnid(txnid);
 
-                println!("try to execute {},{}", client_id, index);
+                // println!("try to execute {},{}", client_id, index);
                 let node = &mut TXNS[client_id as usize][index as usize];
                 {
                     let notifies = node.notify.write().await;
@@ -148,7 +147,7 @@ impl DepGraph {
             let (client_id, index) = get_txnid(txnid);
 
             let node = &TXNS[client_id as usize][index as usize];
-            println!("find scc {},{}, execute{}", client_id, index, node.executed);
+            // println!("find scc {},{}, execute{}", client_id, index, node.executed);
             if !node.executed {
                 self.find_scc(txnid).await;
             }

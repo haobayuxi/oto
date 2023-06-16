@@ -139,7 +139,6 @@ impl DtxCoordinator {
                 result = reply.read_set;
             } else {
                 let (client_id, index) = get_txnid(self.txn_id);
-                println!("execute {},{}", client_id, index);
                 if !self.write_to_execute.is_empty() {
                     let execute = Msg {
                         txn_id: self.txn_id,
@@ -314,7 +313,6 @@ impl DtxCoordinator {
     }
     pub async fn tx_commit(&mut self) -> bool {
         let (client_id, index) = get_txnid(self.txn_id);
-        println!("commit {},{}", client_id, index);
         if self.read_only {
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
@@ -415,7 +413,7 @@ impl DtxCoordinator {
 
     pub async fn tx_abort(&mut self) {
         let (client_id, index) = get_txnid(self.txn_id);
-        println!("abort {},{}", client_id, index);
+        // println!("abort {},{}", client_id, index);
         if self.write_set.is_empty() || self.dtx_type == DtxType::rocc {
             return;
         }
