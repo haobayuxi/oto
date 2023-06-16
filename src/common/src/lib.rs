@@ -23,7 +23,7 @@ pub static SAVING_TABLE: i32 = 0;
 pub static CHECKING_TABLE: i32 = 1;
 pub static ACCOUNT_TABLE: i32 = 2;
 
-pub static TXNS_PER_CLIENT: u64 = 10;
+pub static TXNS_PER_CLIENT: u64 = 10000;
 pub static CID_LEN: u32 = 50;
 
 #[derive(Clone)]
