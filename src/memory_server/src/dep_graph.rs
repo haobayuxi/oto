@@ -147,9 +147,8 @@ impl DepGraph {
             let (client_id, index) = get_txnid(txnid);
 
             let node = &TXNS[client_id as usize][index as usize];
-
+            println!("find scc {},{}, execute{}", client_id, index, node.executed);
             if !node.executed {
-                println!("find scc {},{}", client_id, index);
                 self.find_scc(txnid).await;
             }
         }
