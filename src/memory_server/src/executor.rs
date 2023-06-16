@@ -97,7 +97,12 @@ impl Executor {
                                         last_index += 1;
                                     }
                                     let node = Node::new(coor_msg.msg.clone());
-                                    TXNS[client_id as usize].push(node);
+                                    if TXNS[client_id as usize].len() as u64 == index + 1 {
+                                        //
+                                        TXNS[client_id as usize][index as usize] = node;
+                                    } else {
+                                        TXNS[client_id as usize].push(node);
+                                    }
                                     let (success, deps, read_results) =
                                         get_deps(coor_msg.msg).await;
                                     reply.success = success;

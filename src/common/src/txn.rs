@@ -312,7 +312,6 @@ impl DtxCoordinator {
         return (success, result);
     }
     pub async fn tx_commit(&mut self) -> bool {
-        let (client_id, index) = get_txnid(self.txn_id);
         if self.read_only {
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
