@@ -76,6 +76,7 @@ impl DepGraph {
     }
 
     pub async fn run(&mut self) {
+        println!("dep run");
         loop {
             match self.wait_list.recv().await {
                 Some(txnid) => {
