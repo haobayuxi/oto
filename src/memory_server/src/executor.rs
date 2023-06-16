@@ -97,7 +97,7 @@ impl Executor {
                                     reply.success = success;
                                     reply.deps = deps.clone();
                                     reply.read_set = read_results;
-                                    println!("rjanus execute {}", txn_id);
+                                    println!("rjanus execute {},{}", client_id, index);
                                     coor_msg.call_back.send(reply);
                                 } else if self.dtx_type == DtxType::spanner {
                                     // lock the read set
