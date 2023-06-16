@@ -66,7 +66,7 @@ pub struct DepGraph {
 }
 
 impl DepGraph {
-    pub fn new(wait_list: Receiver<u64>, client_num: usize) -> Self {
+    pub fn new(wait_list: Receiver<u64>) -> Self {
         Self {
             wait_list,
             stack: Vec::new(),

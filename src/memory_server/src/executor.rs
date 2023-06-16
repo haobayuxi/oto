@@ -177,13 +177,14 @@ impl Executor {
                                 let txn_id = coor_msg.msg.txn_id;
                                 let (client_id, index) = get_txnid(txn_id);
 
-                                println!("commit cid={},index={}", client_id, index);
                                 let node = &mut TXNS[client_id as usize][index as usize];
                                 node.txn = Some(coor_msg.msg);
                                 node.committed = true;
                                 node.callback = Some(coor_msg.call_back);
                                 // send commit txn to dep_graph
                                 self.send_commit_to_dep_graph.send(txn_id).await;
+
+                                println!("commit cid={},index={}", client_id, index);
                             } else {
                                 if self.dtx_type == DtxType::r2pl
                                     || self.dtx_type == DtxType::spanner

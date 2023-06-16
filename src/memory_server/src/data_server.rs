@@ -135,7 +135,7 @@ impl DataServer {
             });
         }
         if dtx_type == DtxType::janus || dtx_type == DtxType::rjanus {
-            let mut dep = DepGraph::new(dep_recv, 0);
+            let mut dep = DepGraph::new(dep_recv);
             tokio::spawn(async move {
                 dep.run().await;
             });
