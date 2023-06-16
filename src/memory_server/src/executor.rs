@@ -97,7 +97,7 @@ impl Executor {
                                     reply.success = success;
                                     reply.deps = deps.clone();
                                     reply.read_set = read_results;
-
+                                    println!("rjanus execute {}", txn_id);
                                     coor_msg.call_back.send(reply);
                                 } else if self.dtx_type == DtxType::spanner {
                                     // lock the read set
@@ -168,17 +168,15 @@ impl Executor {
                             let mut reply = Msg::default();
                             if self.dtx_type == DtxType::janus || self.dtx_type == DtxType::rjanus {
                                 // insert callback to node
-                                // unsafe {
                                 let txn_id = coor_msg.msg.txn_id;
                                 let (client_id, index) = get_txnid(txn_id);
                                 let node = &mut TXNS[client_id as usize][index as usize];
                                 node.txn = Some(coor_msg.msg);
                                 node.committed = true;
                                 node.callback = Some(coor_msg.call_back);
-                                // println!("commit cid={},index={}", client_id, index);
+                                println!("commit cid={},index={}", client_id, index);
                                 // send commit txn to dep_graph
                                 self.send_commit_to_dep_graph.send(txn_id).await;
-                                // }
                             } else {
                                 if self.dtx_type == DtxType::r2pl
                                     || self.dtx_type == DtxType::spanner
