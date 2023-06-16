@@ -312,7 +312,7 @@ impl DtxCoordinator {
     }
     pub async fn tx_commit(&mut self) -> bool {
         if self.read_only {
-            let (client_id, index) = get_txnid(tid);
+            let (client_id, index) = get_txnid(self.txn_id);
             println!("read only not validate{}-{}", client_id, index);
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
