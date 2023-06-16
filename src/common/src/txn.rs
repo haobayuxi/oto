@@ -311,9 +311,14 @@ impl DtxCoordinator {
         return (success, result);
     }
     pub async fn tx_commit(&mut self) -> bool {
-        if self.read_only {
-            let (client_id, index) = get_txnid(self.txn_id);
-            println!("read only not validate{}-{}", client_id, index);
+        if self.read_only
+            && (self.dtx_type == DtxType::rocc
+                || self.dtx_type == DtxType::r2pl
+                || self.dtx_type == DtxType::rjanus
+                || self.dtx_type == DtxType::spanner)
+        {
+            // let (client_id, index) = get_txnid(self.txn_id);
+            // println!("read only not validate{}-{}", client_id, index);
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
         }
