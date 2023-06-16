@@ -192,10 +192,10 @@ impl DepGraph {
                             sleep(Duration::from_nanos(100)).await;
                         }
                         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
-                        if !next.committed {
+                        while !next.committed {
                             // not committed
                             sleep(Duration::from_micros(10)).await;
-                            continue;
+                            // continue;
                         }
                         if next.executed {
                             continue;
