@@ -498,12 +498,7 @@ impl DtxCoordinator {
             };
             let server_id = self.id % 3;
             let client = self.data_clients.get_mut(server_id as usize).unwrap();
-            // let mut aclient = client.clone();
-            // // let (sender, recv) = oneshot::channel();
-            // let t_msg = validate_msg.clone();
-            // // tokio::spawn(async move {
-            // //     sender.send(aclient.communication(t_msg).await.unwrap().into_inner());
-            // // });
+
             let reply = client
                 .communication(validate_msg)
                 .await
