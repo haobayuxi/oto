@@ -95,9 +95,33 @@ pub async fn validate(msg: Msg, dtx_type: DtxType) -> bool {
     }
 }
 
+pub async fn get_read_only(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) {
+    let mut result = Vec::new();
+    unsafe {
+        for iter in read_set.iter() {
+            let table = &mut DATA[iter.table_id as usize];
+            // println!("table id = {}", )
+            match table.get_mut(&iter.key) {
+                Some(rwlock) => {
+                    let guard = rwlock.write().await;
+
+                    let read_struct = ReadStruct {
+                        key: iter.key,
+                        table_id: iter.table_id,
+                        value: Some(guard.data.clone()),
+                        timestamp: Some(guard.ts),
+                    };
+                    result.push(read_struct);
+                }
+                None => return (false, result),
+            }
+        }
+        (true, result)
+    }
+}
+
 pub async fn get_read_set(
     read_set: Vec<ReadStruct>,
-    ts: u64,
     txn_id: u64,
     dtx_type: DtxType,
 ) -> (bool, Vec<ReadStruct>) {
@@ -105,6 +129,7 @@ pub async fn get_read_set(
     unsafe {
         for iter in read_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
+            // println!("table id = {}", )
             match table.get_mut(&iter.key) {
                 Some(rwlock) => {
                     let mut guard = rwlock.write().await;

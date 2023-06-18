@@ -12,20 +12,20 @@ use crate::tatp_db::{
 
 async fn run_tatp_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 99);
-    if op < 35 {
-        //
-        return tx_get_subscriber_data(coordinator).await;
-    } else if op < 45 {
-        //
-        return tx_get_new_destination(coordinator).await;
-    } else if op < 80 {
-        //
-        return tx_get_access_data(coordinator).await;
-    } else if op < 95 {
-        return tx_update_lcoation(coordinator).await;
-    } else {
-        return tx_update_subscriber_data(coordinator).await;
-    }
+    // if op < 35 {
+    //     //
+    //     return tx_get_subscriber_data(coordinator).await;
+    // } else if op < 45 {
+    //     //
+    return tx_get_new_destination(coordinator).await;
+    // } else if op < 80 {
+    //     //
+    //     return tx_get_access_data(coordinator).await;
+    // } else if op < 95 {
+    //     return tx_update_lcoation(coordinator).await;
+    // } else {
+    //     return tx_update_subscriber_data(coordinator).await;
+    // }
 }
 
 pub async fn tatp_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {

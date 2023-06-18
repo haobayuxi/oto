@@ -11,7 +11,7 @@ use tonic::transport::Channel;
 
 use crate::{
     data::{
-        get_deps, get_read_set, lock_write_set, release_read_set, releass_locks,
+        get_deps, get_read_only, get_read_set, lock_write_set, release_read_set, releass_locks,
         update_and_release_locks, validate,
     },
     data_server::PEER,
@@ -72,13 +72,8 @@ impl Executor {
                             let mut reply = coor_msg.msg.clone();
                             let ts = coor_msg.msg.ts();
                             if coor_msg.msg.read_only {
-                                let (success, read_result) = get_read_set(
-                                    coor_msg.msg.read_set.clone(),
-                                    ts,
-                                    coor_msg.msg.txn_id,
-                                    self.dtx_type,
-                                )
-                                .await;
+                                let (success, read_result) =
+                                    get_read_only(coor_msg.msg.read_set.clone()).await;
                                 reply.success = success;
                                 reply.read_set = read_result;
 
@@ -113,7 +108,6 @@ impl Executor {
                                     // lock the read set
                                     let (success, read_result) = get_read_set(
                                         coor_msg.msg.read_set.clone(),
-                                        ts,
                                         coor_msg.msg.txn_id,
                                         self.dtx_type,
                                     )
@@ -152,7 +146,6 @@ impl Executor {
                                     let ts = coor_msg.msg.ts();
                                     let (success, read_result) = get_read_set(
                                         coor_msg.msg.read_set.clone(),
-                                        ts,
                                         coor_msg.msg.txn_id,
                                         self.dtx_type,
                                     )
