@@ -71,7 +71,12 @@ impl Executor {
                         rpc::common::TxnOp::Execute => {
                             let mut reply = coor_msg.msg.clone();
                             let ts = coor_msg.msg.ts();
-                            if coor_msg.msg.read_only {
+                            if coor_msg.msg.read_only
+                                && (self.dtx_type == DtxType::r2pl
+                                    || self.dtx_type == DtxType::rjanus
+                                    || self.dtx_type == DtxType::rocc
+                                    || self.dtx_type == DtxType::spanner)
+                            {
                                 let (success, read_result) =
                                     get_read_only(coor_msg.msg.read_set.clone()).await;
                                 reply.success = success;
