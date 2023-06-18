@@ -83,7 +83,10 @@ async fn tx_get_new_destination(coordinator: &mut DtxCoordinator) -> bool {
         coordinator.tx_abort().await;
         return false;
     }
-    let specfac: SpecialFacility = serde_json::from_str(results[0].value()).unwrap();
+    let specfac: SpecialFacility = match serde_json::from_str(results[0].value()) {
+        Ok(s) => s,
+        Err(_) => SpecialFacility::default(),
+    };
 
     if !specfac.is_active {
         coordinator.tx_abort().await;

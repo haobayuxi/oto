@@ -210,6 +210,17 @@ impl SpecialFacility {
             data_b: "ABCDE".to_string(),
         }
     }
+
+    pub fn default() -> Self {
+        Self {
+            s_id: 0,
+            sf_type: 0,
+            is_active: false,
+            error_contrl: 0,
+            data_a: rnd("data") as u8,
+            data_b: "ABCDE".to_string(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
