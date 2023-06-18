@@ -188,7 +188,7 @@ impl DepGraph {
                         //     TXNS[dep_clientid as usize].len(),
                         //     TXNS[dep_clientid as usize][dep_index as usize]
                         // );
-                        while TXNS[dep_clientid as usize].len() + 1 < dep_index as usize {
+                        while TXNS[dep_clientid as usize].len() - 1 < dep_index as usize {
                             sleep(Duration::from_nanos(100)).await;
                         }
                         let next = &mut TXNS[dep_clientid as usize][dep_index as usize];
