@@ -119,6 +119,7 @@ pub struct Config {
     pub server_addr: Vec<String>,
     pub cto_addr: String,
     pub client_addr: Vec<String>,
+    pub perferred_server: Vec<u64>,
     // pub
     pub executor_num: u64,
 }
@@ -140,6 +141,7 @@ impl Default for Config {
                 "192.168.1.74:10001".to_string(), //optane14
                 "192.168.1.75:10001".to_string(), //optane15
             ],
+            perferred_server: vec![0, 0, 0],
         }
     }
 }
@@ -153,6 +155,16 @@ pub fn u64_rand(lower_bound: u64, upper_bound: u64) -> u64 {
     let mut rng = rand::thread_rng();
     rng.gen_range(lower_bound, upper_bound + 1)
 }
+
+pub fn u32_rand(lower_bound: u32, upper_bound: u32) -> u32 {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(lower_bound, upper_bound + 1)
+}
+
+fn nurandom(A: u32, x: u32, y: u32) -> u32 {
+    return ((u32_rand(0, A)) | (u32_rand(x, y))) % (y - x + 1) + x;
+}
+
 pub fn f64_rand(lower_bound: f64, upper_bound: f64, precision: f64) -> f64 {
     let mut rng = rand::thread_rng();
     rng.gen_range(

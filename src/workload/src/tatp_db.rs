@@ -329,7 +329,3 @@ static SUBSCRIBER_ROWS: u64 = 10000;
 pub fn get_sid() -> u64 {
     return u64_rand(1, SUBSCRIBER_ROWS);
 }
-
-fn tatp_random(x: u64, y: u64) -> u64 {
-    return ((u64_rand(0, 65535)) | (u64_rand(x, y))) % (y - x + 1) + x;
-}

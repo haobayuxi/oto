@@ -115,7 +115,8 @@ impl DtxCoordinator {
         }
         let mut success = true;
         let mut result = Vec::new();
-        let server_id = self.id % 3;
+        // preferred
+        let preferred_server_id = self.id % 3;
         if self.dtx_type == DtxType::rocc
             || self.dtx_type == DtxType::r2pl
             || self.dtx_type == DtxType::rjanus
@@ -132,7 +133,10 @@ impl DtxCoordinator {
                     deps: Vec::new(),
                     read_only: true,
                 };
-                let client = self.data_clients.get_mut(server_id as usize).unwrap();
+                let client = self
+                    .data_clients
+                    .get_mut(preferred_server_id as usize)
+                    .unwrap();
 
                 let reply: Msg = client.communication(read).await.unwrap().into_inner();
                 success = reply.success;
@@ -194,7 +198,9 @@ impl DtxCoordinator {
                         // read lock at leader
                         self.data_clients.get_mut(2 as usize).unwrap()
                     } else {
-                        self.data_clients.get_mut(server_id as usize).unwrap()
+                        self.data_clients
+                            .get_mut(preferred_server_id as usize)
+                            .unwrap()
                     };
 
                     let reply: Msg = client.communication(read).await.unwrap().into_inner();
@@ -239,8 +245,10 @@ impl DtxCoordinator {
                     deps: Vec::new(),
                     read_only: false,
                 };
-                let client: &mut DataServiceClient<Channel> =
-                    self.data_clients.get_mut(server_id as usize).unwrap();
+                let client: &mut DataServiceClient<Channel> = self
+                    .data_clients
+                    .get_mut(preferred_server_id as usize)
+                    .unwrap();
 
                 let reply: Msg = client.communication(read).await.unwrap().into_inner();
                 success = reply.success;
@@ -268,7 +276,10 @@ impl DtxCoordinator {
                     deps: Vec::new(),
                     read_only: false,
                 };
-                let client = self.data_clients.get_mut(server_id as usize).unwrap();
+                let client = self
+                    .data_clients
+                    .get_mut(preferred_server_id as usize)
+                    .unwrap();
 
                 let reply: Msg = client.communication(read).await.unwrap().into_inner();
                 success = reply.success;
