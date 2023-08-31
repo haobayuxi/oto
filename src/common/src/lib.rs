@@ -23,6 +23,16 @@ pub static SAVING_TABLE: i32 = 0;
 pub static CHECKING_TABLE: i32 = 1;
 pub static ACCOUNT_TABLE: i32 = 2;
 
+pub static WAREHOUSE_TABLE: i32 = 0;
+pub static DISTRICT_TABLE: i32 = 1;
+pub static CUSTOMER_TABLE: i32 = 2;
+pub static HISTORY_TABLE: i32 = 3;
+pub static ORDER_TABLE: i32 = 4;
+pub static NEWORDER_TABLE: i32 = 5;
+pub static ORDERLINE_TABLE: i32 = 6;
+pub static STOCK_TABLE: i32 = 7;
+pub static ITEM_TABLE: i32 = 8;
+
 pub static TXNS_PER_CLIENT: u64 = 20000;
 pub static CID_LEN: u32 = 50;
 
@@ -161,8 +171,8 @@ pub fn u32_rand(lower_bound: u32, upper_bound: u32) -> u32 {
     rng.gen_range(lower_bound, upper_bound + 1)
 }
 
-fn nurandom(A: u32, x: u32, y: u32) -> u32 {
-    return ((u32_rand(0, A)) | (u32_rand(x, y))) % (y - x + 1) + x;
+pub fn nurandom(A: u64, x: u64, y: u64) -> u64 {
+    return ((u64_rand(0, A)) | (u64_rand(x, y))) % (y - x + 1) + x;
 }
 
 pub fn f64_rand(lower_bound: f64, upper_bound: f64, precision: f64) -> f64 {
