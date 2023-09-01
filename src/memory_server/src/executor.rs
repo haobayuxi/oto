@@ -11,8 +11,8 @@ use tonic::transport::Channel;
 
 use crate::{
     data::{
-        get_deps, get_read_only, get_read_set, lock_write_set, release_read_set, releass_locks,
-        update_and_release_locks, validate,
+        delete, get_deps, get_read_only, get_read_set, insert, lock_write_set, release_read_set,
+        releass_locks, update_and_release_locks, validate,
     },
     data_server::PEER,
     dep_graph::{Node, TXNS},
@@ -197,7 +197,10 @@ impl Executor {
                                     )
                                     .await;
                                 }
-                                update_and_release_locks(coor_msg.msg, self.dtx_type).await;
+                                update_and_release_locks(coor_msg.msg.clone(), self.dtx_type).await;
+                                // insert & delete
+                                insert(coor_msg.msg.insert.clone());
+                                delete(coor_msg.msg.delete);
                                 reply.success = true;
                                 coor_msg.call_back.send(reply);
                             }

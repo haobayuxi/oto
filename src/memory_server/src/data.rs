@@ -95,6 +95,31 @@ pub async fn validate(msg: Msg, dtx_type: DtxType) -> bool {
     }
 }
 
+pub async fn insert(insert: Vec<ReadStruct>) -> bool {
+    unsafe {
+        for iter in insert.iter() {
+            let table = &mut DATA[iter.table_id as usize];
+            // println!("table id = {}", )
+            table.insert(
+                iter.key,
+                RwLock::new(Tuple::new(serde_json::to_string(iter.value()).unwrap())),
+            );
+        }
+    }
+    true
+}
+
+pub async fn delete(delete: Vec<ReadStruct>) -> bool {
+    unsafe {
+        for iter in delete.iter() {
+            let table = &mut DATA[iter.table_id as usize];
+            // println!("table id = {}", )
+            table.remove(&iter.key);
+        }
+    }
+    true
+}
+
 pub async fn get_read_only(read_set: Vec<ReadStruct>) -> (bool, Vec<ReadStruct>) {
     let mut result = Vec::new();
     unsafe {

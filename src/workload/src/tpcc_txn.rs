@@ -82,7 +82,7 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
         }
         if !new_order.is_empty() {
             // update order
-            let mut order_updated = coordinator.add_write_to_execute(
+            let order_updated = coordinator.add_write_to_execute(
                 order_index(o_id, d_id),
                 ORDER_TABLE,
                 "".to_string(),
