@@ -1,12 +1,13 @@
 use common::{
     get_currenttime_millis, txn::DtxCoordinator, u64_rand, CUSTOMER_TABLE, DISTRICT_TABLE,
-    NEWORDER_TABLE, ORDERLINE_TABLE, ORDER_TABLE, STOCK_TABLE,
+    HISTORY_TABLE, NEWORDER_TABLE, ORDERLINE_TABLE, ORDER_TABLE, STOCK_TABLE, WAREHOUSE_TABLE,
 };
 
 use crate::tpcc_db::{
-    customer_index, neworder_index, order_index, orderline_index, Customer, District, NewOrder,
-    Order, Orderline, MAX_CARRIER_ID, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD, MIN_CARRIER_ID,
-    MIN_STOCK_LEVEL_THRESHOLD, NUM_CUSTOMER_PER_DISTRICT, NUM_DISTRICT_PER_WAREHOUSE,
+    customer_index, history_index, neworder_index, order_index, orderline_index, Customer,
+    District, NewOrder, Order, Orderline, MAX_CARRIER_ID, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD,
+    MIN_CARRIER_ID, MIN_STOCK_LEVEL_THRESHOLD, NUM_CUSTOMER_PER_DISTRICT,
+    NUM_DISTRICT_PER_WAREHOUSE,
 };
 
 async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
@@ -52,7 +53,41 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     */
     coordinator.tx_begin(false).await;
 
-    true
+    let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
+    let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
+
+    let h_amount = u64_rand(100, 500000) as f64 / 100.0;
+
+    let warehouse_updated = coordinator.add_write_to_execute(0, WAREHOUSE_TABLE, "".to_string());
+    let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
+    let customer_updated = coordinator.add_write_to_execute(
+        customer_index(c_id, d_id),
+        CUSTOMER_TABLE,
+        "".to_string(),
+    );
+    let history_updated =
+        coordinator.add_write_to_execute(history_index(c_id, d_id), HISTORY_TABLE, "".to_string());
+    let (status, customer) = coordinator.tx_exe().await;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    // FIXME: Currently, we use a random order_id to maintain the distributed transaction payload,
+    // but need to search the largest o_id by o_w_id, o_d_id and o_c_id from the order table
+    let o_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
+    coordinator.add_read_to_execute(order_index(o_id, d_id), ORDER_TABLE);
+    let (status, order) = coordinator.tx_exe().await;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    let order_record: Order = match serde_json::from_str(order[0].value()) {
+        Ok(s) => s,
+        Err(_) => Order::default(),
+    };
+    for ol in 1..=order_record.o_ol_cnt {}
+
+    coordinator.tx_commit().await
 }
 
 async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
@@ -154,7 +189,7 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     },
     */
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
-    let c_id = 0;
+    let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
     coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
     let (status, results) = coordinator.tx_exe().await;
     if results.len() == 0 {
