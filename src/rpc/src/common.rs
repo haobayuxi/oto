@@ -17,15 +17,19 @@ pub struct Msg {
     pub read_set: ::prost::alloc::vec::Vec<ReadStruct>,
     #[prost(message, repeated, tag = "3")]
     pub write_set: ::prost::alloc::vec::Vec<ReadStruct>,
-    #[prost(enumeration = "TxnOp", tag = "4")]
+    #[prost(message, repeated, tag = "4")]
+    pub insert: ::prost::alloc::vec::Vec<ReadStruct>,
+    #[prost(message, repeated, tag = "5")]
+    pub delete: ::prost::alloc::vec::Vec<ReadStruct>,
+    #[prost(enumeration = "TxnOp", tag = "6")]
     pub op: i32,
-    #[prost(bool, tag = "6")]
-    pub success: bool,
     #[prost(bool, tag = "7")]
+    pub success: bool,
+    #[prost(bool, tag = "8")]
     pub read_only: bool,
-    #[prost(uint64, optional, tag = "8")]
+    #[prost(uint64, optional, tag = "9")]
     pub ts: ::core::option::Option<u64>,
-    #[prost(uint64, repeated, tag = "9")]
+    #[prost(uint64, repeated, tag = "10")]
     pub deps: ::prost::alloc::vec::Vec<u64>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]

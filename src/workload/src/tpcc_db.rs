@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use common::{nurandom, u64_rand, Tuple};
+use common::{get_currenttime_millis, nurandom, u64_rand, Tuple};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
@@ -13,6 +13,12 @@ pub static ZIP: u64 = 9;
 pub static MIN_NAME: u64 = 6;
 pub static MAX_NAME: u64 = 10;
 pub static MAX_ITEM: u64 = 10000;
+pub static MIN_STOCK_LEVEL_THRESHOLD: u64 = 10;
+pub static MAX_STOCK_LEVEL_THRESHOLD: u64 = 20;
+pub static MIN_OL_CNT: u64 = 5;
+pub static MAX_OL_CNT: u64 = 15;
+pub static MIN_CARRIER_ID: u64 = 1;
+pub static MAX_CARRIER_ID: u64 = 10;
 
 ///////
 pub static NUM_CUSTOMER_PER_DISTRICT: u64 = 3000;
@@ -188,6 +194,22 @@ impl Warehouse {
     }
 }
 
+impl Default for Warehouse {
+    fn default() -> Self {
+        Self {
+            w_id: Default::default(),
+            w_name: Default::default(),
+            w_street1: Default::default(),
+            w_street2: Default::default(),
+            w_city: Default::default(),
+            w_state: Default::default(),
+            w_zip: Default::default(),
+            w_tax: Default::default(),
+            w_ytd: Default::default(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct District {
     pub d_id: u64,
@@ -203,6 +225,24 @@ pub struct District {
     pub d_next_o_id: u64,
 }
 
+impl Default for District {
+    fn default() -> Self {
+        Self {
+            d_id: Default::default(),
+            d_w_id: Default::default(),
+            d_name: Default::default(),
+            d_strict1: Default::default(),
+            d_strict2: Default::default(),
+            d_city: Default::default(),
+            d_state: Default::default(),
+            d_zip: Default::default(),
+            d_tax: Default::default(),
+            d_ytd: Default::default(),
+            d_next_o_id: Default::default(),
+        }
+    }
+}
+
 impl District {
     pub fn new(d_id: u64, d_w_id: u64) -> Self {
         Self {
@@ -216,7 +256,7 @@ impl District {
             d_zip: "12345678".to_string(),
             d_tax: u64_rand(0, 2000) as f64 / 10000.0,
             d_ytd: 30000.0,
-            d_next_o_id: NUM_CUSTOMER_PER_DISTRICT + 1,
+            d_next_o_id: NUM_CUSTOMER_PER_DISTRICT,
         }
     }
 }
@@ -239,7 +279,7 @@ pub struct Customer {
     pub c_credit: String,
     pub c_credit_lim: i64,
     pub c_discount: f64,
-    pub c_balance: i64,
+    pub c_balance: f64,
     pub c_ytd_payment: i64,
     pub c_payment_cnt: u64,
     pub c_delivery_cnt: u64,
@@ -273,11 +313,39 @@ impl Customer {
             },
             c_credit_lim: 50000,
             c_discount: u64_rand(1, 5000) as f64 / 10000.0,
-            c_balance: -10,
+            c_balance: -10.0,
             c_ytd_payment: 10,
             c_payment_cnt: 1,
             c_delivery_cnt: 1,
             c_data: "data".to_string(),
+        }
+    }
+}
+
+impl Default for Customer {
+    fn default() -> Self {
+        Self {
+            c_id: Default::default(),
+            c_d_id: Default::default(),
+            c_w_id: Default::default(),
+            c_first: Default::default(),
+            c_middle: Default::default(),
+            c_last: Default::default(),
+            c_street1: Default::default(),
+            c_street2: Default::default(),
+            c_city: Default::default(),
+            c_state: Default::default(),
+            c_zip: Default::default(),
+            c_phone: Default::default(),
+            c_since: Default::default(),
+            c_credit: Default::default(),
+            c_credit_lim: Default::default(),
+            c_discount: Default::default(),
+            c_balance: Default::default(),
+            c_ytd_payment: Default::default(),
+            c_payment_cnt: Default::default(),
+            c_delivery_cnt: Default::default(),
+            c_data: Default::default(),
         }
     }
 }
@@ -302,9 +370,24 @@ impl History {
             h_c_w_id: w_id,
             h_d_id: d_id,
             h_w_id: w_id,
-            h_date: 1,
+            h_date: get_currenttime_millis(),
             h_amount: 10,
             h_data: "data".to_string(),
+        }
+    }
+}
+
+impl Default for History {
+    fn default() -> Self {
+        Self {
+            h_c_id: Default::default(),
+            h_c_d_id: Default::default(),
+            h_c_w_id: Default::default(),
+            h_d_id: Default::default(),
+            h_w_id: Default::default(),
+            h_date: Default::default(),
+            h_amount: Default::default(),
+            h_data: Default::default(),
         }
     }
 }
@@ -322,6 +405,16 @@ impl NewOrder {
             no_o_id: o_id,
             no_d_id: d_id,
             no_w_id: 0,
+        }
+    }
+}
+
+impl Default for NewOrder {
+    fn default() -> Self {
+        Self {
+            no_o_id: Default::default(),
+            no_d_id: Default::default(),
+            no_w_id: Default::default(),
         }
     }
 }
@@ -349,6 +442,21 @@ impl Order {
             o_carried_id: u64_rand(1, 10),
             o_ol_cnt: u64_rand(5, 15),
             o_all_local: 1,
+        }
+    }
+}
+
+impl Default for Order {
+    fn default() -> Self {
+        Self {
+            o_id: Default::default(),
+            o_d_id: Default::default(),
+            o_w_id: Default::default(),
+            o_c_id: Default::default(),
+            o_entry_d: Default::default(),
+            o_carried_id: Default::default(),
+            o_ol_cnt: Default::default(),
+            o_all_local: Default::default(),
         }
     }
 }
@@ -388,6 +496,22 @@ impl Orderline {
     }
 }
 
+impl Default for Orderline {
+    fn default() -> Self {
+        Self {
+            ol_o_id: Default::default(),
+            ol_d_id: Default::default(),
+            ol_w_id: Default::default(),
+            ol_number: Default::default(),
+            ol_i_id: Default::default(),
+            ol_supply_w_id: Default::default(),
+            ol_delivery_d: Default::default(),
+            ol_quantity: Default::default(),
+            ol_amount: Default::default(),
+            ol_dist_info: Default::default(),
+        }
+    }
+}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Item {
     pub i_id: u64,
@@ -409,6 +533,17 @@ impl Item {
     }
 }
 
+impl Default for Item {
+    fn default() -> Self {
+        Self {
+            i_id: Default::default(),
+            i_im_id: Default::default(),
+            i_name: Default::default(),
+            i_price: Default::default(),
+            i_data: Default::default(),
+        }
+    }
+}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Stock {
     pub s_i_id: u64,
@@ -432,6 +567,21 @@ impl Stock {
             s_order_cnt: 0,
             s_remote_cnt: 0,
             s_data: "stock_data".to_string(),
+        }
+    }
+}
+
+impl Default for Stock {
+    fn default() -> Self {
+        Self {
+            s_i_id: Default::default(),
+            s_w_id: Default::default(),
+            s_quantity: Default::default(),
+            s_dist: Default::default(),
+            s_ytd: Default::default(),
+            s_order_cnt: Default::default(),
+            s_remote_cnt: Default::default(),
+            s_data: Default::default(),
         }
     }
 }

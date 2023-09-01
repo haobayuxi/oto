@@ -5,6 +5,7 @@ pub mod txn;
 use std::{
     collections::{BTreeSet, HashSet},
     sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT},
+    time::{SystemTime, UNIX_EPOCH},
     vec,
 };
 
@@ -193,4 +194,12 @@ pub fn get_txnid(txnid: u64) -> (u64, u64) {
     let cid = (txnid >> CID_LEN) as u64;
     let tid = txnid - (cid << CID_LEN);
     (cid, tid)
+}
+
+pub fn get_currenttime_millis() -> u64 {
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    since_the_epoch.as_millis() as u64
 }

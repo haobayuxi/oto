@@ -49,6 +49,8 @@ pub struct DtxCoordinator {
     pub write_set: Vec<Arc<RwLock<ReadStruct>>>,
     read_to_execute: Vec<ReadStruct>,
     write_to_execute: Vec<Arc<RwLock<ReadStruct>>>,
+    insert: Vec<ReadStruct>,
+    delete: Vec<ReadStruct>,
     write_tuple_ts: Vec<u64>,
     // janus
     fast_commit: bool,
@@ -84,6 +86,8 @@ impl DtxCoordinator {
             read_only: false,
             fast_commit: true,
             deps: Vec::new(),
+            insert: Vec::new(),
+            delete: Vec::new(),
             // committed,
         }
     }
@@ -96,6 +100,8 @@ impl DtxCoordinator {
         self.read_to_execute.clear();
         self.write_to_execute.clear();
         self.write_tuple_ts.clear();
+        self.insert.clear();
+        self.delete.clear();
         self.read_only = read_only;
         self.fast_commit = true;
         self.deps.clear();
@@ -132,6 +138,8 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
                     read_only: true,
+                    insert: Vec::new(),
+                    delete: Vec::new(),
                 };
                 let client = self
                     .data_clients
@@ -152,6 +160,8 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                         read_only: false,
+                        insert: Vec::new(),
+                        delete: Vec::new(),
                     };
                     if self.dtx_type == DtxType::spanner {
                         let reply = self.data_clients[2]
@@ -193,6 +203,8 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                         read_only: false,
+                        insert: Vec::new(),
+                        delete: Vec::new(),
                     };
                     let client = if self.dtx_type == DtxType::spanner {
                         // read lock at leader
@@ -226,6 +238,8 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
                     read_only: false,
+                    insert: Vec::new(),
+                    delete: Vec::new(),
                 };
                 // lock the primary
                 let mut client = self.data_clients.get_mut(2).unwrap().clone();
@@ -244,6 +258,8 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
                     read_only: false,
+                    insert: Vec::new(),
+                    delete: Vec::new(),
                 };
                 let client: &mut DataServiceClient<Channel> = self
                     .data_clients
@@ -275,6 +291,8 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
                     read_only: false,
+                    insert: Vec::new(),
+                    delete: Vec::new(),
                 };
                 let client = self
                     .data_clients
@@ -295,6 +313,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
                 read_only: false,
+                insert: Vec::new(),
+                delete: Vec::new(),
             };
             let replies = self.sync_broadcast(execute).await;
             self.deps = replies[0].deps.clone();
@@ -348,6 +368,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
                 deps: self.deps.clone(),
                 read_only: false,
+                insert: self.insert.clone(),
+                delete: self.delete.clone(),
             };
             let mut client = self.data_clients[2].clone();
             tokio::spawn(async move {
@@ -367,6 +389,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
                 deps: self.deps.clone(),
                 read_only: false,
+                insert: self.insert.clone(),
+                delete: self.delete.clone(),
             };
             if self.dtx_type == DtxType::ford {
                 if !self.write_set.is_empty() {
@@ -380,6 +404,8 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                         read_only: false,
+                        insert: Vec::new(),
+                        delete: Vec::new(),
                     };
                     self.sync_broadcast(lock).await;
                 }
@@ -394,6 +420,8 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                         read_only: false,
+                        insert: Vec::new(),
+                        delete: Vec::new(),
                     };
                     self.sync_broadcast(accept).await;
                     STDSleep(Duration::from_micros(1));
@@ -409,6 +437,8 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: self.deps.clone(),
                         read_only: false,
+                        insert: Vec::new(),
+                        delete: Vec::new(),
                     };
                     self.sync_broadcast(accept).await;
                 }
@@ -447,6 +477,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
                 read_only: false,
+                insert: Vec::new(),
+                delete: Vec::new(),
             };
             self.async_broadcast_commit(abort).await;
         } else {
@@ -459,6 +491,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
                 read_only: false,
+                insert: Vec::new(),
+                delete: Vec::new(),
             };
             self.async_broadcast_commit(abort).await;
         }
@@ -472,6 +506,14 @@ impl DtxCoordinator {
             timestamp: None,
         };
         self.read_to_execute.push(read_struct);
+    }
+
+    pub fn add_to_insert(&mut self, insert: ReadStruct) {
+        self.insert.push(insert);
+    }
+
+    pub fn add_to_delete(&mut self, delete: ReadStruct) {
+        self.delete.push(delete);
     }
 
     pub fn add_write_to_execute(
@@ -506,6 +548,8 @@ impl DtxCoordinator {
                 ts: None,
                 deps: Vec::new(),
                 read_only: false,
+                insert: Vec::new(),
+                delete: Vec::new(),
             };
             let server_id = self.id % 3;
             let client = self.data_clients.get_mut(server_id as usize).unwrap();
@@ -538,6 +582,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
                 read_only: false,
+                insert: Vec::new(),
+                delete: Vec::new(),
             };
             let reply = self.sync_broadcast(vadilate_msg).await;
             // check fast path
@@ -565,6 +611,8 @@ impl DtxCoordinator {
                 ts: Some(self.commit_ts),
                 deps: Vec::new(),
                 read_only: false,
+                insert: Vec::new(),
+                delete: Vec::new(),
             };
             let _reply = self.sync_broadcast(vadilate_msg).await;
             return success;
