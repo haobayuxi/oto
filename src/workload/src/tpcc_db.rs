@@ -280,7 +280,7 @@ pub struct Customer {
     pub c_credit_lim: i64,
     pub c_discount: f64,
     pub c_balance: f64,
-    pub c_ytd_payment: i64,
+    pub c_ytd_payment: f64,
     pub c_payment_cnt: u64,
     pub c_delivery_cnt: u64,
     pub c_data: String,
@@ -314,7 +314,7 @@ impl Customer {
             c_credit_lim: 50000,
             c_discount: u64_rand(1, 5000) as f64 / 10000.0,
             c_balance: -10.0,
-            c_ytd_payment: 10,
+            c_ytd_payment: 10.0,
             c_payment_cnt: 1,
             c_delivery_cnt: 1,
             c_data: "data".to_string(),
@@ -358,7 +358,7 @@ pub struct History {
     pub h_d_id: u64,
     pub h_w_id: u64,
     pub h_date: u64,
-    pub h_amount: i64,
+    pub h_amount: f64,
     pub h_data: String,
 }
 
@@ -371,7 +371,7 @@ impl History {
             h_d_id: d_id,
             h_w_id: w_id,
             h_date: get_currenttime_millis(),
-            h_amount: 10,
+            h_amount: 10.0,
             h_data: "data".to_string(),
         }
     }
@@ -388,6 +388,29 @@ impl Default for History {
             h_date: Default::default(),
             h_amount: Default::default(),
             h_data: Default::default(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Historydata {
+    pub h_c_id: u64,
+    pub h_c_d_id: u64,
+    pub h_c_w_id: u64,
+    pub h_d_id: u64,
+    pub h_w_id: u64,
+    pub h_amount: f64,
+}
+
+impl Historydata {
+    pub fn new(history: History) -> Self {
+        Self {
+            h_c_id: history.h_c_id,
+            h_c_d_id: history.h_c_d_id,
+            h_c_w_id: history.h_c_w_id,
+            h_d_id: history.h_d_id,
+            h_w_id: history.h_w_id,
+            h_amount: history.h_amount,
         }
     }
 }
@@ -438,7 +461,7 @@ impl Order {
             o_d_id,
             o_w_id,
             o_c_id,
-            o_entry_d: 1,
+            o_entry_d: get_currenttime_millis(),
             o_carried_id: u64_rand(1, 10),
             o_ol_cnt: u64_rand(5, 15),
             o_all_local: 1,

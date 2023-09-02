@@ -1,13 +1,17 @@
+use std::collections::HashSet;
+
 use common::{
     get_currenttime_millis, txn::DtxCoordinator, u64_rand, CUSTOMER_TABLE, DISTRICT_TABLE,
-    HISTORY_TABLE, NEWORDER_TABLE, ORDERLINE_TABLE, ORDER_TABLE, STOCK_TABLE, WAREHOUSE_TABLE,
+    HISTORY_TABLE, ITEM_TABLE, NEWORDER_TABLE, ORDERLINE_TABLE, ORDER_TABLE, STOCK_TABLE,
+    WAREHOUSE_TABLE,
 };
+use rpc::common::ReadStruct;
 
 use crate::tpcc_db::{
     customer_index, history_index, neworder_index, order_index, orderline_index, Customer,
-    District, NewOrder, Order, Orderline, MAX_CARRIER_ID, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD,
-    MIN_CARRIER_ID, MIN_STOCK_LEVEL_THRESHOLD, NUM_CUSTOMER_PER_DISTRICT,
-    NUM_DISTRICT_PER_WAREHOUSE,
+    District, History, Historydata, Item, NewOrder, Order, Orderline, Stock, Warehouse,
+    MAX_CARRIER_ID, MAX_ITEM, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD, MIN_CARRIER_ID,
+    MIN_STOCK_LEVEL_THRESHOLD, NUM_CUSTOMER_PER_DISTRICT, NUM_DISTRICT_PER_WAREHOUSE,
 };
 
 async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
@@ -27,16 +31,100 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     */
     coordinator.tx_begin(false).await;
     let warehouse_id = 0;
-    // get warehouse tax
-
+    let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
+    let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
+    // get warehouse tax & customer
+    coordinator.add_read_to_execute(warehouse_id, WAREHOUSE_TABLE);
+    coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
     // get district need update district next oid
-    //random a district id
+    let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
+    let (status, results) = coordinator.tx_exe().await;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    let mut district_record: District = match serde_json::from_str(results[2].value()) {
+        Ok(s) => s,
+        Err(_) => District::default(),
+    };
+    district_record.d_next_o_id += 1;
+    let o_id = district_record.d_next_o_id;
+    district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
+    // insert new order
+    let new_order_record = NewOrder::new(o_id, d_id);
+    coordinator.add_to_insert(ReadStruct {
+        key: neworder_index(o_id, d_id),
+        table_id: NEWORDER_TABLE,
+        value: Some(serde_json::to_string(&new_order_record).unwrap()),
+        timestamp: None,
+    });
+    // insert order
+    let order_record = Order::new(o_id, d_id, warehouse_id, c_id);
+    let ol_cnt = order_record.o_ol_cnt;
+    coordinator.add_to_insert(ReadStruct {
+        key: order_index(o_id, d_id),
+        table_id: ORDER_TABLE,
+        value: Some(serde_json::to_string(&order_record).unwrap()),
+        timestamp: None,
+    });
 
-    // get customer
+    // generate item id
+    let mut item_set = HashSet::new();
+    let mut item_id_vec = Vec::new();
+    let mut ol = 0;
+    while ol < ol_cnt {
+        let item_id = u64_rand(1, MAX_ITEM);
+        if item_set.contains(&item_id) {
+            ol -= 1;
+            continue;
+        }
+        item_set.insert(item_id);
+        item_id_vec.push(item_id);
+        ol += 1;
+    }
 
-    // inc
+    for ol_number in 1..=ol_cnt {
+        // read item
+        let ol_quantity = u64_rand(1, 10);
+        let i_id = item_id_vec[(ol_number - 1) as usize];
+        coordinator.add_read_to_execute(i_id, ITEM_TABLE);
+        let (status, item) = coordinator.tx_exe().await;
+        if !status || item.is_empty() {
+            coordinator.tx_abort().await;
+            return false;
+        }
+        let item_record: Item = match serde_json::from_str(item[0].value()) {
+            Ok(s) => s,
+            Err(_) => Item::default(),
+        };
+        // read and update stock
+        let stock_update = coordinator.add_write_to_execute(i_id, STOCK_TABLE, "value".to_string());
+        let (status, stock) = coordinator.tx_exe().await;
+        if !status || stock.is_empty() {
+            coordinator.tx_abort().await;
+            return false;
+        }
+        let mut stock_record: Stock = match serde_json::from_str(stock[0].value()) {
+            Ok(s) => s,
+            Err(_) => Stock::default(),
+        };
+        if stock_record.s_quantity - ol_quantity >= 10 {
+            stock_record.s_quantity -= ol_quantity;
+        } else {
+            stock_record.s_quantity += 91 - ol_quantity;
+        }
+        stock_update.write().await.value = Some(serde_json::to_string(&stock_record).unwrap());
+        // insert orderline
+        let orderline = Orderline::new(o_id, d_id, warehouse_id, ol_number);
+        coordinator.add_to_insert(ReadStruct {
+            key: order_index(o_id, d_id),
+            table_id: ORDERLINE_TABLE,
+            value: Some(serde_json::to_string(&orderline).unwrap()),
+            timestamp: None,
+        });
+    }
 
-    true
+    coordinator.tx_commit().await
 }
 
 async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
@@ -67,25 +155,53 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     );
     let history_updated =
         coordinator.add_write_to_execute(history_index(c_id, d_id), HISTORY_TABLE, "".to_string());
-    let (status, customer) = coordinator.tx_exe().await;
+    let (status, results) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
         return false;
     }
-    // FIXME: Currently, we use a random order_id to maintain the distributed transaction payload,
-    // but need to search the largest o_id by o_w_id, o_d_id and o_c_id from the order table
-    let o_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
-    coordinator.add_read_to_execute(order_index(o_id, d_id), ORDER_TABLE);
-    let (status, order) = coordinator.tx_exe().await;
-    if !status {
-        coordinator.tx_abort().await;
-        return false;
-    }
-    let order_record: Order = match serde_json::from_str(order[0].value()) {
+    let mut warehouse_record: Warehouse = match serde_json::from_str(results[0].value()) {
         Ok(s) => s,
-        Err(_) => Order::default(),
+        Err(_) => Warehouse::default(),
     };
-    for ol in 1..=order_record.o_ol_cnt {}
+    let mut district_record: District = match serde_json::from_str(results[1].value()) {
+        Ok(s) => s,
+        Err(_) => District::default(),
+    };
+    let mut customer_record: Customer = match serde_json::from_str(results[2].value()) {
+        Ok(s) => s,
+        Err(_) => Customer::default(),
+    };
+    let mut history_record: History = match serde_json::from_str(results[3].value()) {
+        Ok(s) => s,
+        Err(_) => History::default(),
+    };
+
+    warehouse_record.w_ytd += h_amount;
+    district_record.d_ytd += h_amount;
+
+    customer_record.c_balance -= h_amount;
+    customer_record.c_ytd_payment += h_amount;
+    customer_record.c_payment_cnt += 1;
+
+    if customer_record.c_credit == "BC" {
+        //
+        let historydata = Historydata::new(history_record.clone());
+        let mut c_data = serde_json::to_string(&historydata).unwrap();
+        c_data = c_data + customer_record.c_data.as_str();
+        if c_data.len() > 500 {
+            c_data = c_data.split_at(499).1.to_string();
+        }
+        customer_record.c_data = c_data;
+    }
+
+    history_record.h_date = get_currenttime_millis();
+    history_record.h_amount = h_amount;
+
+    warehouse_updated.write().await.value = Some(serde_json::to_string(&warehouse_record).unwrap());
+    district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
+    customer_updated.write().await.value = Some(serde_json::to_string(&customer_record).unwrap());
+    history_updated.write().await.value = Some(serde_json::to_string(&history_record).unwrap());
 
     coordinator.tx_commit().await
 }
