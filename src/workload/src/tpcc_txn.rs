@@ -73,6 +73,7 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.add_read_to_execute(warehouse_id, WAREHOUSE_TABLE);
     coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
     // get district need update district next oid
+    coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
     let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
     let (status, results) = coordinator.tx_exe().await;
     if !status {
@@ -134,6 +135,7 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
             Err(_) => Item::default(),
         };
         // read and update stock
+        coordinator.add_read_to_execute(i_id, STOCK_TABLE);
         let stock_update = coordinator.add_write_to_execute(i_id, STOCK_TABLE, "value".to_string());
         let (status, stock) = coordinator.tx_exe().await;
         if !status || stock.is_empty() {
@@ -182,13 +184,18 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
 
     let h_amount = u64_rand(100, 500000) as f64 / 100.0;
 
+    coordinator.add_read_to_execute(0, WAREHOUSE_TABLE);
     let warehouse_updated = coordinator.add_write_to_execute(0, WAREHOUSE_TABLE, "".to_string());
+    coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
     let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
+    coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
     let customer_updated = coordinator.add_write_to_execute(
         customer_index(c_id, d_id),
         CUSTOMER_TABLE,
         "".to_string(),
     );
+
+    coordinator.add_read_to_execute(history_index(c_id, d_id), HISTORY_TABLE);
     let history_updated =
         coordinator.add_write_to_execute(history_index(c_id, d_id), HISTORY_TABLE, "".to_string());
     let (status, results) = coordinator.tx_exe().await;
@@ -269,6 +276,7 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
         }
         if !new_order.is_empty() {
             // update order
+            coordinator.add_read_to_execute(order_index(o_id, d_id), ORDER_TABLE);
             let order_updated = coordinator.add_write_to_execute(
                 order_index(o_id, d_id),
                 ORDER_TABLE,
@@ -305,6 +313,7 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
                 sum_ol_amount += ol_record.ol_amount;
             }
             // update customer
+            coordinator.add_read_to_execute(customer_index(o_id, d_id), CUSTOMER_TABLE);
             let customer_updated = coordinator.add_write_to_execute(
                 customer_index(o_id, d_id),
                 CUSTOMER_TABLE,

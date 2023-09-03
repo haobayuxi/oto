@@ -75,20 +75,25 @@ pub async fn validate(msg: Msg, dtx_type: DtxType) -> bool {
                 }
             }
             return !abort;
-        } else if (dtx_type == DtxType::ford || dtx_type == DtxType::rocc) {
+        } else if dtx_type == DtxType::ford || dtx_type == DtxType::rocc {
             for iter in msg.read_set {
                 let table = &mut DATA[iter.table_id as usize];
-                match table.get_mut(&iter.key).unwrap().try_read() {
-                    Ok(guard) => {
-                        // insert into result
-                        if guard.ts < iter.timestamp() {
-                            return false;
+                match table.get_mut(&iter.key) {
+                    Some(tuple) => {
+                        match tuple.try_read() {
+                            Ok(guard) => {
+                                // insert into result
+                                if guard.ts < iter.timestamp() {
+                                    return false;
+                                }
+                            }
+                            Err(_) => {
+                                // has been locked
+                                return false;
+                            }
                         }
                     }
-                    Err(_) => {
-                        // has been locked
-                        return false;
-                    }
+                    None => continue,
                 }
             }
             return true;
