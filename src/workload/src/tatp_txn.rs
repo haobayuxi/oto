@@ -2,7 +2,7 @@ use std::result;
 
 use common::{
     f64_rand, txn::DtxCoordinator, u64_rand, ACCESS_INFO_TABLE, CALL_FORWARDING_TABLE,
-    SPECIAL_FACILITY_TABLE, SUBSCRIBER_TABLE, TXNS_PER_CLIENT,
+    SPECIAL_FACILITY_TABLE, SUBSCRIBER_TABLE,
 };
 use tokio::time::Instant;
 
@@ -28,10 +28,13 @@ async fn run_tatp_transaction(coordinator: &mut DtxCoordinator) -> bool {
     }
 }
 
-pub async fn tatp_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {
+pub async fn tatp_run_transactions(
+    coordinator: &mut DtxCoordinator,
+    txn_nums: u64,
+) -> (Vec<u128>, f64) {
     let mut latency_result = Vec::new();
     let total_start = Instant::now();
-    for i in 0..TXNS_PER_CLIENT {
+    for i in 0..txn_nums {
         let start = Instant::now();
         let success = run_tatp_transaction(coordinator).await;
         let end_time = start.elapsed().as_micros();

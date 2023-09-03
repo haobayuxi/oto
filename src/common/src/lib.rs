@@ -33,8 +33,6 @@ pub static NEWORDER_TABLE: i32 = 5;
 pub static ORDERLINE_TABLE: i32 = 6;
 pub static STOCK_TABLE: i32 = 7;
 pub static ITEM_TABLE: i32 = 8;
-
-pub static TXNS_PER_CLIENT: u64 = 20000;
 pub static CID_LEN: u32 = 50;
 
 #[derive(Clone)]
@@ -106,6 +104,7 @@ pub struct ConfigInFile {
     // pub zipf: f64,
     pub client_num: u64,
     pub read_only: bool,
+    pub txns_per_client: u64,
 }
 
 #[derive(PartialEq, Eq, Deserialize, Clone, Debug, Copy)]

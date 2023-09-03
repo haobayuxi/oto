@@ -48,11 +48,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (result_sender, mut recv) = channel::<(Vec<u128>, f64)>(100);
     let client_num = server_config.client_num;
+
+    let read_only = server_config.read_only;
+    let txns_per_client = server_config.txns_per_client;
     for i in 0..client_num {
         let loca_ts_bk = local_ts.clone();
         let cto_addr = config.cto_addr.clone();
         let server_addr = config.server_addr.clone();
-        let read_only = server_config.read_only;
         let sender = result_sender.clone();
         tokio::spawn(async move {
             let mut dtx_coordinator = DtxCoordinator::new(
@@ -66,22 +68,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match db_type {
                 DbType::micro => {
                     sender
-                        .send(micro_run_transactions(&mut dtx_coordinator, read_only).await)
+                        .send(
+                            micro_run_transactions(
+                                &mut dtx_coordinator,
+                                read_only,
+                                txns_per_client,
+                            )
+                            .await,
+                        )
                         .await;
                 }
                 DbType::tatp => {
                     sender
-                        .send(tatp_run_transactions(&mut dtx_coordinator).await)
+                        .send(tatp_run_transactions(&mut dtx_coordinator, txns_per_client).await)
                         .await;
                 }
                 DbType::smallbank => {
                     sender
-                        .send(small_bank_run_transactions(&mut dtx_coordinator).await)
+                        .send(
+                            small_bank_run_transactions(&mut dtx_coordinator, txns_per_client)
+                                .await,
+                        )
                         .await;
                 }
                 DbType::tpcc => {
                     sender
-                        .send(tpcc_run_transactions(&mut dtx_coordinator).await)
+                        .send(tpcc_run_transactions(&mut dtx_coordinator, txns_per_client).await)
                         .await;
                 }
             }
@@ -89,7 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let mut total_latency: Vec<u128> = Vec::new();
     let mut total_throuthput = 0.0;
-    for _ in 0..server_config.client_num {
+    for _ in 0..client_num {
         let (latency_result, throughput) = recv.recv().await.unwrap();
         total_latency.extend(latency_result.iter());
         total_throuthput += throughput;

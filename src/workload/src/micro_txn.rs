@@ -1,4 +1,4 @@
-use common::{txn::DtxCoordinator, TXNS_PER_CLIENT};
+use common::txn::DtxCoordinator;
 use rpc::common::ReadStruct;
 use tokio::time::Instant;
 
@@ -8,13 +8,14 @@ pub async fn micro_run_transactions(
     coordinator: &mut DtxCoordinator,
     // theta: f64,
     read_only: bool,
+    txn_nums: u64,
 ) -> (Vec<u128>, f64) {
     // init workload
     let mut query = MicroQuery::new(read_only);
     // run transaction
     let mut latency_result = Vec::new();
     let total_start = Instant::now();
-    for _ in 0..TXNS_PER_CLIENT {
+    for _ in 0..txn_nums {
         let start = Instant::now();
         let (read_set, write_set) = query.generate();
         let success = run_transaction(coordinator, read_set, write_set).await;

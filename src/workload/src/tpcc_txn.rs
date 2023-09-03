@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use common::{
     get_currenttime_millis, txn::DtxCoordinator, u64_rand, CUSTOMER_TABLE, DISTRICT_TABLE,
     HISTORY_TABLE, ITEM_TABLE, NEWORDER_TABLE, ORDERLINE_TABLE, ORDER_TABLE, STOCK_TABLE,
-    TXNS_PER_CLIENT, WAREHOUSE_TABLE,
+    WAREHOUSE_TABLE,
 };
 use rpc::common::ReadStruct;
 use tokio::time::Instant;
@@ -33,10 +33,13 @@ async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     }
 }
 
-pub async fn tpcc_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {
+pub async fn tpcc_run_transactions(
+    coordinator: &mut DtxCoordinator,
+    txn_nums: u64,
+) -> (Vec<u128>, f64) {
     let mut latency_result = Vec::new();
     let total_start = Instant::now();
-    for i in 0..TXNS_PER_CLIENT {
+    for i in 0..txn_nums {
         let start = Instant::now();
         let success = run_tpcc_transaction(coordinator).await;
         let end_time = start.elapsed().as_micros();

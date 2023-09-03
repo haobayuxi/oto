@@ -1,6 +1,4 @@
-use common::{
-    txn::DtxCoordinator, u64_rand, ACCOUNT_TABLE, CHECKING_TABLE, SAVING_TABLE, TXNS_PER_CLIENT,
-};
+use common::{txn::DtxCoordinator, u64_rand, ACCOUNT_TABLE, CHECKING_TABLE, SAVING_TABLE};
 use tokio::time::Instant;
 
 use crate::small_bank_db::{get_c_id, Checking, Saving, MAX_BALANCE, MIN_BALANCE};
@@ -11,10 +9,13 @@ static FREQUENCY_DEPOSIT_CHECKING: u64 = 45;
 static FREQUENCY_TRANSACT_SAVINGS: u64 = 85;
 static FREQUENCY_WRITE_CHECK: u64 = 100;
 
-pub async fn small_bank_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {
+pub async fn small_bank_run_transactions(
+    coordinator: &mut DtxCoordinator,
+    txn_nums: u64,
+) -> (Vec<u128>, f64) {
     let mut latency_result = Vec::new();
     let total_start = Instant::now();
-    for i in 0..TXNS_PER_CLIENT {
+    for i in 0..txn_nums {
         let start = Instant::now();
         let success = small_bank_run_transaction(coordinator).await;
         let end_time = start.elapsed().as_micros();
