@@ -127,7 +127,12 @@ impl DepGraph {
                         }
                     }
                 }
-                node.callback.take().unwrap().send(reply);
+                match node.callback.take() {
+                    Some(callback) => {
+                        callback.send(reply);
+                    }
+                    None => continue,
+                }
                 for iter in txn.write_set.iter() {
                     let table = &mut DATA[iter.table_id as usize];
                     match table.get_mut(&iter.key) {
