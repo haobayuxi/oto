@@ -3,9 +3,10 @@ use std::collections::HashSet;
 use common::{
     get_currenttime_millis, txn::DtxCoordinator, u64_rand, CUSTOMER_TABLE, DISTRICT_TABLE,
     HISTORY_TABLE, ITEM_TABLE, NEWORDER_TABLE, ORDERLINE_TABLE, ORDER_TABLE, STOCK_TABLE,
-    WAREHOUSE_TABLE,
+    TXNS_PER_CLIENT, WAREHOUSE_TABLE,
 };
 use rpc::common::ReadStruct;
+use tokio::time::Instant;
 
 use crate::tpcc_db::{
     customer_index, history_index, neworder_index, order_index, orderline_index, Customer,
@@ -13,6 +14,41 @@ use crate::tpcc_db::{
     MAX_CARRIER_ID, MAX_ITEM, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD, MIN_CARRIER_ID,
     MIN_STOCK_LEVEL_THRESHOLD, NUM_CUSTOMER_PER_DISTRICT, NUM_DISTRICT_PER_WAREHOUSE,
 };
+
+async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
+    let op = u64_rand(0, 100);
+    if op < 45 {
+        //
+        return tx_new_order(coordinator).await;
+    } else if op < 85 {
+        //
+        return tx_payment(coordinator).await;
+    } else if op < 90 {
+        //
+        return tx_delivery(coordinator).await;
+    } else if op < 95 {
+        return tx_order_status(coordinator).await;
+    } else {
+        return tx_stock_level(coordinator).await;
+    }
+}
+
+pub async fn tpcc_run_transactions(coordinator: &mut DtxCoordinator) -> (Vec<u128>, f64) {
+    let mut latency_result = Vec::new();
+    let total_start = Instant::now();
+    for i in 0..TXNS_PER_CLIENT {
+        let start = Instant::now();
+        let success = run_tpcc_transaction(coordinator).await;
+        let end_time = start.elapsed().as_micros();
+        if success {
+            latency_result.push(end_time);
+        }
+    }
+    let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
+    let throughput_result = latency_result.len() as f64 / total_end;
+    // println!("throughput = {}", throughput_result);
+    (latency_result, throughput_result)
+}
 
 async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     /*

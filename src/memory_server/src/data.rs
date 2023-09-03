@@ -5,6 +5,7 @@ use rpc::common::{Msg, ReadStruct};
 use tokio::sync::RwLock;
 use workload::{
     micro_db::init_micro_db, small_bank_db::init_smallbank_db, tatp_db::init_tatp_data,
+    tpcc_db::init_tpcc_data,
 };
 
 use crate::dep_graph::{Node, TXNS};
@@ -24,6 +25,7 @@ pub fn init_data(txn_type: DbType, client_num: u64) {
             }
             DbType::tatp => DATA = init_tatp_data(),
             DbType::smallbank => DATA = init_smallbank_db(),
+            DbType::tpcc => DATA = init_tpcc_data(),
         }
     }
 }

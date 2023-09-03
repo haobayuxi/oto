@@ -13,6 +13,7 @@ use tokio::time::sleep;
 use workload::micro_txn::micro_run_transactions;
 use workload::small_bank_txn::small_bank_run_transactions;
 use workload::tatp_txn::tatp_run_transactions;
+use workload::tpcc_txn::tpcc_run_transactions;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -76,6 +77,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 DbType::smallbank => {
                     sender
                         .send(small_bank_run_transactions(&mut dtx_coordinator).await)
+                        .await;
+                }
+                DbType::tpcc => {
+                    sender
+                        .send(tpcc_run_transactions(&mut dtx_coordinator).await)
                         .await;
                 }
             }

@@ -124,6 +124,7 @@ pub enum DbType {
     micro,
     tatp,
     smallbank,
+    tpcc,
 }
 
 pub struct Config {
