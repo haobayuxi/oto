@@ -19,7 +19,8 @@ async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 100);
     if op < 45 {
         //
-        return tx_new_order(coordinator).await;
+        // return tx_new_order(coordinator).await;
+        return tx_payment(coordinator).await;
     } else if op < 85 {
         //
         return tx_payment(coordinator).await;

@@ -256,7 +256,7 @@ async fn sync_broadcast(msg: Msg, data_clients: Vec<DataServiceClient<Channel>>)
             s_.send(client.communication(msg_).await.unwrap().into_inner());
         });
     }
-    println!("data client len {}", data_clients.len());
+    // println!("data client len {}", data_clients.len());
     for _ in 0..data_clients.len() {
         result.push(recv.recv().await.unwrap());
     }
