@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     for i in 0..client_num {
         let loca_ts_bk = local_ts.clone();
         let cto_addr = config.cto_addr.clone();
-        let server_addr = config.server_addr.clone();
+        let server_addr = config.server_public_addr.clone();
         let sender = result_sender.clone();
         tokio::spawn(async move {
             let mut dtx_coordinator = DtxCoordinator::new(
