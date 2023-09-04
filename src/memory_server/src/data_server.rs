@@ -115,7 +115,7 @@ impl DataServer {
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
         if self.server_id == 2 {
             //
-            let mut data_ip = self.config.server_addr.clone();
+            let mut data_ip = self.config.server_public_addr.clone();
             data_ip.pop();
             unsafe {
                 PEER = connect_to_peer(data_ip).await;
