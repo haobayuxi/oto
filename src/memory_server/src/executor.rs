@@ -53,10 +53,8 @@ impl Executor {
                 accept.op = TxnOp::Accept.into();
                 accept.success = true;
                 // broadcast lock
-                let result = sync_broadcast(accept.clone(), data_clients.clone()).await;
+                let result = sync_broadcast(accept.clone(), data_clients).await;
                 call_back.send(accept.clone());
-                // accept.op = TxnOp::Commit.into();
-                // async_broadcast_commit(accept, data_clients).await;
             });
         }
     }
@@ -136,7 +134,9 @@ impl Executor {
                                         if success {
                                             // lock the backup
                                             reply.write_set = coor_msg.msg.write_set.clone();
-                                            self.accept(reply, coor_msg.call_back).await;
+                                            reply.success = true;
+                                            coor_msg.call_back.send(reply);
+                                            // self.accept(reply, coor_msg.call_back).await;
                                         } else {
                                             reply.success = false;
                                             coor_msg.call_back.send(reply);
