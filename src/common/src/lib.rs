@@ -151,9 +151,9 @@ impl Default for Config {
             //     "192.168.1.72:10001".to_string(), //optane12
             // ],
             server_public_addr: vec![
-                "13.233.247.154:10001".to_string(), //mumbai
-                "192.168.1.71:10001".to_string(),   //optane11
-                "192.168.1.72:10001".to_string(),
+                "13.233.247.154:10001".to_string(), //ca
+                "192.168.1.71:10001".to_string(),   //jp
+                "192.168.1.72:10001".to_string(),   //Frankfurt
             ],
             server_addr: vec![
                 // "13.233.247.154:10001".to_string(), //mumbai
@@ -176,14 +176,14 @@ impl Default for Config {
             //     "192.168.1.75:10001".to_string(), //optane15
             // ],
             client_public_addr: vec![
-                "13.57.252.34:10001".to_string(), //optane10
-                "3.112.198.86:10001".to_string(), //optane14
-                "3.76.85.75:10001".to_string(),   //optane15
+                "13.57.252.34:10001".to_string(),
+                "3.112.198.86:10001".to_string(),
+                "3.76.85.75:10001".to_string(),
             ],
             client_addr: vec![
-                "172.31.2.199:10001".to_string(), //optane10
-                "172.31.45.90:10001".to_string(), //optane14
-                "172.31.8.21910001".to_string(),  //optane15
+                "172.31.2.199:10001".to_string(),
+                "172.31.45.90:10001".to_string(),
+                "172.31.8.21910001".to_string(),
             ],
             perferred_server: vec![0, 0, 0],
         }
