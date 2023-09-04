@@ -53,12 +53,10 @@ impl Executor {
                 accept.op = TxnOp::Accept.into();
                 accept.success = true;
                 // broadcast lock
-                let result = sync_broadcast(accept.clone(), data_clients.clone()).await;
-                // println!("accept result {}", result.len());
-                // commit
+                // let result = sync_broadcast(accept.clone(), data_clients.clone()).await;
                 call_back.send(accept.clone());
-                accept.op = TxnOp::Commit.into();
-                async_broadcast_commit(accept, data_clients).await;
+                // accept.op = TxnOp::Commit.into();
+                // async_broadcast_commit(accept, data_clients).await;
             });
         }
     }

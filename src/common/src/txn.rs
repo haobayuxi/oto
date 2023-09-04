@@ -381,10 +381,11 @@ impl DtxCoordinator {
                 insert: self.insert.clone(),
                 delete: self.delete.clone(),
             };
-            let mut client = self.data_clients[2].clone();
-            tokio::spawn(async move {
-                client.communication(commit).await;
-            });
+            // let mut client = self.data_clients[2].clone();
+            // tokio::spawn(async move {
+            //     client.communication(commit).await;
+            // });
+            self.async_broadcast_commit(commit).await;
             return true;
         }
         // validate
