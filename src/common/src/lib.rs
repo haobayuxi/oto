@@ -138,15 +138,20 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
+            // server_addr: vec![
+            //     "192.168.1.88:10001".to_string(), //optane08
+            //     "192.168.1.71:10001".to_string(), //optane11
+            //     "192.168.1.72:10001".to_string(), //optane12
+            // ],
             server_addr: vec![
-                "192.168.1.88:10001".to_string(), //optane08
-                "192.168.1.71:10001".to_string(), //optane11
-                "192.168.1.72:10001".to_string(), //optane12
+                "13.233.247.154:10001".to_string(), //mumbai
+                "192.168.1.71:10001".to_string(),   //optane11
+                "192.168.1.72:10001".to_string(),   //optane12
             ],
             cto_addr: "192.168.1.89:10001".to_string(),
             // "192.168.1.89:10002".to_string(),
             // ],
-            executor_num: 30,
+            executor_num: 20,
             client_addr: vec![
                 "192.168.1.70:10001".to_string(), //optane10
                 "192.168.1.74:10001".to_string(), //optane14
