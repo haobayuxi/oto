@@ -11,8 +11,8 @@ use tonic::transport::Channel;
 
 use crate::{
     data::{
-        delete, get_deps, get_read_only, get_read_set, insert, lock_write_set, release_read_set,
-        releass_locks, update_and_release_locks, validate,
+        self, delete, get_deps, get_read_only, get_read_set, insert, lock_write_set,
+        release_read_set, releass_locks, update_and_release_locks, validate,
     },
     data_server::PEER,
     dep_graph::{Node, TXNS},
@@ -130,13 +130,12 @@ impl Executor {
                                             coor_msg.msg.txn_id,
                                         )
                                         .await;
-                                        // println!("recv execute write {}", success);
                                         if success {
                                             // lock the backup
                                             reply.write_set = coor_msg.msg.write_set.clone();
-                                            reply.success = true;
-                                            coor_msg.call_back.send(reply);
-                                            // self.accept(reply, coor_msg.call_back).await;
+                                            // reply.success = true;
+                                            // coor_msg.call_back.send(reply);
+                                            self.accept(reply, coor_msg.call_back).await;
                                         } else {
                                             reply.success = false;
                                             coor_msg.call_back.send(reply);
@@ -257,6 +256,7 @@ async fn sync_broadcast(msg: Msg, data_clients: Vec<DataServiceClient<Channel>>)
             s_.send(client.communication(msg_).await.unwrap().into_inner());
         });
     }
+    println!("data client len {}", data_clients.len());
     for _ in 0..data_clients.len() {
         result.push(recv.recv().await.unwrap());
     }
