@@ -131,6 +131,7 @@ pub struct Config {
     pub server_public_addr: Vec<String>,
     pub cto_addr: String,
     pub client_addr: Vec<String>,
+    pub client_public_addr: Vec<String>,
     pub perferred_server: Vec<u64>,
     // pub
     pub executor_num: u64,
@@ -164,10 +165,25 @@ impl Default for Config {
             // "192.168.1.89:10002".to_string(),
             // ],
             executor_num: 20,
+            // client_public_addr: vec![
+            //     "192.168.1.70:10001".to_string(), //optane10
+            //     "192.168.1.74:10001".to_string(), //optane14
+            //     "192.168.1.75:10001".to_string(), //optane15
+            // ],
+            // client_addr: vec![
+            //     "192.168.1.70:10001".to_string(), //optane10
+            //     "192.168.1.74:10001".to_string(), //optane14
+            //     "192.168.1.75:10001".to_string(), //optane15
+            // ],
+            client_public_addr: vec![
+                "13.57.252.34:10001".to_string(), //optane10
+                "3.112.198.86:10001".to_string(), //optane14
+                "3.76.85.75:10001".to_string(),   //optane15
+            ],
             client_addr: vec![
-                "192.168.1.70:10001".to_string(), //optane10
-                "192.168.1.74:10001".to_string(), //optane14
-                "192.168.1.75:10001".to_string(), //optane15
+                "172.31.2.199:10001".to_string(), //optane10
+                "172.31.45.90:10001".to_string(), //optane14
+                "172.31.8.21910001".to_string(),  //optane15
             ],
             perferred_server: vec![0, 0, 0],
         }

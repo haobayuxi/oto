@@ -38,7 +38,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if id == 0 {
         // init client
         println!("init throughput client");
-        let mut get_throughput_client = ThroughputStatistics::new(config.client_addr.clone()).await;
+        let mut get_throughput_client =
+            ThroughputStatistics::new(config.client_public_addr.clone()).await;
         tokio::spawn(async move {
             // loop {
             get_throughput_client.run().await;

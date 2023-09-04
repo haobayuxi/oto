@@ -37,32 +37,16 @@ impl coordinator_rpc_server {
     }
 }
 
-struct update_server {
-    local_ts: Arc<RwLock<u64>>,
-}
-
-impl update_server {
-    pub fn new(local_ts: Arc<RwLock<u64>>) -> Self {
-        Self { local_ts }
-    }
-}
-
 pub async fn run_coordinator_server(addr_to_listen: String, local_ts: Arc<RwLock<u64>>) {
     let rpc_server = coordinator_rpc_server::new(addr_to_listen);
-    let update = update_server::new(local_ts);
 
     let addr = rpc_server.addr_to_listen.parse().unwrap();
 
     println!("rpc server listening on: {:?}", addr);
 
     let server = ThroughputStatisticsServiceServer::new(rpc_server);
-    let update_server = UpdateTsServer::new(update);
 
-    Server::builder()
-        .add_service(server)
-        .add_service(update_server)
-        .serve(addr)
-        .await;
+    Server::builder().add_service(server).serve(addr).await;
 }
 
 #[tonic::async_trait]
@@ -71,15 +55,6 @@ impl ThroughputStatisticsService for coordinator_rpc_server {
         Ok(Response::new(Throughput {
             committed: GLOBAL_COMMITTED.load(Ordering::Relaxed) as u64,
         }))
-    }
-}
-
-#[tonic::async_trait]
-impl UpdateTs for update_server {
-    async fn update(&self, request: Request<Ts>) -> Result<Response<Echo>, Status> {
-        let mut guard = self.local_ts.write().await;
-        *guard = request.into_inner().ts;
-        Ok(Response::new(Echo { success: true }))
     }
 }
 
