@@ -129,7 +129,6 @@ pub enum DbType {
 pub struct Config {
     pub server_addr: Vec<String>,
     pub server_public_addr: Vec<String>,
-    pub cto_addr: String,
     pub client_addr: Vec<String>,
     pub client_public_addr: Vec<String>,
     pub perferred_server: Vec<u64>,
@@ -151,19 +150,15 @@ impl Default for Config {
             //     "192.168.1.72:10001".to_string(), //optane12
             // ],
             server_public_addr: vec![
-                "13.233.247.154:10001".to_string(), //ca
-                "192.168.1.71:10001".to_string(),   //jp
-                "192.168.1.72:10001".to_string(),   //Frankfurt
+                "54.183.243.139:10001".to_string(), //ca
+                "54.250.117.103:10001".to_string(), //jp
+                "3.71.0.141:10001".to_string(),     //Frankfurt
             ],
             server_addr: vec![
-                // "13.233.247.154:10001".to_string(), //mumbai
-                "172.31.42.102:10001".to_string(), //mumbai
-                "192.168.1.71:10001".to_string(),  //optane11
-                "192.168.1.72:10001".to_string(),  //optane12
+                "172.31.6.187:10001".to_string(),  //ca
+                "172.31.38.214:10001".to_string(), //jp
+                "172.31.2.189:10001".to_string(),  //Frankfurt
             ],
-            cto_addr: "192.168.1.89:10001".to_string(),
-            // "192.168.1.89:10002".to_string(),
-            // ],
             executor_num: 20,
             // client_public_addr: vec![
             //     "192.168.1.70:10001".to_string(), //optane10
