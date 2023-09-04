@@ -41,6 +41,8 @@ pub struct DtxCoordinator {
     pub id: u64,
     pub local_ts: Arc<RwLock<u64>>,
     pub dtx_type: DtxType,
+    preferred_server: u64,
+    geo: bool,
     txn_id: u64,
     read_only: bool,
     commit_ts: u64,
@@ -57,7 +59,6 @@ pub struct DtxCoordinator {
     deps: Vec<u64>,
 
     data_clients: Vec<DataServiceClient<Channel>>,
-    // committed: Arc<AtomicU64>,
 }
 
 impl DtxCoordinator {
@@ -66,6 +67,8 @@ impl DtxCoordinator {
         local_ts: Arc<RwLock<u64>>,
         dtx_type: DtxType,
         data_ip: Vec<String>,
+        geo: bool,
+        preferred_server: u64,
     ) -> Self {
         // init  data client
         let data_clients = connect_to_peer(data_ip).await;
@@ -88,6 +91,8 @@ impl DtxCoordinator {
             deps: Vec::new(),
             insert: Vec::new(),
             delete: Vec::new(),
+            preferred_server,
+            geo,
             // committed,
         }
     }
@@ -122,7 +127,12 @@ impl DtxCoordinator {
         let mut success = true;
         let mut result = Vec::new();
         // preferred
-        let preferred_server_id = self.id % 3;
+        let preferred_server_id = if self.geo {
+            self.preferred_server
+        } else {
+            self.id % 3
+        };
+
         if self.dtx_type == DtxType::rocc
             || self.dtx_type == DtxType::r2pl
             || self.dtx_type == DtxType::rjanus

@@ -62,6 +62,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 loca_ts_bk,
                 dtx_type,
                 server_addr,
+                true,
+                id as u64,
             )
             .await;
 

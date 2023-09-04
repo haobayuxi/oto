@@ -178,7 +178,7 @@ impl Default for Config {
             client_addr: vec![
                 "172.31.2.199:10001".to_string(),
                 "172.31.45.90:10001".to_string(),
-                "172.31.8.21910001".to_string(),
+                "172.31.8.219:10001".to_string(),
             ],
             perferred_server: vec![0, 0, 0],
         }
