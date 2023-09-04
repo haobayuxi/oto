@@ -119,6 +119,7 @@ impl DataServer {
             data_ip.pop();
             unsafe {
                 PEER = connect_to_peer(data_ip).await;
+                println!("accept{}", PEER.len());
             }
         }
         run_rpc_server(server).await;
