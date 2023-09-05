@@ -20,21 +20,21 @@ async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     sleep(Duration::from_secs(1)).await;
     if op < 45 {
         //
-        print!("new order");
+        println!("new order");
         return tx_new_order(coordinator).await;
     } else if op < 85 {
         //
-        print!("payment");
+        println!("payment");
         return tx_payment(coordinator).await;
     } else if op < 90 {
         //
-        print!("delivery");
+        println!("delivery");
         return tx_delivery(coordinator).await;
     } else if op < 95 {
-        print!("order status");
+        println!("order status");
         return tx_order_status(coordinator).await;
     } else {
-        print!("stock level");
+        println!("stock level");
         return tx_stock_level(coordinator).await;
     }
 }
@@ -48,7 +48,7 @@ pub async fn tpcc_run_transactions(
     for i in 0..txn_nums {
         let start = Instant::now();
         let success = run_tpcc_transaction(coordinator).await;
-        let end_time = start.elapsed().as_millis();
+        let end_time = start.elapsed().as_micros();
         if success {
             latency_result.push(end_time);
             println!("{}-{}", coordinator.txn_id, end_time);
