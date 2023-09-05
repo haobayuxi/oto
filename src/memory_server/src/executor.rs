@@ -79,6 +79,13 @@ impl Executor {
                                 let read_set = coor_msg.msg.read_set.clone();
                                 // need wait
                                 let local_clock = get_currenttime_millis();
+                                println!(
+                                    "ts{}==
+                                committs={},
+                                localclock = {}
+                                ",
+                                    ts, MAX_COMMIT_TS, local_clock
+                                );
                                 if ts > MAX_COMMIT_TS && ts > local_clock {
                                     // wait
                                     let wait_time = max(ts - MAX_COMMIT_TS, ts - local_clock);

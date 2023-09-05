@@ -128,20 +128,20 @@ impl DataServer {
                 println!("accept{}", PEER.len());
                 //
                 let mut clients = PEER.clone();
-                let commit = Msg {
-                    txn_id: 0,
-                    read_set: Vec::new(),
-                    write_set: Vec::new(),
-                    op: TxnOp::Commit.into(),
-                    success: true,
-                    ts: Some(get_currenttime_millis()),
-                    deps: Vec::new(),
-                    read_only: false,
-                    insert: Vec::new(),
-                    delete: Vec::new(),
-                };
                 tokio::spawn(async move {
                     sleep(Duration::from_millis(100)).await;
+                    let commit = Msg {
+                        txn_id: 0,
+                        read_set: Vec::new(),
+                        write_set: Vec::new(),
+                        op: TxnOp::Commit.into(),
+                        success: true,
+                        ts: Some(get_currenttime_millis()),
+                        deps: Vec::new(),
+                        read_only: false,
+                        insert: Vec::new(),
+                        delete: Vec::new(),
+                    };
                     for iter in clients.iter_mut() {
                         let _ = iter.communication(commit.clone()).await.unwrap();
                     }
