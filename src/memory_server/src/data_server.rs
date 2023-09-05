@@ -130,13 +130,19 @@ impl DataServer {
                 let mut clients = PEER.clone();
                 tokio::spawn(async move {
                     sleep(Duration::from_millis(1)).await;
+                    let commit_ts = get_currenttime_millis();
+                    unsafe {
+                        if commit_ts > MAX_COMMIT_TS {
+                            MAX_COMMIT_TS = commit_ts;
+                        }
+                    }
                     let commit = Msg {
                         txn_id: 0,
                         read_set: Vec::new(),
                         write_set: Vec::new(),
                         op: TxnOp::Commit.into(),
                         success: true,
-                        ts: Some(get_currenttime_millis()),
+                        ts: Some(commit_ts),
                         deps: Vec::new(),
                         read_only: false,
                         insert: Vec::new(),
@@ -170,6 +176,9 @@ impl DataServer {
     }
 
     pub async fn init_and_run(&mut self, db_type: DbType, dtx_type: DtxType) {
+        unsafe {
+            MAX_COMMIT_TS = get_currenttime_millis();
+        }
         init_data(db_type, self.client_num);
         self.init_executors(dtx_type).await;
         self.init_rpc(Arc::new(self.executor_senders.clone())).await;
