@@ -131,13 +131,13 @@ impl DataServer {
                 tokio::spawn(async move {
                     // let mut clients = PEER.clone();
                     loop {
-                        sleep(Duration::from_millis(1)).await;
+                        sleep(Duration::from_millis(10)).await;
                         let commit_ts = get_currenttime_millis();
 
                         if commit_ts > MAX_COMMIT_TS {
                             MAX_COMMIT_TS = commit_ts;
                         }
-                        println!("commit ts = {}", MAX_COMMIT_TS);
+                        // println!("commit ts = {}", MAX_COMMIT_TS);
 
                         let commit = Msg {
                             txn_id: 0,

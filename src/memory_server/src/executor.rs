@@ -82,19 +82,19 @@ impl Executor {
                                 let read_set = coor_msg.msg.read_set.clone();
                                 // need wait
                                 let local_clock = get_currenttime_millis();
-                                println!(
-                                    "ts={},committs={},localclock = {}
-                                ",
-                                    ts, MAX_COMMIT_TS, local_clock
-                                );
+                                // println!(
+                                //     "ts={},committs={},localclock = {}
+                                // ",
+                                //     ts, MAX_COMMIT_TS, local_clock
+                                // );
                                 if self.dtx_type == DtxType::spanner {
                                     if ts > MAX_COMMIT_TS {
                                         // wait
                                         tokio::spawn(async move {
                                             while ts > MAX_COMMIT_TS {
                                                 let wait_time = ts - MAX_COMMIT_TS;
-                                                println!("ts{}, cts{}", ts, MAX_COMMIT_TS);
-                                                sleep(Duration::from_millis(10)).await;
+                                                // println!("ts{}, cts{}", ts, MAX_COMMIT_TS);
+                                                sleep(Duration::from_millis(wait_time)).await;
                                             }
                                             let (success, read_result) =
                                                 get_read_only(read_set.clone()).await;
