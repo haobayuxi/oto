@@ -123,8 +123,10 @@ impl Executor {
                                         continue;
                                     }
                                     reply.read_set = read_result;
-                                    if !coor_msg.msg.write_set.is_empty() {
-                                        // println!("recv execute write {}", success);
+                                    if !coor_msg.msg.write_set.is_empty()
+                                        || !coor_msg.msg.insert.is_empty()
+                                        || !coor_msg.msg.delete.is_empty()
+                                    {
                                         let success = lock_write_set(
                                             coor_msg.msg.write_set.clone(),
                                             coor_msg.msg.txn_id,
@@ -193,6 +195,14 @@ impl Executor {
                                         coor_msg.msg.txn_id,
                                     )
                                     .await;
+                                }
+                                if self.dtx_type == DtxType::spanner {
+                                    let commit = coor_msg.msg.clone();
+                                    unsafe {
+                                        tokio::spawn(async move {
+                                            sync_broadcast(commit, PEER.clone());
+                                        });
+                                    }
                                 }
                                 update_and_release_locks(coor_msg.msg.clone(), self.dtx_type).await;
                                 // insert & delete

@@ -10,9 +10,9 @@ use tokio::time::Instant;
 
 use crate::tpcc_db::{
     customer_index, history_index, neworder_index, order_index, orderline_index, Customer,
-    District, History, Historydata, Item, NewOrder, Order, Orderline, Stock, Warehouse,
-    MAX_CARRIER_ID, MAX_ITEM, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD, MIN_CARRIER_ID,
-    MIN_STOCK_LEVEL_THRESHOLD, NUM_CUSTOMER_PER_DISTRICT, NUM_DISTRICT_PER_WAREHOUSE,
+    District, History, Historydata, NewOrder, Order, Orderline, Stock, Warehouse, MAX_CARRIER_ID,
+    MAX_ITEM, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD, MIN_CARRIER_ID, MIN_STOCK_LEVEL_THRESHOLD,
+    NUM_CUSTOMER_PER_DISTRICT, NUM_DISTRICT_PER_WAREHOUSE,
 };
 
 async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
@@ -198,16 +198,6 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     let warehouse_updated = coordinator.add_write_to_execute(0, WAREHOUSE_TABLE, "".to_string());
     coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
     let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
-    coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
-    let customer_updated = coordinator.add_write_to_execute(
-        customer_index(c_id, d_id),
-        CUSTOMER_TABLE,
-        "".to_string(),
-    );
-
-    coordinator.add_read_to_execute(history_index(c_id, d_id), HISTORY_TABLE);
-    let history_updated =
-        coordinator.add_write_to_execute(history_index(c_id, d_id), HISTORY_TABLE, "".to_string());
     let (status, results) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
@@ -221,17 +211,29 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
         Ok(s) => s,
         Err(_) => District::default(),
     };
-    let mut customer_record: Customer = match serde_json::from_str(results[2].value()) {
-        Ok(s) => s,
-        Err(_) => Customer::default(),
-    };
-    let mut history_record: History = match serde_json::from_str(results[3].value()) {
-        Ok(s) => s,
-        Err(_) => History::default(),
-    };
 
     warehouse_record.w_ytd += h_amount;
     district_record.d_ytd += h_amount;
+    warehouse_updated.write().await.value = Some(serde_json::to_string(&warehouse_record).unwrap());
+    district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
+
+    // get customer
+    coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
+    let customer_updated = coordinator.add_write_to_execute(
+        customer_index(c_id, d_id),
+        CUSTOMER_TABLE,
+        "".to_string(),
+    );
+    let (status, results) = coordinator.tx_exe().await;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+
+    let mut customer_record: Customer = match serde_json::from_str(results[0].value()) {
+        Ok(s) => s,
+        Err(_) => Customer::default(),
+    };
 
     customer_record.c_balance -= h_amount;
     customer_record.c_ytd_payment += h_amount;
@@ -239,22 +241,22 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
 
     if customer_record.c_credit == "BC" {
         //
-        let historydata = Historydata::new(history_record.clone());
-        let mut c_data = serde_json::to_string(&historydata).unwrap();
+        let mut c_data = h_amount.to_string();
         c_data = c_data + customer_record.c_data.as_str();
         if c_data.len() > 500 {
             c_data = c_data.split_at(499).1.to_string();
         }
         customer_record.c_data = c_data;
     }
-
-    history_record.h_date = get_currenttime_millis();
-    history_record.h_amount = h_amount;
-
-    warehouse_updated.write().await.value = Some(serde_json::to_string(&warehouse_record).unwrap());
-    district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
     customer_updated.write().await.value = Some(serde_json::to_string(&customer_record).unwrap());
-    history_updated.write().await.value = Some(serde_json::to_string(&history_record).unwrap());
+    let mut history_record = History::new(c_id, d_id, 0);
+    history_record.h_amount = h_amount;
+    coordinator.add_to_insert(ReadStruct {
+        key: history_index(c_id, d_id),
+        table_id: HISTORY_TABLE,
+        value: Some(serde_json::to_string(&history_record).unwrap()),
+        timestamp: Some(0),
+    });
 
     coordinator.tx_commit().await
 }
