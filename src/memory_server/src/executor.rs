@@ -5,8 +5,11 @@ use std::{
 
 use common::{get_txnid, CoordnatorMsg, DtxType};
 use rpc::common::{data_service_client::DataServiceClient, Msg, TxnOp};
-use tokio::sync::mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender};
 use tokio::sync::oneshot::Sender as OneShotSender;
+use tokio::{
+    sync::mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
+    time::Instant,
+};
 use tonic::transport::Channel;
 
 use crate::{
@@ -53,7 +56,11 @@ impl Executor {
                 accept.op = TxnOp::Accept.into();
                 accept.success = true;
                 // broadcast lock
+                let start = Instant::now();
                 let result = sync_broadcast(accept.clone(), data_clients).await;
+
+                let end_time = start.elapsed().as_millis();
+                println!("{}accept{}", accept.txn_id, end_time);
                 call_back.send(accept.clone());
             });
         }

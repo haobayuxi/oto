@@ -45,7 +45,7 @@ pub struct DtxCoordinator {
     pub dtx_type: DtxType,
     preferred_server: u64,
     geo: bool,
-    txn_id: u64,
+    pub txn_id: u64,
     read_only: bool,
     commit_ts: u64,
     // <shard>
@@ -162,7 +162,10 @@ impl DtxCoordinator {
                 success = reply.success;
                 result = reply.read_set;
             } else {
-                if !self.write_to_execute.is_empty() {
+                if !self.write_to_execute.is_empty()
+                    || !self.insert.is_empty()
+                    || !self.delete.is_empty()
+                {
                     let execute = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),
