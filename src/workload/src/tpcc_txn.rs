@@ -24,7 +24,7 @@ async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
         // return tx_payment(coordinator).await;
     } else if op < 85 {
         //
-        // print!("payment");
+        print!("payment");
         return tx_payment(coordinator).await;
     } else if op < 90 {
         //
@@ -51,7 +51,7 @@ pub async fn tpcc_run_transactions(
         let end_time = start.elapsed().as_micros();
         if success {
             latency_result.push(end_time);
-            // println!("{}", end_time);
+            println!("{}", end_time);
         }
     }
     let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
