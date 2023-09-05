@@ -129,7 +129,7 @@ impl DataServer {
                 //
                 let mut clients = PEER.clone();
                 tokio::spawn(async move {
-                    sleep(Duration::from_millis(100)).await;
+                    sleep(Duration::from_millis(1)).await;
                     let commit = Msg {
                         txn_id: 0,
                         read_set: Vec::new(),
