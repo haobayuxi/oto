@@ -224,6 +224,7 @@ impl Executor {
                             unsafe {
                                 if MAX_COMMIT_TS < commit_ts {
                                     MAX_COMMIT_TS = commit_ts;
+                                    println!("update commit ts{}", commit_ts);
                                 }
                             }
                             let mut reply = Msg::default();
