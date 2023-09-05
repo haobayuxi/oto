@@ -18,7 +18,7 @@ use crate::GLOBAL_COMMITTED;
 use crate::{get_txnid, DtxType};
 use crate::{ip_addr_add_prefix, CID_LEN};
 
-pub static LEADER_ID: usize = 0;
+pub static LEADER_ID: usize = 2;
 
 pub async fn connect_to_peer(data_ip: Vec<String>) -> Vec<DataServiceClient<Channel>> {
     let mut data_clients = Vec::new();
