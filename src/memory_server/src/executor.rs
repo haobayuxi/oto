@@ -1,6 +1,9 @@
 use common::{get_currenttime_millis, get_txnid, CoordnatorMsg, DtxType};
 use rpc::common::{data_service_client::DataServiceClient, Msg, TxnOp};
-use std::{cmp::max, time::Duration};
+use std::{
+    cmp::{max, min},
+    time::Duration,
+};
 use tokio::{
     sync::mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
     time::Instant,
@@ -86,25 +89,43 @@ impl Executor {
                                 // ",
                                 //     ts, MAX_COMMIT_TS, local_clock
                                 // );
-                                if ts > MAX_COMMIT_TS && ts > local_clock {
-                                    // wait
-                                    let wait_time = max(ts - MAX_COMMIT_TS, ts - local_clock);
-                                    tokio::spawn(async move {
-                                        sleep(Duration::from_millis(wait_time));
+                                if self.dtx_type == DtxType::spanner {
+                                    if ts > MAX_COMMIT_TS {
+                                        // wait
+                                        tokio::spawn(async move {
+                                            while ts > MAX_COMMIT_TS {
+                                                let wait_time = ts - MAX_COMMIT_TS;
+                                                sleep(Duration::from_millis(wait_time)).await;
+                                            }
+                                            let (success, read_result) =
+                                                get_read_only(read_set.clone()).await;
+                                            reply.success = success;
+                                            reply.read_set = read_result;
+
+                                            coor_msg.call_back.send(reply);
+                                        });
+                                    }
+                                } else {
+                                    if ts > MAX_COMMIT_TS && ts > local_clock {
+                                        // local wait
+                                        let wait_time = min(ts - MAX_COMMIT_TS, ts - local_clock);
+                                        tokio::spawn(async move {
+                                            sleep(Duration::from_millis(wait_time)).await;
+                                            let (success, read_result) =
+                                                get_read_only(read_set.clone()).await;
+                                            reply.success = success;
+                                            reply.read_set = read_result;
+
+                                            coor_msg.call_back.send(reply);
+                                        });
+                                    } else {
                                         let (success, read_result) =
                                             get_read_only(read_set.clone()).await;
                                         reply.success = success;
                                         reply.read_set = read_result;
 
                                         coor_msg.call_back.send(reply);
-                                    });
-                                } else {
-                                    let (success, read_result) =
-                                        get_read_only(read_set.clone()).await;
-                                    reply.success = success;
-                                    reply.read_set = read_result;
-
-                                    coor_msg.call_back.send(reply);
+                                    }
                                 }
                             } else {
                                 if self.dtx_type == DtxType::janus
