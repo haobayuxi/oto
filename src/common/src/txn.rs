@@ -112,13 +112,11 @@ impl DtxCoordinator {
         self.read_only = read_only;
         if read_only {
             self.commit_ts = get_currenttime_millis() + UNCERTAINTY;
+        } else {
+            self.commit_ts = 0;
         }
         self.fast_commit = true;
         self.deps.clear();
-        self.commit_ts = 0;
-        if self.dtx_type == DtxType::rocc {
-            self.commit_ts = self.local_ts.read().await.clone();
-        }
     }
 
     pub async fn tx_exe(&mut self) -> (bool, Vec<ReadStruct>) {
@@ -156,7 +154,7 @@ impl DtxCoordinator {
                     insert: self.insert.clone(),
                     delete: self.delete.clone(),
                 };
-                println!("client ts = {}", self.commit_ts);
+                // println!("client ts = {}", self.commit_ts);
                 let client = self
                     .data_clients
                     .get_mut(preferred_server_id as usize)
