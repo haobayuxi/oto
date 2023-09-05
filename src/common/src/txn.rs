@@ -148,8 +148,8 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
                     read_only: true,
-                    insert: Vec::new(),
-                    delete: Vec::new(),
+                    insert: self.insert.clone(),
+                    delete: self.delete.clone(),
                 };
                 let client = self
                     .data_clients
@@ -170,8 +170,8 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                         read_only: false,
-                        insert: Vec::new(),
-                        delete: Vec::new(),
+                        insert: self.insert.clone(),
+                        delete: self.delete.clone(),
                     };
                     if self.dtx_type == DtxType::spanner {
                         let reply = self.data_clients[2]
@@ -213,8 +213,8 @@ impl DtxCoordinator {
                         ts: Some(self.commit_ts),
                         deps: Vec::new(),
                         read_only: false,
-                        insert: Vec::new(),
-                        delete: Vec::new(),
+                        insert: self.insert.clone(),
+                        delete: self.delete.clone(),
                     };
                     let client = if self.dtx_type == DtxType::spanner {
                         // read lock at leader
@@ -248,8 +248,8 @@ impl DtxCoordinator {
                     ts: Some(self.commit_ts),
                     deps: Vec::new(),
                     read_only: false,
-                    insert: Vec::new(),
-                    delete: Vec::new(),
+                    insert: self.insert.clone(),
+                    delete: self.delete.clone(),
                 };
                 // lock the primary
                 let mut client = self.data_clients.get_mut(2).unwrap().clone();
