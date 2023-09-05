@@ -16,6 +16,8 @@ use tokio::sync::oneshot::Sender as OneShotSender;
 
 pub static GLOBAL_COMMITTED: AtomicUsize = ATOMIC_USIZE_INIT;
 
+pub static UNCERTAINTY: u64 = 7;
+
 pub static SUBSCRIBER_TABLE: i32 = 0;
 pub static SPECIAL_FACILITY_TABLE: i32 = 1;
 pub static ACCESS_INFO_TABLE: i32 = 2;

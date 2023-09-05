@@ -7,11 +7,14 @@ use std::{
     time::Duration,
 };
 
-use common::{txn::connect_to_peer, Config, CoordnatorMsg, DbType, DtxType, Tuple};
+use chrono::Local;
+use common::{
+    get_currenttime_millis, txn::connect_to_peer, Config, CoordnatorMsg, DbType, DtxType, Tuple,
+};
 use rpc::common::{
     data_service_client::DataServiceClient,
     data_service_server::{DataService, DataServiceServer},
-    Echo, Msg, Throughput,
+    Echo, Msg, Throughput, TxnOp,
 };
 use tokio::{
     sync::{
@@ -26,6 +29,10 @@ use tonic::{
 };
 
 use crate::{data::init_data, dep_graph::DepGraph, executor::Executor};
+
+pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
+pub static mut PEER: Vec<DataServiceClient<Channel>> = Vec::new();
+pub static mut MAX_COMMIT_TS: u64 = 0;
 
 pub struct RpcServer {
     executor_num: u64,
@@ -80,27 +87,26 @@ impl DataService for RpcServer {
     }
 }
 
-pub static mut DATA: Vec<HashMap<u64, RwLock<Tuple>>> = Vec::new();
-pub static mut PEER: Vec<DataServiceClient<Channel>> = Vec::new();
-
 pub struct DataServer {
     server_id: u32,
     executor_num: u64,
     executor_senders: HashMap<u64, UnboundedSender<CoordnatorMsg>>,
     config: Config,
     client_num: u64,
+    dtx_type: DtxType,
     //spanner
     // peer_senders: Vec<DataServiceClient<Channel>>,
 }
 
 impl DataServer {
-    pub fn new(server_id: u32, config: Config, client_num: u64) -> Self {
+    pub fn new(server_id: u32, config: Config, client_num: u64, dtx_type: DtxType) -> Self {
         Self {
             server_id,
             executor_num: config.executor_num,
             executor_senders: HashMap::new(),
             config,
             client_num,
+            dtx_type,
             // peer_senders: Vec::new(),
         }
     }
@@ -113,13 +119,33 @@ impl DataServer {
         let listen_ip = self.config.server_addr[self.server_id as usize].clone();
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
-        if self.server_id == 2 {
+        if self.dtx_type == DtxType::spanner && self.server_id == 2 {
             //
             let mut data_ip = self.config.server_public_addr.clone();
             data_ip.pop();
             unsafe {
                 PEER = connect_to_peer(data_ip).await;
                 println!("accept{}", PEER.len());
+                //
+                let mut clients = PEER.clone();
+                let commit = Msg {
+                    txn_id: 0,
+                    read_set: Vec::new(),
+                    write_set: Vec::new(),
+                    op: TxnOp::Commit.into(),
+                    success: true,
+                    ts: Some(get_currenttime_millis()),
+                    deps: Vec::new(),
+                    read_only: false,
+                    insert: Vec::new(),
+                    delete: Vec::new(),
+                };
+                tokio::spawn(async move {
+                    sleep(Duration::from_millis(100)).await;
+                    for iter in clients.iter_mut() {
+                        let _ = iter.communication(commit.clone()).await.unwrap();
+                    }
+                });
             }
         }
         run_rpc_server(server).await;

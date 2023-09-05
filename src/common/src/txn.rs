@@ -14,7 +14,7 @@ use tokio::time::sleep;
 use tokio::time::Duration;
 use tonic::transport::Channel;
 
-use crate::GLOBAL_COMMITTED;
+use crate::{get_currenttime_millis, GLOBAL_COMMITTED, UNCERTAINTY};
 use crate::{get_txnid, DtxType};
 use crate::{ip_addr_add_prefix, CID_LEN};
 
@@ -110,6 +110,9 @@ impl DtxCoordinator {
         self.insert.clear();
         self.delete.clear();
         self.read_only = read_only;
+        if read_only {
+            self.commit_ts = get_currenttime_millis() + UNCERTAINTY;
+        }
         self.fast_commit = true;
         self.deps.clear();
         self.commit_ts = 0;
@@ -368,6 +371,8 @@ impl DtxCoordinator {
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
         }
+
+        self.commit_ts = get_currenttime_millis();
         let mut write_set = Vec::new();
         for iter in self.write_set.iter() {
             write_set.push(iter.read().await.clone());
@@ -391,7 +396,6 @@ impl DtxCoordinator {
             return true;
         }
         // validate
-        self.commit_ts = (Local::now().timestamp_nanos() / 1000) as u64;
         if self.validate().await {
             let commit = Msg {
                 txn_id: self.txn_id,

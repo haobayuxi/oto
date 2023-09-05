@@ -1,15 +1,11 @@
-use std::{
-    collections::HashMap,
-    sync::{atomic::AtomicU64, Arc},
-};
-
-use common::{get_txnid, CoordnatorMsg, DtxType};
+use common::{get_currenttime_millis, get_txnid, CoordnatorMsg, DtxType};
 use rpc::common::{data_service_client::DataServiceClient, Msg, TxnOp};
-use tokio::sync::oneshot::Sender as OneShotSender;
+use std::{cmp::max, time::Duration};
 use tokio::{
     sync::mpsc::{unbounded_channel, Sender, UnboundedReceiver, UnboundedSender},
     time::Instant,
 };
+use tokio::{sync::oneshot::Sender as OneShotSender, time::sleep};
 use tonic::transport::Channel;
 
 use crate::{
@@ -17,7 +13,7 @@ use crate::{
         self, delete, get_deps, get_read_only, get_read_set, insert, lock_write_set,
         release_read_set, releass_locks, update_and_release_locks, validate,
     },
-    data_server::PEER,
+    data_server::{MAX_COMMIT_TS, PEER},
     dep_graph::{Node, TXNS},
 };
 
@@ -67,8 +63,8 @@ impl Executor {
     }
 
     pub async fn run(&mut self) {
-        loop {
-            unsafe {
+        unsafe {
+            loop {
                 match self.recv.recv().await {
                     Some(coor_msg) => match coor_msg.msg.op() {
                         rpc::common::TxnOp::Execute => {
@@ -80,12 +76,29 @@ impl Executor {
                                     || self.dtx_type == DtxType::rocc
                                     || self.dtx_type == DtxType::spanner)
                             {
-                                let (success, read_result) =
-                                    get_read_only(coor_msg.msg.read_set.clone()).await;
-                                reply.success = success;
-                                reply.read_set = read_result;
+                                let read_set = coor_msg.msg.read_set.clone();
+                                // need wait
+                                let local_clock = get_currenttime_millis();
+                                if ts > MAX_COMMIT_TS && ts > local_clock {
+                                    // wait
+                                    let wait_time = max(ts - MAX_COMMIT_TS, ts - local_clock);
+                                    tokio::spawn(async move {
+                                        sleep(Duration::from_millis(wait_time));
+                                        let (success, read_result) =
+                                            get_read_only(read_set.clone()).await;
+                                        reply.success = success;
+                                        reply.read_set = read_result;
 
-                                coor_msg.call_back.send(reply);
+                                        coor_msg.call_back.send(reply);
+                                    });
+                                } else {
+                                    let (success, read_result) =
+                                        get_read_only(read_set.clone()).await;
+                                    reply.success = success;
+                                    reply.read_set = read_result;
+
+                                    coor_msg.call_back.send(reply);
+                                }
                             } else {
                                 if self.dtx_type == DtxType::janus
                                     || self.dtx_type == DtxType::rjanus
@@ -179,6 +192,12 @@ impl Executor {
                         }
                         rpc::common::TxnOp::Commit => {
                             // update and release the lock
+                            let commit_ts = coor_msg.msg.ts();
+                            unsafe {
+                                if MAX_COMMIT_TS < commit_ts {
+                                    MAX_COMMIT_TS = commit_ts;
+                                }
+                            }
                             let mut reply = Msg::default();
                             if self.dtx_type == DtxType::janus || self.dtx_type == DtxType::rjanus {
                                 // insert callback to node
