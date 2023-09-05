@@ -93,7 +93,8 @@ impl Executor {
                                         tokio::spawn(async move {
                                             while ts > MAX_COMMIT_TS {
                                                 let wait_time = ts - MAX_COMMIT_TS;
-                                                sleep(Duration::from_millis(wait_time)).await;
+                                                println!("ts{}, cts{}", ts, MAX_COMMIT_TS);
+                                                sleep(Duration::from_millis(10)).await;
                                             }
                                             let (success, read_result) =
                                                 get_read_only(read_set.clone()).await;

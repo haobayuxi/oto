@@ -135,6 +135,7 @@ impl DataServer {
                         if commit_ts > MAX_COMMIT_TS {
                             MAX_COMMIT_TS = commit_ts;
                         }
+                        println!("commit ts = {}", MAX_COMMIT_TS);
                     }
                     let commit = Msg {
                         txn_id: 0,
