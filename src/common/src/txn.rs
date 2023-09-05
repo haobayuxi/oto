@@ -18,6 +18,8 @@ use crate::GLOBAL_COMMITTED;
 use crate::{get_txnid, DtxType};
 use crate::{ip_addr_add_prefix, CID_LEN};
 
+pub static LEADER_ID: usize = 0;
+
 pub async fn connect_to_peer(data_ip: Vec<String>) -> Vec<DataServiceClient<Channel>> {
     let mut data_clients = Vec::new();
     for iter in data_ip {
@@ -174,7 +176,7 @@ impl DtxCoordinator {
                         delete: self.delete.clone(),
                     };
                     if self.dtx_type == DtxType::spanner {
-                        let reply = self.data_clients[2]
+                        let reply = self.data_clients[LEADER_ID]
                             .communication(execute)
                             .await
                             .unwrap()
@@ -218,7 +220,7 @@ impl DtxCoordinator {
                     };
                     let client = if self.dtx_type == DtxType::spanner {
                         // read lock at leader
-                        self.data_clients.get_mut(2 as usize).unwrap()
+                        self.data_clients.get_mut(LEADER_ID).unwrap()
                     } else {
                         self.data_clients
                             .get_mut(preferred_server_id as usize)
@@ -252,7 +254,7 @@ impl DtxCoordinator {
                     delete: self.delete.clone(),
                 };
                 // lock the primary
-                let mut client = self.data_clients.get_mut(2).unwrap().clone();
+                let mut client = self.data_clients.get_mut(LEADER_ID).unwrap().clone();
                 tokio::spawn(async move {
                     let reply = client.communication(lock).await.unwrap().into_inner();
                     sender.send(reply);
@@ -381,10 +383,7 @@ impl DtxCoordinator {
                 insert: self.insert.clone(),
                 delete: self.delete.clone(),
             };
-            // let mut client = self.data_clients[2].clone();
-            // tokio::spawn(async move {
-            //     client.communication(commit).await;
-            // });
+
             self.async_broadcast_commit(commit).await;
             return true;
         }
