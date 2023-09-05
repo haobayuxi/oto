@@ -130,7 +130,15 @@ async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
     let s_id = get_sid();
     coordinator.add_read_to_execute(s_id, SUBSCRIBER_TABLE);
     let sub_write_obj = coordinator.add_write_to_execute(s_id, SUBSCRIBER_TABLE, "".to_string());
+    let (status, read) = coordinator.tx_exe().await;
 
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
+    // already locked
+    let mut sub_record: Subscriber = serde_json::from_str(read[0].value()).unwrap();
+    sub_record.bit[0] = rnd("bit") != 0;
     let sf_type = rnd("sf_type") as u64;
     let sf_id = sf_key(s_id, sf_type);
     coordinator.add_read_to_execute(sf_id, SPECIAL_FACILITY_TABLE);
@@ -143,10 +151,7 @@ async fn tx_update_subscriber_data(coordinator: &mut DtxCoordinator) -> bool {
         coordinator.tx_abort().await;
         return false;
     }
-    // already locked
-    let mut sub_record: Subscriber = serde_json::from_str(read[0].value()).unwrap();
-    sub_record.bit[0] = rnd("bit") != 0;
-    let mut sf_record: SpecialFacility = serde_json::from_str(read[1].value()).unwrap();
+    let mut sf_record: SpecialFacility = serde_json::from_str(read[0].value()).unwrap();
     sf_record.data_a = rnd("data") as u8;
 
     sub_write_obj.write().await.value = Some(serde_json::to_string(&sub_record).unwrap());
