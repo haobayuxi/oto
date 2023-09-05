@@ -257,7 +257,11 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
         value: Some(serde_json::to_string(&history_record).unwrap()),
         timestamp: Some(0),
     });
-
+    let (status, results) = coordinator.tx_exe().await;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
     coordinator.tx_commit().await
 }
 
