@@ -22,11 +22,11 @@ async fn run_tatp_transaction(coordinator: &mut DtxCoordinator) -> bool {
         //
         return tx_get_access_data(coordinator).await;
     } else if op < 95 {
-        return tx_get_subscriber_data(coordinator).await;
-        // return tx_update_lcoation(coordinator).await;
+        // return tx_get_subscriber_data(coordinator).await;
+        return tx_update_lcoation(coordinator).await;
     } else {
-        return tx_get_subscriber_data(coordinator).await;
-        // return tx_update_subscriber_data(coordinator).await;
+        // return tx_get_subscriber_data(coordinator).await;
+        return tx_update_subscriber_data(coordinator).await;
     }
 }
 
