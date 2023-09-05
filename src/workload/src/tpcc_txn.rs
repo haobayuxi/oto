@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use common::{
     get_currenttime_millis, txn::DtxCoordinator, u64_rand, CUSTOMER_TABLE, DISTRICT_TABLE,
@@ -6,7 +6,7 @@ use common::{
     WAREHOUSE_TABLE,
 };
 use rpc::common::ReadStruct;
-use tokio::time::Instant;
+use tokio::time::{sleep, Instant};
 
 use crate::tpcc_db::{
     customer_index, history_index, neworder_index, order_index, orderline_index, Customer,
@@ -17,6 +17,7 @@ use crate::tpcc_db::{
 
 async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 100);
+    sleep(Duration::from_secs(1)).await;
     if op < 45 {
         //
         print!("new order");
@@ -50,7 +51,7 @@ pub async fn tpcc_run_transactions(
         let end_time = start.elapsed().as_millis();
         if success {
             latency_result.push(end_time);
-            println!("{}", end_time);
+            println!("{}-{}", coordinator.txn_id, end_time);
         }
     }
     let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;

@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(async move {
         run_coordinator_server(addr_to_listen, local_ts_tmp).await;
     });
-    if id == 0 {
+    if id == 2 {
         // init client
         println!("init throughput client");
         let mut get_throughput_client =
