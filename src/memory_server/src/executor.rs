@@ -80,9 +80,9 @@ impl Executor {
                                 // need wait
                                 let local_clock = get_currenttime_millis();
                                 println!(
-                                    "ts{}==
-                                committs={},
-                                localclock = {}
+                                    "ts={},
+                                    committs={},
+                                    localclock = {}
                                 ",
                                     ts, MAX_COMMIT_TS, local_clock
                                 );

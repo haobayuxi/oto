@@ -9,6 +9,7 @@ use std::{
     vec,
 };
 
+use chrono::Local;
 use rand::*;
 use rpc::common::Msg;
 use serde::{Deserialize, Serialize};
@@ -229,9 +230,5 @@ pub fn get_txnid(txnid: u64) -> (u64, u64) {
 }
 
 pub fn get_currenttime_millis() -> u64 {
-    let start = SystemTime::now();
-    let since_the_epoch = start
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards");
-    since_the_epoch.as_millis() as u64
+    Local::now().timestamp_millis() as u64
 }

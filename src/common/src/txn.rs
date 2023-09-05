@@ -156,6 +156,7 @@ impl DtxCoordinator {
                     insert: self.insert.clone(),
                     delete: self.delete.clone(),
                 };
+                println!("client ts = {}", self.commit_ts);
                 let client = self
                     .data_clients
                     .get_mut(preferred_server_id as usize)
