@@ -17,7 +17,7 @@ use crate::tpcc_db::{
 
 async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 100);
-    sleep(Duration::from_secs(1)).await;
+    // sleep(Duration::from_secs(1)).await;
     if op < 45 {
         //
         println!("new order");
@@ -51,7 +51,7 @@ pub async fn tpcc_run_transactions(
         let end_time = start.elapsed().as_micros();
         if success {
             latency_result.push(end_time);
-            println!("{}-{}", coordinator.txn_id, end_time);
+            println!("{}", end_time);
         }
     }
     let total_end = (total_start.elapsed().as_millis() as f64) / 1000.0;
