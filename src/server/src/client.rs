@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     config.client_addr.get(id as usize).unwrap().clone(),
     //     local_ts.clone(),
     // );
-    let addr_to_listen = config.client_addr.get(id as usize).unwrap().clone();
+    let addr_to_listen = config.client_addr.get(0 as usize).unwrap().clone();
     tokio::spawn(async move {
         run_coordinator_server(addr_to_listen, local_ts_tmp).await;
     });
