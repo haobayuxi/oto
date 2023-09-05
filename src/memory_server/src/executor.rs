@@ -54,13 +54,13 @@ impl Executor {
             tokio::spawn(async move {
                 let mut accept = msg.clone();
                 accept.op = TxnOp::Accept.into();
-                accept.success = false;
+                accept.success = true;
                 // broadcast lock
                 let start = Instant::now();
                 let result = sync_broadcast(accept.clone(), data_clients).await;
 
                 let end_time = start.elapsed().as_millis();
-                println!("{}accept{}", accept.txn_id, end_time);
+                // println!("{}accept{}", accept.txn_id, end_time);
                 call_back.send(accept.clone());
             });
         }
@@ -273,10 +273,10 @@ async fn sync_broadcast(msg: Msg, data_clients: Vec<DataServiceClient<Channel>>)
             s_.send(client.communication(msg_).await.unwrap().into_inner());
         });
     }
-    println!("data client len {}", data_clients.len());
+    // println!("data client len {}", data_clients.len());
     for _ in 0..data_clients.len() {
-        println!("{:?}", recv.recv().await.unwrap());
-        // result.push(recv.recv().await.unwrap());
+        // println!("{:?}", recv.recv().await.unwrap());
+        result.push(recv.recv().await.unwrap());
     }
     return result;
 }
