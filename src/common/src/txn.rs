@@ -455,7 +455,7 @@ impl DtxCoordinator {
                     self.sync_broadcast(accept).await;
                 }
                 // println!("commit");
-                self.sync_broadcast(commit).await;
+                self.async_broadcast_commit(commit).await;
                 GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
                 return true;
             }
