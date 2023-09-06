@@ -366,8 +366,6 @@ impl DtxCoordinator {
                 || self.dtx_type == DtxType::rjanus
                 || self.dtx_type == DtxType::spanner)
         {
-            // let (client_id, index) = get_txnid(self.txn_id);
-            // println!("read only not validate{}-{}", client_id, index);
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;
         }
@@ -427,22 +425,20 @@ impl DtxCoordinator {
                     self.sync_broadcast(lock).await;
                 }
             } else if self.dtx_type == DtxType::rocc || self.dtx_type == DtxType::r2pl {
-                if !self.write_set.is_empty() {
-                    let accept = Msg {
-                        txn_id: self.txn_id,
-                        read_set: self.read_set.clone(),
-                        write_set: write_set.clone(),
-                        op: TxnOp::Accept.into(),
-                        success: true,
-                        ts: Some(self.commit_ts),
-                        deps: Vec::new(),
-                        read_only: false,
-                        insert: Vec::new(),
-                        delete: Vec::new(),
-                    };
-                    self.sync_broadcast(accept).await;
-                    STDSleep(Duration::from_micros(1));
-                }
+                let accept = Msg {
+                    txn_id: self.txn_id,
+                    read_set: self.read_set.clone(),
+                    write_set: write_set.clone(),
+                    op: TxnOp::Accept.into(),
+                    success: true,
+                    ts: Some(self.commit_ts),
+                    deps: Vec::new(),
+                    read_only: false,
+                    insert: Vec::new(),
+                    delete: Vec::new(),
+                };
+                self.sync_broadcast(accept).await;
+                STDSleep(Duration::from_micros(1));
             } else if self.dtx_type == DtxType::janus || self.dtx_type == DtxType::rjanus {
                 if !self.fast_commit {
                     let accept = Msg {
@@ -475,9 +471,7 @@ impl DtxCoordinator {
     }
 
     pub async fn tx_abort(&mut self) {
-        let (client_id, index) = get_txnid(self.txn_id);
-        // println!("abort {},{}", client_id, index);
-        if self.write_set.is_empty() {
+        if self.write_set.is_empty() && self.read_set.is_empty() {
             return;
         }
         let mut write_set = Vec::new();
