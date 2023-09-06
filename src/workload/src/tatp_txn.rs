@@ -1,5 +1,3 @@
-use std::result;
-
 use common::{
     f64_rand, txn::DtxCoordinator, u64_rand, ACCESS_INFO_TABLE, CALL_FORWARDING_TABLE,
     SPECIAL_FACILITY_TABLE, SUBSCRIBER_TABLE,
