@@ -56,7 +56,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let loca_ts_bk = local_ts.clone();
         let server_addr = config.server_public_addr.clone();
         let sender = result_sender.clone();
-        let preferred = if id < 3 { id } else { 2 };
         tokio::spawn(async move {
             let mut dtx_coordinator = DtxCoordinator::new(
                 i + (id as u64 * client_num),
@@ -64,7 +63,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 dtx_type,
                 server_addr,
                 true,
-                preferred as u64,
+                (id % 3) as u64,
             )
             .await;
 
