@@ -163,35 +163,34 @@ impl Default for Config {
                 "172.31.2.189:10001".to_string(),  //Frankfurt
             ],
             executor_num: 20,
-            client_public_addr: vec![
-                "192.168.1.70:10001".to_string(), //optane10
-                "192.168.1.70:10002".to_string(), //optane14
-                                                  // "192.168.1.75:10001".to_string(), //optane15
-            ],
-            client_addr: vec![
-                "192.168.1.70:10001".to_string(), //optane10
-                "192.168.1.70:10002".to_string(), //optane10
-                                                  // "192.168.1.74:10001".to_string(), //optane14
-                                                  // "192.168.1.75:10001".to_string(), //optane15
-            ],
             // client_public_addr: vec![
-            //     "13.57.252.34:10001".to_string(),
-            //     // "3.112.198.86:10001".to_string(),
-            //     // "3.76.85.75:10001".to_string(),
-            //     "0.0.0.0:20002".to_string(),
-            //     // "172.31.2.199:20002".to_string(),
-            //     // "127.0.0.1:20002".to_string(),
-            //     // "3.112.198.86:20002".to_string(),
-            //     // "3.76.85.75:20002".to_string(),
+            //     "192.168.1.70:10001".to_string(), //optane10
+            //     "192.168.1.74:10001".to_string(), //optane14
+            //     "192.168.1.75:10001".to_string(), //optane15
             // ],
             // client_addr: vec![
-            //     "172.31.2.199:10001".to_string(),
-            //     // "172.31.45.90:10001".to_string(),
-            //     // "172.31.8.219:10001".to_string(),
-            //     "172.31.2.199:20002".to_string(),
-            //     // "172.31.45.90:20002".to_string(),
-            //     // "172.31.8.219:20002".to_string(),
+            //     "192.168.1.70:10001".to_string(), //optane10
+            //     "192.168.1.74:10001".to_string(), //optane14
+            //     "192.168.1.75:10001".to_string(), //optane15
             // ],
+            client_public_addr: vec![
+                "13.57.252.34:10001".to_string(),
+                // "3.112.198.86:10001".to_string(),
+                // "3.76.85.75:10001".to_string(),
+                "0.0.0.0:20002".to_string(),
+                // "172.31.2.199:20002".to_string(),
+                // "127.0.0.1:20002".to_string(),
+                // "3.112.198.86:20002".to_string(),
+                // "3.76.85.75:20002".to_string(),
+            ],
+            client_addr: vec![
+                "172.31.2.199:10001".to_string(),
+                // "172.31.45.90:10001".to_string(),
+                // "172.31.8.219:10001".to_string(),
+                "172.31.2.199:20002".to_string(),
+                // "172.31.45.90:20002".to_string(),
+                // "172.31.8.219:20002".to_string(),
+            ],
             perferred_server: vec![0, 0, 0],
         }
     }
