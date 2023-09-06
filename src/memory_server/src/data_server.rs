@@ -131,7 +131,7 @@ impl DataServer {
                 tokio::spawn(async move {
                     // let mut clients = PEER.clone();
                     loop {
-                        sleep(Duration::from_millis(10)).await;
+                        sleep(Duration::from_millis(1)).await;
                         let commit_ts = get_currenttime_millis();
 
                         if commit_ts > MAX_COMMIT_TS {
