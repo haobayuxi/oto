@@ -2,6 +2,7 @@ use common::{get_currenttime_millis, get_txnid, CoordnatorMsg, DtxType};
 use rpc::common::{data_service_client::DataServiceClient, Msg, TxnOp};
 use std::{
     cmp::{max, min},
+    ops::Deref,
     time::Duration,
 };
 use tokio::{
@@ -267,7 +268,13 @@ impl Executor {
                         }
                         rpc::common::TxnOp::Abort => {
                             // release the lock
-
+                            if self.dtx_type == DtxType::r2pl || self.dtx_type == DtxType::spanner {
+                                release_read_set(
+                                    coor_msg.msg.read_set.clone(),
+                                    coor_msg.msg.txn_id,
+                                )
+                                .await;
+                            }
                             if self.dtx_type == DtxType::janus || self.dtx_type == DtxType::rjanus {
                                 // mark as executed
                                 let txn_id = coor_msg.msg.txn_id;
