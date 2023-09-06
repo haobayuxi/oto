@@ -19,23 +19,23 @@ pub static GLOBAL_COMMITTED: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub static UNCERTAINTY: u64 = 7;
 
-pub static SUBSCRIBER_TABLE: i32 = 0;
-pub static SPECIAL_FACILITY_TABLE: i32 = 1;
-pub static ACCESS_INFO_TABLE: i32 = 2;
-pub static CALL_FORWARDING_TABLE: i32 = 3;
-pub static SAVING_TABLE: i32 = 0;
-pub static CHECKING_TABLE: i32 = 1;
-pub static ACCOUNT_TABLE: i32 = 2;
+pub static SUBSCRIBER_TABLE: u32 = 0;
+pub static SPECIAL_FACILITY_TABLE: u32 = 1;
+pub static ACCESS_INFO_TABLE: u32 = 2;
+pub static CALL_FORWARDING_TABLE: u32 = 3;
+pub static SAVING_TABLE: u32 = 0;
+pub static CHECKING_TABLE: u32 = 1;
+pub static ACCOUNT_TABLE: u32 = 2;
 
-pub static WAREHOUSE_TABLE: i32 = 0;
-pub static DISTRICT_TABLE: i32 = 1;
-pub static CUSTOMER_TABLE: i32 = 2;
-pub static HISTORY_TABLE: i32 = 3;
-pub static ORDER_TABLE: i32 = 4;
-pub static NEWORDER_TABLE: i32 = 5;
-pub static ORDERLINE_TABLE: i32 = 6;
-pub static STOCK_TABLE: i32 = 7;
-pub static ITEM_TABLE: i32 = 8;
+pub static WAREHOUSE_TABLE: u32 = 0;
+pub static DISTRICT_TABLE: u32 = 1;
+pub static CUSTOMER_TABLE: u32 = 2;
+pub static HISTORY_TABLE: u32 = 3;
+pub static ORDER_TABLE: u32 = 4;
+pub static NEWORDER_TABLE: u32 = 5;
+pub static ORDERLINE_TABLE: u32 = 6;
+pub static STOCK_TABLE: u32 = 7;
+pub static ITEM_TABLE: u32 = 8;
 pub static CID_LEN: u32 = 50;
 
 #[derive(Clone)]

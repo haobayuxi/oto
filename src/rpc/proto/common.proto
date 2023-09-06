@@ -6,7 +6,7 @@ package common;
 
 message Read_Struct{
     uint64 key = 1;
-    int32 table_id = 2;
+    uint32 table_id = 2;
     optional string value = 3;
     optional uint64 timestamp = 4;
 }

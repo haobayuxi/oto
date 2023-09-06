@@ -509,7 +509,7 @@ impl DtxCoordinator {
         }
     }
 
-    pub fn add_read_to_execute(&mut self, key: u64, table_id: i32) {
+    pub fn add_read_to_execute(&mut self, key: u64, table_id: u32) {
         let read_struct = ReadStruct {
             key,
             table_id,
@@ -530,7 +530,7 @@ impl DtxCoordinator {
     pub fn add_write_to_execute(
         &mut self,
         key: u64,
-        table_id: i32,
+        table_id: u32,
         value: String,
     ) -> Arc<RwLock<ReadStruct>> {
         let write_struct = ReadStruct {

@@ -2,8 +2,8 @@
 pub struct ReadStruct {
     #[prost(uint64, tag = "1")]
     pub key: u64,
-    #[prost(int32, tag = "2")]
-    pub table_id: i32,
+    #[prost(uint32, tag = "2")]
+    pub table_id: u32,
     #[prost(string, optional, tag = "3")]
     pub value: ::core::option::Option<::prost::alloc::string::String>,
     #[prost(uint64, optional, tag = "4")]
