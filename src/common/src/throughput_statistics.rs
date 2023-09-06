@@ -68,6 +68,7 @@ pub struct ThroughputStatistics {
 impl ThroughputStatistics {
     pub async fn new(data_ip: Vec<String>) -> Self {
         let mut clients = Vec::new();
+        println!("clients {}", data_ip.len());
         for i in 1..data_ip.len() {
             let ip = ip_addr_add_prefix(data_ip.get(i).unwrap().clone());
             println!("connecting {}", ip);
@@ -80,6 +81,7 @@ impl ThroughputStatistics {
                     Err(_) => sleep(Duration::from_millis(10)).await,
                 }
             }
+            println!("connectted");
         }
         Self {
             committed: 0,
