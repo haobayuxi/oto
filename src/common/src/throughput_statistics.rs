@@ -4,6 +4,7 @@ use std::{
         Arc,
     },
     time::Duration,
+    vec,
 };
 
 use rpc::common::{
@@ -26,6 +27,7 @@ use tonic::{
 use crate::{ip_addr_add_prefix, GLOBAL_COMMITTED};
 
 //
+static mut LAST_COMMITTED: Vec<u64> = Vec::new();
 
 pub struct coordinator_rpc_server {
     addr_to_listen: String,
@@ -68,6 +70,10 @@ pub struct ThroughputStatistics {
 impl ThroughputStatistics {
     pub async fn new(data_ip: Vec<String>) -> Self {
         let mut clients = Vec::new();
+        unsafe {
+            let len = data_ip.len() - 1;
+            LAST_COMMITTED = vec![0; len];
+        }
         for i in 1..data_ip.len() {
             let ip = ip_addr_add_prefix(data_ip.get(i).unwrap().clone());
             println!("connecting {}", ip);
@@ -100,7 +106,21 @@ impl ThroughputStatistics {
                 let mut client = self.clients[i].clone();
                 let s_ = sender.clone();
                 tokio::spawn(async move {
-                    s_.send(client.get(e).await.unwrap().into_inner());
+                    match client.get(e).await {
+                        Ok(reply) => {
+                            // update last committed
+                            let throughput = reply.into_inner();
+                            unsafe {
+                                LAST_COMMITTED[i] = throughput.committed;
+                            }
+                            s_.send(throughput);
+                        }
+                        Err(_) => unsafe {
+                            let mut throughput = Throughput::default();
+                            throughput.committed = LAST_COMMITTED[i];
+                            s_.send(throughput);
+                        },
+                    }
                 });
             }
 
