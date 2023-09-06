@@ -137,15 +137,6 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
         let ol_quantity = u64_rand(1, 10);
         let i_id = item_id_vec[(ol_number - 1) as usize];
         coordinator.add_read_to_execute(i_id, ITEM_TABLE);
-        // let (status, item) = coordinator.tx_exe().await;
-        // if !status || item.is_empty() {
-        //     coordinator.tx_abort().await;
-        //     return false;
-        // }
-        // let item_record: Item = match serde_json::from_str(item[0].value()) {
-        //     Ok(s) => s,
-        //     Err(_) => Item::default(),
-        // };
         // read and update stock
         coordinator.add_read_to_execute(i_id, STOCK_TABLE);
         let stock_update = coordinator.add_write_to_execute(i_id, STOCK_TABLE, "value".to_string());

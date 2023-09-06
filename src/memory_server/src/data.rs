@@ -270,6 +270,7 @@ pub async fn update_and_release_locks(msg: Msg, dtx_type: DtxType) {
                             guard.release_lock(msg.txn_id);
                             guard.data = iter.value.clone().unwrap();
                             guard.ts = msg.ts();
+                            println!("commit table{}key{} free", iter.table_id, iter.key);
                         }
                         None => {}
                     }
@@ -314,6 +315,7 @@ pub async fn releass_locks(msg: Msg, dtx_type: DtxType) {
                         Some(lock) => {
                             let mut guard = lock.write().await;
                             guard.release_lock(msg.txn_id);
+                            println!("abort table{}key{}lock is free", iter.table_id, iter.key);
                         }
                         None => {}
                     }
