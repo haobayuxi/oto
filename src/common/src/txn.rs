@@ -358,6 +358,7 @@ impl DtxCoordinator {
         self.write_to_execute.clear();
         return (success, result);
     }
+
     pub async fn tx_commit(&mut self) -> bool {
         if self.read_only
             && (self.dtx_type == DtxType::rocc
@@ -429,8 +430,8 @@ impl DtxCoordinator {
                 if !self.write_set.is_empty() {
                     let accept = Msg {
                         txn_id: self.txn_id,
-                        read_set: Vec::new(),
-                        write_set: Vec::new(),
+                        read_set: self.read_set.clone(),
+                        write_set: write_set.clone(),
                         op: TxnOp::Accept.into(),
                         success: true,
                         ts: Some(self.commit_ts),
@@ -500,7 +501,7 @@ impl DtxCoordinator {
         } else {
             let abort = Msg {
                 txn_id: self.txn_id,
-                read_set: Vec::new(),
+                read_set: self.read_set.clone(),
                 write_set,
                 op: TxnOp::Abort.into(),
                 success: true,
