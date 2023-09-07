@@ -182,7 +182,7 @@ impl Executor {
                                         .await;
                                         // if success {
                                         // lock the backup
-                                        // reply.read_set.append(&mut read_write_set);
+                                        reply.read_set.append(&mut read_write_set);
                                         reply.write_set = coor_msg.msg.write_set.clone();
                                         reply.success = success;
                                         // coor_msg.call_back.send(reply);
