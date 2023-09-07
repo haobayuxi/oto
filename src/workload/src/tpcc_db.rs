@@ -22,7 +22,8 @@ pub static MAX_CARRIER_ID: u64 = 10;
 
 ///////
 pub static NUM_CUSTOMER_PER_DISTRICT: u64 = 3000;
-pub static NUM_DISTRICT_PER_WAREHOUSE: u64 = 20;
+pub static NUM_WAREHOUSE: u64 = 10;
+pub static NUM_DISTRICT_PER_WAREHOUSE: u64 = 10;
 pub static NUM_ITEM: u64 = 1000;
 pub static NUM_STOCK_PER_WAREHOUSE: u64 = 100000;
 

@@ -215,6 +215,7 @@ impl Executor {
                                             .await;
                                     // reply.read_set.append(&mut read_write_result);
                                     reply.txn_id = self.server_id as u64;
+                                    println!("txnid = {}", reply.txn_id);
                                     reply.success = if self.server_id == 2 {
                                         success
                                     } else {
