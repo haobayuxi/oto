@@ -211,16 +211,16 @@ impl Executor {
                                     }
                                     reply.read_set = read_result;
                                     println!("{:?}", coor_msg.msg.write_set);
-                                    let (success, mut read_write_result) = lock_write_set(
+                                    let (write_success, mut read_write_result) = lock_write_set(
                                         coor_msg.msg.write_set.clone(),
                                         coor_msg.msg.txn_id,
                                     )
                                     .await;
-                                    println!("success{}, txnid{}", success, reply.txn_id);
+                                    println!("success{}, txnid{}", write_success, reply.txn_id);
                                     // reply.read_set.append(&mut read_write_result);
                                     reply.txn_id = self.server_id as u64;
                                     reply.success = if self.server_id == 2 {
-                                        success
+                                        write_success
                                     } else {
                                         // println!("txnid {}", reply.txn_id);
                                         // println!("server id == {}", self.server_id);
