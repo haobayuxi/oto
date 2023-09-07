@@ -192,7 +192,6 @@ impl DtxCoordinator {
                         let replies = self.sync_broadcast(execute).await;
                         self.deps = replies[0].deps.clone();
                         for i in 0..=2 {
-                            println!("{}", replies[i].txn_id);
                             if replies[i].txn_id == 2 && !replies[i].success {
                                 success = false;
                             }
