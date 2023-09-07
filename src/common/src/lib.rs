@@ -143,53 +143,53 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            server_addr: vec![
-                "192.168.1.88:10001".to_string(), //optane08
-                "192.168.1.71:10001".to_string(), //optane11
-                "192.168.1.72:10001".to_string(), //optane12
-            ],
-            server_public_addr: vec![
-                "192.168.1.88:10001".to_string(), //optane08
-                "192.168.1.71:10001".to_string(), //optane11
-                "192.168.1.72:10001".to_string(), //optane12
-            ],
-            // server_public_addr: vec![
-            //     "54.215.77.138:10001".to_string(),  //ca
-            //     "18.182.54.145:10001".to_string(),  //jp
-            //     "35.158.129.237:10001".to_string(), //Frankfurt
-            // ],
             // server_addr: vec![
-            //     "172.31.6.187:10001".to_string(),  //ca
-            //     "172.31.38.214:10001".to_string(), //jp
-            //     "172.31.2.189:10001".to_string(),  //Frankfurt
+            //     "192.168.1.88:10001".to_string(), //optane08
+            //     "192.168.1.71:10001".to_string(), //optane11
+            //     "192.168.1.72:10001".to_string(), //optane12
             // ],
+            // server_public_addr: vec![
+            //     "192.168.1.88:10001".to_string(), //optane08
+            //     "192.168.1.71:10001".to_string(), //optane11
+            //     "192.168.1.72:10001".to_string(), //optane12
+            // ],
+            server_public_addr: vec![
+                "54.215.77.138:10001".to_string(),  //ca
+                "18.182.54.145:10001".to_string(),  //jp
+                "35.158.129.237:10001".to_string(), //Frankfurt
+            ],
+            server_addr: vec![
+                "172.31.6.187:10001".to_string(),  //ca
+                "172.31.38.214:10001".to_string(), //jp
+                "172.31.2.189:10001".to_string(),  //Frankfurt
+            ],
             executor_num: 20,
-            client_public_addr: vec![
-                "192.168.1.70:10001".to_string(), //optane10
-                "192.168.1.74:10001".to_string(), //optane14
-                "192.168.1.75:10001".to_string(), //optane15
-            ],
-            client_addr: vec![
-                "192.168.1.70:10001".to_string(), //optane10
-                "192.168.1.74:10001".to_string(), //optane14
-                "192.168.1.75:10001".to_string(), //optane15
-            ],
             // client_public_addr: vec![
-            //     "54.176.255.221:10001".to_string(),
-            //     "54.199.235.18:10001".to_string(),
-            //     "3.74.230.29:10001".to_string(),
-            //     "54.176.255.221:20002".to_string(),
-            //     "54.199.235.18:20002".to_string(),
-            //     "3.74.230.29:20002".to_string(),
+            //     "192.168.1.70:10001".to_string(), //optane10
+            //     "192.168.1.74:10001".to_string(), //optane14
+            //     "192.168.1.75:10001".to_string(), //optane15
             // ],
             // client_addr: vec![
-            //     "172.31.2.199:10001".to_string(),
-            //     "172.31.45.90:10001".to_string(),
-            //     "172.31.8.219:10001".to_string(),
-            //     "172.31.2.199:20002".to_string(),
-            //     "172.31.45.90:20002".to_string(),
-            //     "172.31.8.219:20002".to_string(),
+            //     "192.168.1.70:10001".to_string(), //optane10
+            //     "192.168.1.74:10001".to_string(), //optane14
+            //     "192.168.1.75:10001".to_string(), //optane15
             // ],
+            client_public_addr: vec![
+                "54.176.255.221:10001".to_string(),
+                "54.199.235.18:10001".to_string(),
+                "3.74.230.29:10001".to_string(),
+                "54.176.255.221:20002".to_string(),
+                "54.199.235.18:20002".to_string(),
+                "3.74.230.29:20002".to_string(),
+            ],
+            client_addr: vec![
+                "172.31.2.199:10001".to_string(),
+                "172.31.45.90:10001".to_string(),
+                "172.31.8.219:10001".to_string(),
+                "172.31.2.199:20002".to_string(),
+                "172.31.45.90:20002".to_string(),
+                "172.31.8.219:20002".to_string(),
+            ],
             perferred_server: vec![0, 0, 0],
         }
     }
