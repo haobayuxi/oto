@@ -82,9 +82,9 @@ impl Tuple {
         false
     }
     pub fn release_lock(&mut self, txn_id: u64) {
-        // if self.lock_txn_id == txn_id {
-        self.lock_txn_id = 0;
-        // }
+        if self.lock_txn_id == txn_id {
+            self.lock_txn_id = 0;
+        }
     }
 
     pub fn set_read_lock(&mut self, txn_id: u64) -> bool {
