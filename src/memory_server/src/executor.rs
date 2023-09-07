@@ -24,6 +24,7 @@ use crate::{
 pub struct Executor {
     pub id: u64,
     pub recv: UnboundedReceiver<CoordnatorMsg>,
+    server_id: u32,
     dtx_type: DtxType,
     // janus
     send_commit_to_dep_graph: Sender<u64>,
@@ -37,6 +38,7 @@ impl Executor {
         recv: UnboundedReceiver<CoordnatorMsg>,
         dtx_type: DtxType,
         sender: Sender<u64>,
+        server_id: u32,
         // peer_senders: Vec<DataServiceClient<Channel>>,
     ) -> Self {
         Self {
@@ -44,6 +46,7 @@ impl Executor {
             recv,
             dtx_type,
             send_commit_to_dep_graph: sender,
+            server_id,
             // peer_senders,
         }
     }
@@ -212,7 +215,8 @@ impl Executor {
                                     let success =
                                         lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
                                             .await;
-                                    reply.success = if self.id == 2 { success } else { true };
+                                    reply.success =
+                                        if self.server_id == 2 { success } else { true };
 
                                     coor_msg.call_back.send(reply);
                                 }

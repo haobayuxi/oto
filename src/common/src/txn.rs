@@ -192,6 +192,7 @@ impl DtxCoordinator {
                         let replies = self.sync_broadcast(execute).await;
                         self.deps = replies[0].deps.clone();
                         for i in 0..=2 {
+                            print!("{} ", replies[i].success);
                             if !replies[i].success {
                                 success = false;
                             }
@@ -206,6 +207,7 @@ impl DtxCoordinator {
                                 }
                             }
                         }
+                        println!("");
 
                         result = replies[0].read_set.clone();
                     }
