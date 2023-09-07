@@ -192,7 +192,7 @@ pub async fn get_read_set(
 
 pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, Vec<ReadStruct>) {
     let mut result = Vec::new();
-    println!("{:?}", write_set);
+    // println!("{:?}", write_set);
     unsafe {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
@@ -212,7 +212,7 @@ pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, V
                     result.push(read_struct);
                 }
                 None => {
-                    println!("not found {} {}", iter.table_id, iter.key);
+                    // println!("not found {} {}", iter.table_id, iter.key);
                     return (false, result);
                 }
             }

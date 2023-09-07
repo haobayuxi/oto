@@ -474,7 +474,6 @@ impl DtxCoordinator {
                 return true;
             }
             // broadcast
-            println!("committed");
             self.sync_broadcast(commit).await;
 
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
