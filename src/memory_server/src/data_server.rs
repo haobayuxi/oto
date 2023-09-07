@@ -143,7 +143,7 @@ impl DataServer {
                             txn_id: 0,
                             read_set: Vec::new(),
                             write_set: Vec::new(),
-                            op: TxnOp::Commit.into(),
+                            op: TxnOp::Accept.into(),
                             success: true,
                             ts: Some(commit_ts),
                             deps: Vec::new(),

@@ -300,6 +300,12 @@ impl Executor {
                             coor_msg.call_back.send(reply);
                         }
                         rpc::common::TxnOp::Accept => {
+                            let commit_ts = coor_msg.msg.ts();
+                            unsafe {
+                                if MAX_COMMIT_TS < commit_ts {
+                                    MAX_COMMIT_TS = commit_ts;
+                                }
+                            }
                             let mut reply = Msg::default();
                             reply.success = true;
                             if self.dtx_type == DtxType::spanner {

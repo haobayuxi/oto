@@ -12,8 +12,7 @@ use rpc::common::{
     throughput_statistics_service_server::{
         ThroughputStatisticsService, ThroughputStatisticsServiceServer,
     },
-    update_ts_server::{UpdateTs, UpdateTsServer},
-    Echo, Throughput, Ts,
+    Echo, Latencies, Throughput, Ts,
 };
 use tokio::{
     sync::{mpsc::unbounded_channel, RwLock},
@@ -28,6 +27,7 @@ use crate::{ip_addr_add_prefix, GLOBAL_COMMITTED};
 
 //
 static mut LAST_COMMITTED: Vec<u64> = Vec::new();
+pub static mut LATENCIES: Vec<u64> = Vec::new();
 
 pub struct coordinator_rpc_server {
     addr_to_listen: String,

@@ -1,5 +1,5 @@
 use common::throughput_statistics::{
-    coordinator_rpc_server, run_coordinator_server, ThroughputStatistics,
+    coordinator_rpc_server, run_coordinator_server, ThroughputStatistics, LATENCIES,
 };
 use common::{ip_addr_add_prefix, txn::DtxCoordinator, Config, ConfigInFile};
 use common::{DbType, GLOBAL_COMMITTED};
@@ -110,6 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     total_latency.sort();
     let success_num = total_latency.len();
+    //
     println!(
         "mean latency = {}",
         (total_latency[success_num / 2 as usize] as f64) / 1000.0,

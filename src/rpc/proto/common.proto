@@ -42,6 +42,10 @@ message Throughput {
     uint64 committed = 1;
 }
 
+message Latencies {
+    repeated uint64 latency = 1;
+}
+
 message TS{
     uint64 ts = 1;
 }
@@ -55,8 +59,4 @@ service CtoService {
 
 service ThroughputStatisticsService {
     rpc get(Echo) returns (Throughput) {}
-}
-
-service UpdateTs {
-    rpc update(TS) returns (Echo) {}
 }
