@@ -174,10 +174,7 @@ impl Executor {
                                         continue;
                                     }
                                     reply.read_set = read_result;
-                                    if !coor_msg.msg.write_set.is_empty()
-                                        || !coor_msg.msg.insert.is_empty()
-                                        || !coor_msg.msg.delete.is_empty()
-                                    {
+                                    if !coor_msg.msg.write_set.is_empty() {
                                         let (success, mut read_write_set) = lock_write_set(
                                             coor_msg.msg.write_set.clone(),
                                             coor_msg.msg.txn_id,
@@ -185,7 +182,7 @@ impl Executor {
                                         .await;
                                         // if success {
                                         // lock the backup
-                                        reply.read_set.append(&mut read_write_set);
+                                        // reply.read_set.append(&mut read_write_set);
                                         reply.write_set = coor_msg.msg.write_set.clone();
                                         reply.success = success;
                                         // coor_msg.call_back.send(reply);
@@ -216,7 +213,7 @@ impl Executor {
                                     let (success, mut read_write_result) =
                                         lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
                                             .await;
-                                    reply.read_set.append(&mut read_write_result);
+                                    // reply.read_set.append(&mut read_write_result);
                                     reply.txn_id = self.server_id as u64;
                                     reply.success = if self.server_id == 2 {
                                         success
