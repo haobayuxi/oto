@@ -18,7 +18,6 @@ use crate::tpcc_db::{
 
 async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 100);
-    return tx_payment(coordinator).await;
     if op < 45 {
         //
         // println!("new order");
