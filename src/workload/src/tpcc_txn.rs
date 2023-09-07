@@ -191,6 +191,7 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.tx_begin(false).await;
 
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
+    println!("id {}", coordinator.txn_id);
     println!("did = {}", d_id);
     let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
 

@@ -218,6 +218,7 @@ impl Executor {
                                     reply.success = if self.server_id == 2 {
                                         success
                                     } else {
+                                        println!("txnid {}", reply.txn_id);
                                         println!("server id == {}", self.server_id);
                                         true
                                     };
