@@ -259,7 +259,7 @@ impl Executor {
                                     .await;
                                 }
                                 if self.dtx_type == DtxType::spanner {
-                                    let commit = coor_msg.msg.clone();
+                                    let commit: Msg = coor_msg.msg.clone();
                                     unsafe {
                                         tokio::spawn(async move {
                                             sync_broadcast(commit, PEER.clone());

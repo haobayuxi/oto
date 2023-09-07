@@ -18,29 +18,30 @@ use crate::tpcc_db::{
 async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 100);
     // sleep(Duration::from_secs(1)).await;
-    if op < 45 {
-        //
-        // println!("new order");
-        return false;
-        // return tx_new_order(coordinator).await;
-    } else if op < 85 {
-        //
-        // println!("payment");
-        return tx_payment(coordinator).await;
-    } else if op < 90 {
-        //
-        // println!("delivery");
-        return tx_payment(coordinator).await;
-        // return tx_delivery(coordinator).await;
-    } else if op < 95 {
-        // println!("order status");
-        return false;
-        // return tx_order_status(coordinator).await;
-    } else {
-        // println!("stock level");
-        return false;
-        // return tx_stock_level(coordinator).await;
-    }
+    return tx_payment(coordinator).await;
+    // if op < 45 {
+    //     //
+    //     // println!("new order");
+    //     return false;
+    //     // return tx_new_order(coordinator).await;
+    // } else if op < 85 {
+    //     //
+    //     // println!("payment");
+    //     return tx_payment(coordinator).await;
+    // } else if op < 90 {
+    //     //
+    //     // println!("delivery");
+    //     return tx_payment(coordinator).await;
+    //     // return tx_delivery(coordinator).await;
+    // } else if op < 95 {
+    //     // println!("order status");
+    //     return false;
+    //     // return tx_order_status(coordinator).await;
+    // } else {
+    //     // println!("stock level");
+    //     return false;
+    //     // return tx_stock_level(coordinator).await;
+    // }
 }
 
 pub async fn tpcc_run_transactions(
