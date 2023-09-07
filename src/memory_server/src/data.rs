@@ -202,6 +202,7 @@ pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, V
                     if !guard.set_lock(txn_id) {
                         return (false, result);
                     }
+                    println!("locked{}", iter.key);
                     let read_struct = ReadStruct {
                         key: iter.key,
                         table_id: iter.table_id,
