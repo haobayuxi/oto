@@ -128,37 +128,37 @@ impl DataServer {
                 println!("accept{}", PEER.len());
                 //
 
-                tokio::spawn(async move {
-                    // let mut clients = PEER.clone();
-                    loop {
-                        sleep(Duration::from_millis(1)).await;
-                        let commit_ts = get_currenttime_millis();
+                // tokio::spawn(async move {
+                //     // let mut clients = PEER.clone();
+                //     loop {
+                //         sleep(Duration::from_millis(1)).await;
+                //         let commit_ts = get_currenttime_millis();
 
-                        if commit_ts > MAX_COMMIT_TS {
-                            MAX_COMMIT_TS = commit_ts;
-                        }
-                        // println!("commit ts = {}", MAX_COMMIT_TS);
+                //         if commit_ts > MAX_COMMIT_TS {
+                //             MAX_COMMIT_TS = commit_ts;
+                //         }
+                //         // println!("commit ts = {}", MAX_COMMIT_TS);
 
-                        let commit = Msg {
-                            txn_id: 0,
-                            read_set: Vec::new(),
-                            write_set: Vec::new(),
-                            op: TxnOp::Accept.into(),
-                            success: true,
-                            ts: Some(commit_ts),
-                            deps: Vec::new(),
-                            read_only: false,
-                            insert: Vec::new(),
-                            delete: Vec::new(),
-                        };
-                        for iter in PEER.iter() {
-                            let commit_clone = commit.clone();
-                            tokio::spawn(async move {
-                                let _ = iter.clone().communication(commit_clone).await.unwrap();
-                            });
-                        }
-                    }
-                });
+                //         let commit = Msg {
+                //             txn_id: 0,
+                //             read_set: Vec::new(),
+                //             write_set: Vec::new(),
+                //             op: TxnOp::Accept.into(),
+                //             success: true,
+                //             ts: Some(commit_ts),
+                //             deps: Vec::new(),
+                //             read_only: false,
+                //             insert: Vec::new(),
+                //             delete: Vec::new(),
+                //         };
+                //         for iter in PEER.iter() {
+                //             let commit_clone = commit.clone();
+                //             tokio::spawn(async move {
+                //                 let _ = iter.clone().communication(commit_clone).await.unwrap();
+                //             });
+                //         }
+                //     }
+                // });
             }
         }
         run_rpc_server(server).await;
