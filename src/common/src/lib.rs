@@ -163,7 +163,7 @@ impl Default for Config {
                 "172.31.38.214:10001".to_string(), //jp
                 "172.31.2.189:10001".to_string(),  //Frankfurt
             ],
-            executor_num: 20,
+            executor_num: 10,
             // client_public_addr: vec![
             //     "192.168.1.70:10001".to_string(), //optane10
             //     "192.168.1.74:10001".to_string(), //optane14

@@ -215,8 +215,12 @@ impl Executor {
                                     let success =
                                         lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
                                             .await;
-                                    reply.success =
-                                        if self.server_id == 2 { success } else { true };
+                                    reply.success = if self.server_id == 2 {
+                                        success
+                                    } else {
+                                        println!("server id == {}", self.server_id);
+                                        true
+                                    };
 
                                     coor_msg.call_back.send(reply);
                                 }
