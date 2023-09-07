@@ -213,6 +213,7 @@ impl Executor {
                                     let (success, mut read_write_result) =
                                         lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
                                             .await;
+                                    println!("success{}, txnid{}", success, reply.txn_id);
                                     // reply.read_set.append(&mut read_write_result);
                                     reply.txn_id = self.server_id as u64;
                                     reply.success = if self.server_id == 2 {
