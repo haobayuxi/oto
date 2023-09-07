@@ -213,7 +213,7 @@ impl Executor {
                                     let success =
                                         lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
                                             .await;
-                                    reply.success = success;
+                                    reply.success = if self.id == 2 { success } else { true };
 
                                     coor_msg.call_back.send(reply);
                                 }
