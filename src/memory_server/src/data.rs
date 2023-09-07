@@ -190,7 +190,8 @@ pub async fn get_read_set(
     }
 }
 
-pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> bool {
+pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, Vec<ReadStruct>) {
+    let mut result = Vec::new();
     unsafe {
         for iter in write_set.iter() {
             let table = &mut DATA[iter.table_id as usize];
@@ -198,13 +199,20 @@ pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> bool {
                 Some(lock) => {
                     let mut guard = lock.write().await;
                     if !guard.set_lock(txn_id) {
-                        return false;
+                        return (false, result);
                     }
+                    let read_struct = ReadStruct {
+                        key: iter.key,
+                        table_id: iter.table_id,
+                        value: Some(guard.data.clone()),
+                        timestamp: Some(guard.ts),
+                    };
+                    result.push(read_struct);
                 }
-                None => return false,
+                None => return (false, result),
             }
         }
-        true
+        (true, result)
     }
 }
 
