@@ -197,7 +197,7 @@ impl Executor {
                                 } else {
                                     // get the data and lock the write set
                                     let ts = coor_msg.msg.ts();
-                                    reply.txn_id == self.server_id as u64;
+                                    reply.txn_id = self.server_id as u64;
                                     let (success, read_result) = get_read_set(
                                         coor_msg.msg.read_set.clone(),
                                         coor_msg.msg.txn_id,

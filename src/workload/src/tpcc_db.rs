@@ -44,7 +44,7 @@ pub fn order_index(o_id: u64, d_id: u64, w_id: u64) -> u64 {
 }
 
 pub fn orderline_index(o_id: u64, d_id: u64, number: u64, w_id: u64) -> u64 {
-    w_id << 40 + d_id << 54 + o_id << 32 + number
+    w_id << 50 + d_id << 40 + o_id << 30 + number
 }
 
 pub fn neworder_index(o_id: u64, d_id: u64, w_id: u64) -> u64 {
@@ -64,10 +64,10 @@ pub fn init_tpcc_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     let mut stock_table: HashMap<u64, RwLock<Tuple>> = HashMap::new();
 
     // populate warehouse table
-    for w_id in 0..NUM_WAREHOUSE {
+    for w_id in 1..=NUM_WAREHOUSE {
         let ware_house_record = Warehouse::new(w_id);
         warehouse_table.insert(
-            0,
+            w_id,
             RwLock::new(Tuple::new(
                 serde_json::to_string(&ware_house_record).unwrap(),
             )),

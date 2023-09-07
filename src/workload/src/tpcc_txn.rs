@@ -82,7 +82,7 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     },
     */
     coordinator.tx_begin(false).await;
-    let w_id = u64_rand(0, NUM_WAREHOUSE);
+    let w_id = u64_rand(1, NUM_WAREHOUSE + 1);
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
     let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
     // get warehouse tax & customer
@@ -195,7 +195,7 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     */
     coordinator.tx_begin(false).await;
 
-    let w_id = u64_rand(0, NUM_WAREHOUSE);
+    let w_id = u64_rand(1, NUM_WAREHOUSE + 1);
 
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
     // println!("id {}", coordinator.txn_id);
@@ -283,7 +283,7 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
     */
     coordinator.tx_begin(false).await;
 
-    let w_id = u64_rand(0, NUM_WAREHOUSE);
+    let w_id = u64_rand(1, NUM_WAREHOUSE + 1);
 
     let o_carrier_id = u64_rand(MIN_CARRIER_ID, MAX_CARRIER_ID);
     let current_ts = get_currenttime_millis();
@@ -371,7 +371,7 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID = ?", # w_id, d_id, o_id
     },
     */
-    let w_id = u64_rand(0, NUM_WAREHOUSE);
+    let w_id = u64_rand(1, NUM_WAREHOUSE + 1);
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
     let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
     coordinator.add_read_to_execute(customer_index(c_id, d_id, w_id), CUSTOMER_TABLE);
@@ -408,7 +408,7 @@ async fn tx_stock_level(coordinator: &mut DtxCoordinator) -> bool {
     "getStockCount": "SELECT COUNT(DISTINCT(OL_I_ID)) FROM ORDER_LINE, STOCK  WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID < ? AND OL_O_ID >= ? AND S_W_ID = ? AND S_I_ID = OL_I_ID AND S_QUANTITY < ?
     */
     coordinator.tx_begin(true).await;
-    let w_id = u64_rand(0, NUM_WAREHOUSE);
+    let w_id = u64_rand(1, NUM_WAREHOUSE + 1);
     let threshold = u64_rand(MIN_STOCK_LEVEL_THRESHOLD, MAX_STOCK_LEVEL_THRESHOLD);
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
 
