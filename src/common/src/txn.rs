@@ -189,10 +189,10 @@ impl DtxCoordinator {
                         let replies = self.sync_broadcast(execute).await;
                         self.deps = replies[0].deps.clone();
                         for i in 0..=2 {
-                            println!(
-                                "{} {} {:?}",
-                                replies[i].txn_id, replies[i].success, replies[i].read_set
-                            );
+                            // println!(
+                            //     "{} {} {:?}",
+                            //     replies[i].txn_id, replies[i].success, replies[i].read_set
+                            // );
                             if replies[i].txn_id == 2 {
                                 success = replies[i].success;
                                 result = replies[i].read_set.clone();
@@ -474,7 +474,7 @@ impl DtxCoordinator {
                 return true;
             }
             // broadcast
-            self.async_broadcast_commit(commit).await;
+            self.sync_broadcast(commit).await;
 
             GLOBAL_COMMITTED.fetch_add(1, Ordering::Relaxed);
             return true;

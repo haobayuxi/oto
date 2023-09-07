@@ -216,7 +216,6 @@ impl Executor {
                                         coor_msg.msg.txn_id,
                                     )
                                     .await;
-                                    println!("reply {}", reply.read_set.len());
                                     reply.read_set.append(&mut read_write_result);
                                     println!("reply {} {}", reply.read_set.len(), write_success);
                                     reply.success = if self.server_id == 2 {
