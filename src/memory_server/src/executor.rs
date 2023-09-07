@@ -54,12 +54,11 @@ impl Executor {
             tokio::spawn(async move {
                 let mut accept = msg.clone();
                 accept.op = TxnOp::Accept.into();
-                accept.success = true;
                 // broadcast lock
-                let start = Instant::now();
+                // let start = Instant::now();
                 let result = sync_broadcast(accept.clone(), data_clients).await;
 
-                let end_time = start.elapsed().as_millis();
+                // let end_time = start.elapsed().as_millis();
                 // println!("{}accept{}", accept.txn_id, end_time);
                 call_back.send(accept.clone());
             });
