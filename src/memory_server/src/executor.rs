@@ -197,6 +197,7 @@ impl Executor {
                                 } else {
                                     // get the data and lock the write set
                                     let ts = coor_msg.msg.ts();
+                                    reply.txn_id == self.server_id as u64;
                                     let (success, read_result) = get_read_set(
                                         coor_msg.msg.read_set.clone(),
                                         coor_msg.msg.txn_id,
@@ -215,9 +216,7 @@ impl Executor {
                                         coor_msg.msg.txn_id,
                                     )
                                     .await;
-                                    println!("success{}, txnid{}", write_success, reply.txn_id);
-                                    // reply.read_set.append(&mut read_write_result);
-                                    reply.txn_id = self.server_id as u64;
+                                    // println!("success{}, txnid{}", write_success, reply.txn_id);
                                     reply.success = if self.server_id == 2 {
                                         write_success
                                     } else {
@@ -270,7 +269,7 @@ impl Executor {
                                         });
                                     }
                                 }
-                                // update_and_release_locks(coor_msg.msg.clone(), self.dtx_type).await;
+                                update_and_release_locks(coor_msg.msg.clone(), self.dtx_type).await;
                                 // insert & delete
                                 insert(coor_msg.msg.insert.clone());
                                 delete(coor_msg.msg.delete);

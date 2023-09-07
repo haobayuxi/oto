@@ -78,7 +78,6 @@ impl Tuple {
             return true;
         } else if self.lock_txn_id == 0 {
             self.lock_txn_id = txn_id;
-            println!("lock txn id = {}", self.lock_txn_id);
             return true;
         }
         false
