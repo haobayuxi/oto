@@ -9,10 +9,11 @@ use rpc::common::ReadStruct;
 use tokio::time::{sleep, Instant};
 
 use crate::tpcc_db::{
-    customer_index, history_index, neworder_index, order_index, orderline_index, Customer,
-    District, History, Historydata, NewOrder, Order, Orderline, Stock, Warehouse, MAX_CARRIER_ID,
-    MAX_ITEM, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD, MIN_CARRIER_ID, MIN_STOCK_LEVEL_THRESHOLD,
-    NUM_CUSTOMER_PER_DISTRICT, NUM_DISTRICT_PER_WAREHOUSE,
+    customer_index, district_index, history_index, neworder_index, order_index, orderline_index,
+    Customer, District, History, Historydata, NewOrder, Order, Orderline, Stock, Warehouse,
+    MAX_CARRIER_ID, MAX_ITEM, MAX_OL_CNT, MAX_STOCK_LEVEL_THRESHOLD, MIN_CARRIER_ID,
+    MIN_STOCK_LEVEL_THRESHOLD, NUM_CUSTOMER_PER_DISTRICT, NUM_DISTRICT_PER_WAREHOUSE,
+    NUM_WAREHOUSE,
 };
 
 async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
@@ -81,14 +82,14 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     },
     */
     coordinator.tx_begin(false).await;
-    let warehouse_id = 0;
+    let w_id = u64_rand(0, NUM_WAREHOUSE);
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
     let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
     // get warehouse tax & customer
-    coordinator.add_read_to_execute(warehouse_id, WAREHOUSE_TABLE);
-    coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
+    coordinator.add_read_to_execute(w_id, WAREHOUSE_TABLE);
+    coordinator.add_read_to_execute(customer_index(c_id, d_id, w_id), CUSTOMER_TABLE);
     // get district need update district next oid
-    coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
+    coordinator.add_read_to_execute(district_index(d_id, w_id), DISTRICT_TABLE);
     let (status, results) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
@@ -101,21 +102,25 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     district_record.d_next_o_id += 1;
     let o_id = district_record.d_next_o_id;
 
-    let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
+    let district_updated = coordinator.add_write_to_execute(
+        district_index(d_id, w_id),
+        DISTRICT_TABLE,
+        "".to_string(),
+    );
     district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
     // insert new order
     let new_order_record = NewOrder::new(o_id, d_id);
     coordinator.add_to_insert(ReadStruct {
-        key: neworder_index(o_id, d_id),
+        key: neworder_index(o_id, d_id, w_id),
         table_id: NEWORDER_TABLE,
         value: Some(serde_json::to_string(&new_order_record).unwrap()),
         timestamp: None,
     });
     // insert order
-    let order_record = Order::new(o_id, d_id, warehouse_id, c_id);
+    let order_record = Order::new(o_id, d_id, w_id, c_id);
     let ol_cnt = order_record.o_ol_cnt;
     coordinator.add_to_insert(ReadStruct {
-        key: order_index(o_id, d_id),
+        key: order_index(o_id, d_id, w_id),
         table_id: ORDER_TABLE,
         value: Some(serde_json::to_string(&order_record).unwrap()),
         timestamp: None,
@@ -160,9 +165,9 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
         // }
         // stock_update.write().await.value = Some(serde_json::to_string(&stock_record).unwrap());
         // insert orderline
-        let orderline: Orderline = Orderline::new(o_id, d_id, warehouse_id, ol_number);
+        let orderline: Orderline = Orderline::new(o_id, d_id, w_id, ol_number);
         coordinator.add_to_insert(ReadStruct {
-            key: order_index(o_id, d_id),
+            key: order_index(o_id, d_id, w_id),
             table_id: ORDERLINE_TABLE,
             value: Some(serde_json::to_string(&orderline).unwrap()),
             timestamp: None,
@@ -190,6 +195,8 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     */
     coordinator.tx_begin(false).await;
 
+    let w_id = u64_rand(0, NUM_WAREHOUSE);
+
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
     // println!("id {}", coordinator.txn_id);
     // println!("did = {}", d_id);
@@ -198,15 +205,19 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     let h_amount = u64_rand(100, 500000) as f64 / 100.0;
 
     // coordinator.add_read_to_execute(0, WAREHOUSE_TABLE);
-    let warehouse_updated = coordinator.add_write_to_execute(0, WAREHOUSE_TABLE, "".to_string());
+    let warehouse_updated = coordinator.add_write_to_execute(w_id, WAREHOUSE_TABLE, "".to_string());
 
     // coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
-    let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
+    let district_updated = coordinator.add_write_to_execute(
+        district_index(d_id, w_id),
+        DISTRICT_TABLE,
+        "".to_string(),
+    );
 
     // get customer
     // coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
     let customer_updated = coordinator.add_write_to_execute(
-        customer_index(c_id, d_id),
+        customer_index(c_id, d_id, w_id),
         CUSTOMER_TABLE,
         "".to_string(),
     );
@@ -252,7 +263,7 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
     let mut history_record = History::new(c_id, d_id, 0);
     history_record.h_amount = h_amount;
     coordinator.add_to_insert(ReadStruct {
-        key: history_index(c_id, d_id),
+        key: history_index(c_id, d_id, w_id),
         table_id: HISTORY_TABLE,
         value: Some(serde_json::to_string(&history_record).unwrap()),
         timestamp: Some(0),
@@ -272,6 +283,8 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
     */
     coordinator.tx_begin(false).await;
 
+    let w_id = u64_rand(0, NUM_WAREHOUSE);
+
     let o_carrier_id = u64_rand(MIN_CARRIER_ID, MAX_CARRIER_ID);
     let current_ts = get_currenttime_millis();
     for d_id in 1..=NUM_DISTRICT_PER_WAREHOUSE {
@@ -279,16 +292,19 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
         let min_o_id = NUM_CUSTOMER_PER_DISTRICT * 7 / 10 + 1;
         let max_o_id = NUM_CUSTOMER_PER_DISTRICT;
         let o_id = u64_rand(min_o_id, max_o_id);
-        coordinator.add_read_to_execute(neworder_index(o_id, d_id), NEWORDER_TABLE);
+        coordinator.add_read_to_execute(neworder_index(o_id, d_id, w_id), NEWORDER_TABLE);
         let (status, new_order) = coordinator.tx_exe().await;
         if !status {
             coordinator.tx_abort().await;
             return false;
         }
         // update order
-        coordinator.add_read_to_execute(order_index(o_id, d_id), ORDER_TABLE);
-        let order_updated =
-            coordinator.add_write_to_execute(order_index(o_id, d_id), ORDER_TABLE, "".to_string());
+        coordinator.add_read_to_execute(order_index(o_id, d_id, w_id), ORDER_TABLE);
+        let order_updated = coordinator.add_write_to_execute(
+            order_index(o_id, d_id, w_id),
+            ORDER_TABLE,
+            "".to_string(),
+        );
         let (status, order) = coordinator.tx_exe().await;
         if !status {
             coordinator.tx_abort().await;
@@ -305,7 +321,7 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
         // get order line
         let mut sum_ol_amount = 0.0;
         for ol in 1..=MAX_OL_CNT {
-            coordinator.add_read_to_execute(orderline_index(o_id, d_id, ol), ORDERLINE_TABLE);
+            coordinator.add_read_to_execute(orderline_index(o_id, d_id, ol, w_id), ORDERLINE_TABLE);
         }
         let (status, orderlines) = coordinator.tx_exe().await;
         if !status {
@@ -320,9 +336,9 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
             sum_ol_amount += ol_record.ol_amount;
         }
         // update customer
-        coordinator.add_read_to_execute(customer_index(o_id, d_id), CUSTOMER_TABLE);
+        coordinator.add_read_to_execute(customer_index(o_id, d_id, w_id), CUSTOMER_TABLE);
         let customer_updated = coordinator.add_write_to_execute(
-            customer_index(o_id, d_id),
+            customer_index(o_id, d_id, w_id),
             CUSTOMER_TABLE,
             "".to_string(),
         );
@@ -355,9 +371,10 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     "getOrderLines": "SELECT OL_SUPPLY_W_ID, OL_I_ID, OL_QUANTITY, OL_AMOUNT, OL_DELIVERY_D FROM ORDER_LINE WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID = ?", # w_id, d_id, o_id
     },
     */
+    let w_id = u64_rand(0, NUM_WAREHOUSE);
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
     let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
-    coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
+    coordinator.add_read_to_execute(customer_index(c_id, d_id, w_id), CUSTOMER_TABLE);
     let (status, results) = coordinator.tx_exe().await;
     if results.len() == 0 {
         return true;
@@ -369,7 +386,7 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     // FIXME: Currently, we use a random order_id to maintain the distributed transaction payload,
     // but need to search the largest o_id by o_w_id, o_d_id and o_c_id from the order table
     let order_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
-    coordinator.add_read_to_execute(order_index(order_id, d_id), ORDER_TABLE);
+    coordinator.add_read_to_execute(order_index(order_id, d_id, w_id), ORDER_TABLE);
     let (status, results) = coordinator.tx_exe().await;
     if results.len() == 0 {
         return true;
@@ -379,7 +396,7 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
         Err(_) => Order::default(),
     };
     for ol in 1..=order_record.o_ol_cnt {
-        coordinator.add_read_to_execute(orderline_index(order_id, d_id, ol), ORDERLINE_TABLE);
+        coordinator.add_read_to_execute(orderline_index(order_id, d_id, ol, w_id), ORDERLINE_TABLE);
     }
     let (status, results) = coordinator.tx_exe().await;
     coordinator.tx_commit().await
@@ -391,11 +408,11 @@ async fn tx_stock_level(coordinator: &mut DtxCoordinator) -> bool {
     "getStockCount": "SELECT COUNT(DISTINCT(OL_I_ID)) FROM ORDER_LINE, STOCK  WHERE OL_W_ID = ? AND OL_D_ID = ? AND OL_O_ID < ? AND OL_O_ID >= ? AND S_W_ID = ? AND S_I_ID = OL_I_ID AND S_QUANTITY < ?
     */
     coordinator.tx_begin(true).await;
-
+    let w_id = u64_rand(0, NUM_WAREHOUSE);
     let threshold = u64_rand(MIN_STOCK_LEVEL_THRESHOLD, MAX_STOCK_LEVEL_THRESHOLD);
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE + 1);
 
-    coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
+    coordinator.add_read_to_execute(district_index(d_id, w_id), DISTRICT_TABLE);
     let (status, results) = coordinator.tx_exe().await;
     if results.len() == 0 {
         return true;
@@ -409,7 +426,7 @@ async fn tx_stock_level(coordinator: &mut DtxCoordinator) -> bool {
     let o_id = district.d_next_o_id;
     for order_id in (o_id - 20)..o_id {
         for line_number in 1..MAX_OL_CNT {
-            let ol_index = orderline_index(order_id, d_id, line_number);
+            let ol_index = orderline_index(order_id, d_id, line_number, w_id);
             coordinator.add_read_to_execute(ol_index, ORDERLINE_TABLE);
         }
     }

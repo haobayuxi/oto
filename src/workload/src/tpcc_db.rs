@@ -27,24 +27,28 @@ pub static NUM_DISTRICT_PER_WAREHOUSE: u64 = 10;
 pub static NUM_ITEM: u64 = 1000;
 pub static NUM_STOCK_PER_WAREHOUSE: u64 = 100000;
 
-pub fn customer_index(c_id: u64, d_id: u64) -> u64 {
-    d_id << 30 + c_id
+pub fn district_index(d_id: u64, w_id: u64) -> u64 {
+    w_id << 20 + d_id
 }
 
-pub fn history_index(c_id: u64, d_id: u64) -> u64 {
-    d_id << 30 + c_id
+pub fn customer_index(c_id: u64, d_id: u64, w_id: u64) -> u64 {
+    w_id << 40 + d_id << 30 + c_id
 }
 
-pub fn order_index(o_id: u64, d_id: u64) -> u64 {
-    d_id << 32 + o_id
+pub fn history_index(c_id: u64, d_id: u64, w_id: u64) -> u64 {
+    w_id << 40 + d_id << 30 + c_id
 }
 
-pub fn orderline_index(o_id: u64, d_id: u64, number: u64) -> u64 {
-    d_id << 54 + o_id << 32 + number
+pub fn order_index(o_id: u64, d_id: u64, w_id: u64) -> u64 {
+    w_id << 40 + d_id << 32 + o_id
 }
 
-pub fn neworder_index(o_id: u64, d_id: u64) -> u64 {
-    d_id << 32 + o_id
+pub fn orderline_index(o_id: u64, d_id: u64, number: u64, w_id: u64) -> u64 {
+    w_id << 40 + d_id << 54 + o_id << 32 + number
+}
+
+pub fn neworder_index(o_id: u64, d_id: u64, w_id: u64) -> u64 {
+    w_id << 40 + d_id << 32 + o_id
 }
 
 pub fn init_tpcc_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
@@ -60,77 +64,80 @@ pub fn init_tpcc_data() -> Vec<HashMap<u64, RwLock<Tuple>>> {
     let mut stock_table: HashMap<u64, RwLock<Tuple>> = HashMap::new();
 
     // populate warehouse table
-    let ware_house_record = Warehouse::new(0);
-    warehouse_table.insert(
-        0,
-        RwLock::new(Tuple::new(
-            serde_json::to_string(&ware_house_record).unwrap(),
-        )),
-    );
-    // populate district table
-    for d_id in 1..=NUM_DISTRICT_PER_WAREHOUSE {
-        let district_record = District::new(d_id, 0);
-        district_table.insert(
-            d_id,
-            RwLock::new(Tuple::new(serde_json::to_string(&district_record).unwrap())),
+    for w_id in 0..NUM_WAREHOUSE {
+        let ware_house_record = Warehouse::new(w_id);
+        warehouse_table.insert(
+            0,
+            RwLock::new(Tuple::new(
+                serde_json::to_string(&ware_house_record).unwrap(),
+            )),
         );
-    }
-    // populate customer and history table
-    for d_id in 1..=NUM_DISTRICT_PER_WAREHOUSE {
-        for c_id in 1..=NUM_CUSTOMER_PER_DISTRICT {
-            let customer_record = Customer::new(c_id, d_id, 0);
-            customer_table.insert(
-                customer_index(c_id, d_id),
-                RwLock::new(Tuple::new(serde_json::to_string(&customer_record).unwrap())),
-            );
 
-            let history_record = History::new(c_id, d_id, 0);
-            history_table.insert(
-                history_index(c_id, d_id),
-                RwLock::new(Tuple::new(serde_json::to_string(&history_record).unwrap())),
+        // populate district table
+        for d_id in 1..=NUM_DISTRICT_PER_WAREHOUSE {
+            let district_record = District::new(d_id, w_id);
+            district_table.insert(
+                district_index(d_id, w_id),
+                RwLock::new(Tuple::new(serde_json::to_string(&district_record).unwrap())),
             );
         }
-    }
+        // populate customer and history table
+        for d_id in 1..=NUM_DISTRICT_PER_WAREHOUSE {
+            for c_id in 1..=NUM_CUSTOMER_PER_DISTRICT {
+                let customer_record = Customer::new(c_id, d_id, w_id);
+                customer_table.insert(
+                    customer_index(c_id, d_id, w_id),
+                    RwLock::new(Tuple::new(serde_json::to_string(&customer_record).unwrap())),
+                );
 
-    // populate order, new order, order line tables
-    for d_id in 1..=NUM_DISTRICT_PER_WAREHOUSE {
-        // generate c_ids
-        let mut cid_set = HashSet::new();
-        let mut cid_vec = Vec::new();
-        while cid_set.len() != NUM_CUSTOMER_PER_DISTRICT as usize {
-            let cid = u64_rand(0, NUM_CUSTOMER_PER_DISTRICT) + 1;
-            if cid_set.contains(&cid) {
-                continue;
+                let history_record = History::new(c_id, d_id, w_id);
+                history_table.insert(
+                    history_index(c_id, d_id, w_id),
+                    RwLock::new(Tuple::new(serde_json::to_string(&history_record).unwrap())),
+                );
             }
-            cid_set.insert(cid);
-            cid_vec.push(cid);
         }
-        for c in 1..=NUM_CUSTOMER_PER_DISTRICT {
-            let c_id = cid_vec[(c - 1) as usize];
-            let o_id = order_index(c_id, d_id);
-            let order_record = Order::new(o_id, d_id, 0, c_id);
-            order_table.insert(
-                o_id,
-                RwLock::new(Tuple::new(serde_json::to_string(&order_record).unwrap())),
-            );
-            if c > 2100 {
-                // new order
-                let neworder_record = NewOrder::new(o_id, d_id);
-                neworder_table.insert(
-                    neworder_index(o_id, d_id),
-                    RwLock::new(Tuple::new(serde_json::to_string(&neworder_record).unwrap())),
-                );
-            }
-            for ol in 1..=order_record.o_ol_cnt {
-                // order line
-                let orderline_record = Orderline::new(o_id, d_id, 0, order_record.o_entry_d);
 
-                orderline_table.insert(
-                    orderline_index(o_id, d_id, ol),
-                    RwLock::new(Tuple::new(
-                        serde_json::to_string(&orderline_record).unwrap(),
-                    )),
+        // populate order, new order, order line tables
+        for d_id in 1..=NUM_DISTRICT_PER_WAREHOUSE {
+            // generate c_ids
+            let mut cid_set = HashSet::new();
+            let mut cid_vec = Vec::new();
+            while cid_set.len() != NUM_CUSTOMER_PER_DISTRICT as usize {
+                let cid = u64_rand(0, NUM_CUSTOMER_PER_DISTRICT) + 1;
+                if cid_set.contains(&cid) {
+                    continue;
+                }
+                cid_set.insert(cid);
+                cid_vec.push(cid);
+            }
+            for c in 1..=NUM_CUSTOMER_PER_DISTRICT {
+                let c_id = cid_vec[(c - 1) as usize];
+                let o_id = order_index(c_id, d_id, w_id);
+                let order_record = Order::new(o_id, d_id, w_id, c_id);
+                order_table.insert(
+                    o_id,
+                    RwLock::new(Tuple::new(serde_json::to_string(&order_record).unwrap())),
                 );
+                if c > 2100 {
+                    // new order
+                    let neworder_record = NewOrder::new(o_id, d_id);
+                    neworder_table.insert(
+                        neworder_index(o_id, d_id, w_id),
+                        RwLock::new(Tuple::new(serde_json::to_string(&neworder_record).unwrap())),
+                    );
+                }
+                for ol in 1..=order_record.o_ol_cnt {
+                    // order line
+                    let orderline_record = Orderline::new(o_id, d_id, 0, order_record.o_entry_d);
+
+                    orderline_table.insert(
+                        orderline_index(o_id, d_id, ol, w_id),
+                        RwLock::new(Tuple::new(
+                            serde_json::to_string(&orderline_record).unwrap(),
+                        )),
+                    );
+                }
             }
         }
     }
