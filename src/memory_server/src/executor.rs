@@ -210,7 +210,6 @@ impl Executor {
                                         continue;
                                     }
                                     reply.read_set = read_result;
-                                    println!("{:?}", coor_msg.msg.write_set);
                                     let (write_success, mut read_write_result) = lock_write_set(
                                         coor_msg.msg.write_set.clone(),
                                         coor_msg.msg.txn_id,
@@ -271,7 +270,7 @@ impl Executor {
                                         });
                                     }
                                 }
-                                update_and_release_locks(coor_msg.msg.clone(), self.dtx_type).await;
+                                // update_and_release_locks(coor_msg.msg.clone(), self.dtx_type).await;
                                 // insert & delete
                                 insert(coor_msg.msg.insert.clone());
                                 delete(coor_msg.msg.delete);
