@@ -219,7 +219,7 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
         "".to_string(),
     );
     let (status, results) = coordinator.tx_exe().await;
-    if !status {
+    if !status || results.len() < 3 {
         coordinator.tx_abort().await;
         return false;
     }
