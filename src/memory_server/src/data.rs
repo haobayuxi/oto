@@ -202,7 +202,7 @@ pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, V
                     if !guard.set_lock(txn_id) {
                         return (false, result);
                     }
-                    println!("locked{}", iter.key);
+                    // println!("locked{}", iter.key);
                     let read_struct = ReadStruct {
                         key: iter.key,
                         table_id: iter.table_id,
@@ -211,10 +211,12 @@ pub async fn lock_write_set(write_set: Vec<ReadStruct>, txn_id: u64) -> (bool, V
                     };
                     result.push(read_struct);
                 }
-                None => return (false, result),
+                None => {
+                    println!("not found {} {}", iter.table_id, iter.key);
+                    return (false, result);
+                }
             }
         }
-        println!("{:?}", result);
         (true, result)
     }
 }
