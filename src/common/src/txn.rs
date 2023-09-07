@@ -164,10 +164,7 @@ impl DtxCoordinator {
                 success = reply.success;
                 result = reply.read_set;
             } else {
-                if !self.write_to_execute.is_empty()
-                    || !self.insert.is_empty()
-                    || !self.delete.is_empty()
-                {
+                if !self.write_to_execute.is_empty() {
                     let execute = Msg {
                         txn_id: self.txn_id,
                         read_set: self.read_to_execute.clone(),

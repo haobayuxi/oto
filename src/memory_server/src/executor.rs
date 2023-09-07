@@ -210,9 +210,12 @@ impl Executor {
                                         continue;
                                     }
                                     reply.read_set = read_result;
-                                    let (success, mut read_write_result) =
-                                        lock_write_set(coor_msg.msg.write_set, coor_msg.msg.txn_id)
-                                            .await;
+                                    println!("{:?}", coor_msg.msg.write_set);
+                                    let (success, mut read_write_result) = lock_write_set(
+                                        coor_msg.msg.write_set.clone(),
+                                        coor_msg.msg.txn_id,
+                                    )
+                                    .await;
                                     println!("success{}, txnid{}", success, reply.txn_id);
                                     // reply.read_set.append(&mut read_write_result);
                                     reply.txn_id = self.server_id as u64;
