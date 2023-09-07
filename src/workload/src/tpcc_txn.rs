@@ -87,7 +87,6 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
     // get district need update district next oid
     coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
-    let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
     let (status, results) = coordinator.tx_exe().await;
     if !status {
         coordinator.tx_abort().await;
@@ -99,6 +98,8 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
     };
     district_record.d_next_o_id += 1;
     let o_id = district_record.d_next_o_id;
+
+    let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
     district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
     // insert new order
     let new_order_record = NewOrder::new(o_id, d_id);
