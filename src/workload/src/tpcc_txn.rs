@@ -197,14 +197,14 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
 
     let h_amount = u64_rand(100, 500000) as f64 / 100.0;
 
-    coordinator.add_read_to_execute(0, WAREHOUSE_TABLE);
+    // coordinator.add_read_to_execute(0, WAREHOUSE_TABLE);
     let warehouse_updated = coordinator.add_write_to_execute(0, WAREHOUSE_TABLE, "".to_string());
 
-    coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
+    // coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
     let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
 
     // get customer
-    coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
+    // coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
     let customer_updated = coordinator.add_write_to_execute(
         customer_index(c_id, d_id),
         CUSTOMER_TABLE,

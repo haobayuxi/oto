@@ -217,6 +217,7 @@ impl Executor {
                                     )
                                     .await;
                                     // println!("success{}, txnid{}", write_success, reply.txn_id);
+                                    reply.read_set.append(&mut read_write_result);
                                     reply.success = if self.server_id == 2 {
                                         write_success
                                     } else {
