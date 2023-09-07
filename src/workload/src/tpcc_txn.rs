@@ -21,7 +21,8 @@ async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     if op < 45 {
         //
         // println!("new order");
-        return tx_new_order(coordinator).await;
+        return false;
+        // return tx_new_order(coordinator).await;
     } else if op < 85 {
         //
         // println!("payment");
