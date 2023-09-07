@@ -33,12 +33,12 @@ async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
         // return tx_delivery(coordinator).await;
     } else if op < 95 {
         // println!("order status");
-        // return false;
+        return false;
         return tx_order_status(coordinator).await;
     } else {
         // println!("stock level");
-        // return false;
-        return tx_stock_level(coordinator).await;
+        return false;
+        // return tx_stock_level(coordinator).await;
     }
 }
 
