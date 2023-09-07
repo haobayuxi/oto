@@ -29,7 +29,8 @@ async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     } else if op < 90 {
         //
         // println!("delivery");
-        return tx_delivery(coordinator).await;
+        return tx_payment(coordinator).await;
+        // return tx_delivery(coordinator).await;
     } else if op < 95 {
         // println!("order status");
         // return false;
@@ -140,23 +141,23 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
         // read and update stock
         coordinator.add_read_to_execute(i_id, STOCK_TABLE);
         let stock_update = coordinator.add_write_to_execute(i_id, STOCK_TABLE, "value".to_string());
-        let (status, stock) = coordinator.tx_exe().await;
-        if !status || stock.is_empty() {
-            coordinator.tx_abort().await;
-            return false;
-        }
-        let mut stock_record: Stock = match serde_json::from_str(stock[1].value()) {
-            Ok(s) => s,
-            Err(_) => Stock::default(),
-        };
-        if stock_record.s_quantity - ol_quantity >= 10 {
-            stock_record.s_quantity -= ol_quantity;
-        } else {
-            stock_record.s_quantity += 91 - ol_quantity;
-        }
-        stock_update.write().await.value = Some(serde_json::to_string(&stock_record).unwrap());
+        // let (status, stock) = coordinator.tx_exe().await;
+        // if !status || stock.is_empty() {
+        //     coordinator.tx_abort().await;
+        //     return false;
+        // }
+        // let mut stock_record: Stock = match serde_json::from_str(stock[1].value()) {
+        //     Ok(s) => s,
+        //     Err(_) => Stock::default(),
+        // };
+        // if stock_record.s_quantity - ol_quantity >= 10 {
+        //     stock_record.s_quantity -= ol_quantity;
+        // } else {
+        //     stock_record.s_quantity += 91 - ol_quantity;
+        // }
+        // stock_update.write().await.value = Some(serde_json::to_string(&stock_record).unwrap());
         // insert orderline
-        let orderline = Orderline::new(o_id, d_id, warehouse_id, ol_number);
+        let orderline: Orderline = Orderline::new(o_id, d_id, warehouse_id, ol_number);
         coordinator.add_to_insert(ReadStruct {
             key: order_index(o_id, d_id),
             table_id: ORDERLINE_TABLE,
@@ -164,7 +165,11 @@ async fn tx_new_order(coordinator: &mut DtxCoordinator) -> bool {
             timestamp: None,
         });
     }
-
+    let (status, results) = coordinator.tx_exe().await;
+    if !status {
+        coordinator.tx_abort().await;
+        return false;
+    }
     coordinator.tx_commit().await
 }
 
@@ -189,31 +194,9 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
 
     coordinator.add_read_to_execute(0, WAREHOUSE_TABLE);
     let warehouse_updated = coordinator.add_write_to_execute(0, WAREHOUSE_TABLE, "".to_string());
-    let (status, results) = coordinator.tx_exe().await;
-    if !status {
-        coordinator.tx_abort().await;
-        return false;
-    }
-    let mut warehouse_record: Warehouse = match serde_json::from_str(results[0].value()) {
-        Ok(s) => s,
-        Err(_) => Warehouse::default(),
-    };
+
     coordinator.add_read_to_execute(d_id, DISTRICT_TABLE);
     let district_updated = coordinator.add_write_to_execute(d_id, DISTRICT_TABLE, "".to_string());
-    let (status, results) = coordinator.tx_exe().await;
-    if !status {
-        coordinator.tx_abort().await;
-        return false;
-    }
-    let mut district_record: District = match serde_json::from_str(results[0].value()) {
-        Ok(s) => s,
-        Err(_) => District::default(),
-    };
-
-    warehouse_record.w_ytd += h_amount;
-    district_record.d_ytd += h_amount;
-    warehouse_updated.write().await.value = Some(serde_json::to_string(&warehouse_record).unwrap());
-    district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
 
     // get customer
     coordinator.add_read_to_execute(customer_index(c_id, d_id), CUSTOMER_TABLE);
@@ -228,10 +211,24 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
         return false;
     }
 
-    let mut customer_record: Customer = match serde_json::from_str(results[0].value()) {
+    let mut warehouse_record: Warehouse = match serde_json::from_str(results[0].value()) {
+        Ok(s) => s,
+        Err(_) => Warehouse::default(),
+    };
+    let mut district_record: District = match serde_json::from_str(results[1].value()) {
+        Ok(s) => s,
+        Err(_) => District::default(),
+    };
+
+    let mut customer_record: Customer = match serde_json::from_str(results[2].value()) {
         Ok(s) => s,
         Err(_) => Customer::default(),
     };
+
+    warehouse_record.w_ytd += h_amount;
+    district_record.d_ytd += h_amount;
+    warehouse_updated.write().await.value = Some(serde_json::to_string(&warehouse_record).unwrap());
+    district_updated.write().await.value = Some(serde_json::to_string(&district_record).unwrap());
 
     customer_record.c_balance -= h_amount;
     customer_record.c_ytd_payment += h_amount;
@@ -255,11 +252,6 @@ async fn tx_payment(coordinator: &mut DtxCoordinator) -> bool {
         value: Some(serde_json::to_string(&history_record).unwrap()),
         timestamp: Some(0),
     });
-    // let (status, results) = coordinator.tx_exe().await;
-    // if !status {
-    //     coordinator.tx_abort().await;
-    //     return false;
-    // }
     coordinator.tx_commit().await
 }
 
@@ -288,65 +280,60 @@ async fn tx_delivery(coordinator: &mut DtxCoordinator) -> bool {
             coordinator.tx_abort().await;
             return false;
         }
-        if !new_order.is_empty() {
-            // update order
-            coordinator.add_read_to_execute(order_index(o_id, d_id), ORDER_TABLE);
-            let order_updated = coordinator.add_write_to_execute(
-                order_index(o_id, d_id),
-                ORDER_TABLE,
-                "".to_string(),
-            );
-            let (status, order) = coordinator.tx_exe().await;
-            if !status {
-                coordinator.tx_abort().await;
-                return false;
-            }
-            let mut order_record: Order = match serde_json::from_str(order[0].value()) {
-                Ok(s) => s,
-                Err(_) => Order::default(),
-            };
-            order_record.o_carried_id = o_carrier_id;
-            order_updated.write().await.value = Some(serde_json::to_string(&order_record).unwrap());
-            // delete new order
-            coordinator.add_to_delete(new_order[0].clone());
-            // get order line
-            let mut sum_ol_amount = 0.0;
-            for ol in 1..=MAX_OL_CNT {
-                coordinator.add_read_to_execute(orderline_index(o_id, d_id, ol), ORDERLINE_TABLE);
-            }
-            let (status, orderlines) = coordinator.tx_exe().await;
-            if !status {
-                coordinator.tx_abort().await;
-                return false;
-            }
-            for iter in orderlines.iter() {
-                let ol_record: Orderline = match serde_json::from_str(iter.value()) {
-                    Ok(s) => s,
-                    Err(_) => Orderline::default(),
-                };
-                sum_ol_amount += ol_record.ol_amount;
-            }
-            // update customer
-            coordinator.add_read_to_execute(customer_index(o_id, d_id), CUSTOMER_TABLE);
-            let customer_updated = coordinator.add_write_to_execute(
-                customer_index(o_id, d_id),
-                CUSTOMER_TABLE,
-                "".to_string(),
-            );
-            let (status, customer) = coordinator.tx_exe().await;
-            if !status {
-                coordinator.tx_abort().await;
-                return false;
-            }
-            let mut customer_record: Customer = match serde_json::from_str(customer[0].value()) {
-                Ok(s) => s,
-                Err(_) => Customer::default(),
-            };
-            customer_record.c_balance += sum_ol_amount;
-            customer_record.c_delivery_cnt += 1;
-            customer_updated.write().await.value =
-                Some(serde_json::to_string(&customer_record).unwrap());
+        // update order
+        coordinator.add_read_to_execute(order_index(o_id, d_id), ORDER_TABLE);
+        let order_updated =
+            coordinator.add_write_to_execute(order_index(o_id, d_id), ORDER_TABLE, "".to_string());
+        let (status, order) = coordinator.tx_exe().await;
+        if !status {
+            coordinator.tx_abort().await;
+            return false;
         }
+        let mut order_record: Order = match serde_json::from_str(order[0].value()) {
+            Ok(s) => s,
+            Err(_) => Order::default(),
+        };
+        order_record.o_carried_id = o_carrier_id;
+        order_updated.write().await.value = Some(serde_json::to_string(&order_record).unwrap());
+        // delete new order
+        coordinator.add_to_delete(new_order[0].clone());
+        // get order line
+        let mut sum_ol_amount = 0.0;
+        for ol in 1..=MAX_OL_CNT {
+            coordinator.add_read_to_execute(orderline_index(o_id, d_id, ol), ORDERLINE_TABLE);
+        }
+        let (status, orderlines) = coordinator.tx_exe().await;
+        if !status {
+            coordinator.tx_abort().await;
+            return false;
+        }
+        for iter in orderlines.iter() {
+            let ol_record: Orderline = match serde_json::from_str(iter.value()) {
+                Ok(s) => s,
+                Err(_) => Orderline::default(),
+            };
+            sum_ol_amount += ol_record.ol_amount;
+        }
+        // update customer
+        coordinator.add_read_to_execute(customer_index(o_id, d_id), CUSTOMER_TABLE);
+        let customer_updated = coordinator.add_write_to_execute(
+            customer_index(o_id, d_id),
+            CUSTOMER_TABLE,
+            "".to_string(),
+        );
+        let (status, customer) = coordinator.tx_exe().await;
+        if !status {
+            coordinator.tx_abort().await;
+            return false;
+        }
+        let mut customer_record: Customer = match serde_json::from_str(customer[0].value()) {
+            Ok(s) => s,
+            Err(_) => Customer::default(),
+        };
+        customer_record.c_balance += sum_ol_amount;
+        customer_record.c_delivery_cnt += 1;
+        customer_updated.write().await.value =
+            Some(serde_json::to_string(&customer_record).unwrap());
     }
 
     coordinator.tx_commit().await
