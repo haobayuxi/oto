@@ -189,8 +189,9 @@ impl DtxCoordinator {
                         let replies = self.sync_broadcast(execute).await;
                         self.deps = replies[0].deps.clone();
                         for i in 0..=2 {
-                            if replies[i].txn_id == 2 && !replies[i].success {
-                                success = false;
+                            if replies[i].txn_id == 2 {
+                                success = replies[i].success;
+                                result = replies[i].read_set.clone();
                             }
                             if self.dtx_type == DtxType::rjanus {
                                 if replies[i].deps != self.deps {
@@ -203,8 +204,6 @@ impl DtxCoordinator {
                                 }
                             }
                         }
-
-                        result = replies[0].read_set.clone();
                     }
                 } else {
                     // simple read
