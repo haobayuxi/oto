@@ -217,12 +217,10 @@ impl Executor {
                                     )
                                     .await;
                                     reply.read_set.append(&mut read_write_result);
-                                    println!("reply {} {}", reply.read_set.len(), write_success);
+                                    // println!("reply {} {}", reply.read_set.len(), write_success);
                                     reply.success = if self.server_id == 2 {
                                         write_success
                                     } else {
-                                        // println!("txnid {}", reply.txn_id);
-                                        // println!("server id == {}", self.server_id);
                                         true
                                     };
 
