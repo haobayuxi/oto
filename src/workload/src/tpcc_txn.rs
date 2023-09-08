@@ -385,7 +385,8 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     let order_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
     coordinator.add_read_to_execute(order_index(order_id, d_id, w_id), ORDER_TABLE);
     let (status, results) = coordinator.tx_exe().await;
-    if results.len() == 0 {
+    println!("success {} {:?}", status, results);
+    if !status || results.len() == 0 {
         return true;
     }
     let order_record: Order = match serde_json::from_str(results[1].value()) {
