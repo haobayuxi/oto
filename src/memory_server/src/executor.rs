@@ -180,17 +180,17 @@ impl Executor {
                                             coor_msg.msg.txn_id,
                                         )
                                         .await;
-                                        if success {
-                                            // lock the backup
-                                            reply.read_set.append(&mut read_write_set);
-                                            reply.write_set = coor_msg.msg.write_set.clone();
-                                            reply.success = success;
-                                            // coor_msg.call_back.send(reply);
-                                            self.accept(reply, coor_msg.call_back).await;
-                                        } else {
-                                            reply.success = false;
-                                            coor_msg.call_back.send(reply);
-                                        }
+                                        // if success {
+                                        // lock the backup
+                                        reply.read_set.append(&mut read_write_set);
+                                        reply.write_set = coor_msg.msg.write_set.clone();
+                                        reply.success = success;
+                                        // coor_msg.call_back.send(reply);
+                                        self.accept(reply, coor_msg.call_back).await;
+                                        // } else {
+                                        //     reply.success = false;
+                                        //     coor_msg.call_back.send(reply);
+                                        // }
                                     } else {
                                         coor_msg.call_back.send(reply);
                                     }
