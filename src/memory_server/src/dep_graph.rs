@@ -109,7 +109,7 @@ impl DepGraph {
                 let mut reply = Msg::default();
                 for read in txn.read_set.iter() {
                     if read.table_id > 8 {
-                        continue;
+                        println!("{} {:?}", txn.txn_id, txn.read_set);
                     }
                     let table = &mut DATA[read.table_id as usize];
                     match table.get_mut(&read.key) {
