@@ -9,7 +9,8 @@ use std::{
 
 use chrono::Local;
 use common::{
-    get_currenttime_millis, txn::connect_to_peer, Config, CoordnatorMsg, DbType, DtxType, Tuple,
+    get_currenttime_millis, get_txnid, txn::connect_to_peer, Config, CoordnatorMsg, DbType,
+    DtxType, Tuple,
 };
 use rpc::common::{
     data_service_client::DataServiceClient,
@@ -69,7 +70,8 @@ impl DataService for RpcServer {
     async fn communication(&self, request: Request<Msg>) -> Result<Response<Msg>, Status> {
         let (callback_sender, mut receiver) = unbounded_channel::<Msg>();
         let msg = request.into_inner();
-        let executor_id = msg.txn_id % self.executor_num;
+        let (cid, tid) = get_txnid(msg.txn_id);
+        let executor_id = cid % self.executor_num;
         let coor_msg = CoordnatorMsg {
             msg,
             call_back: callback_sender,
