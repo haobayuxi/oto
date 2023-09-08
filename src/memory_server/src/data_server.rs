@@ -76,7 +76,15 @@ impl DataService for RpcServer {
         };
         self.sender.get(&executor_id).unwrap().send(coor_msg);
         let mut reply = Msg::default();
-        reply = receiver.recv().await.unwrap();
+        loop {
+            match receiver.recv().await {
+                Some(r) => {
+                    reply = r;
+                    break;
+                }
+                None => {}
+            }
+        }
         Ok(Response::new(reply))
     }
 }
