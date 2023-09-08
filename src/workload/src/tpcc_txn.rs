@@ -370,14 +370,14 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     let d_id = u64_rand(1, NUM_DISTRICT_PER_WAREHOUSE);
     let c_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
     coordinator.add_read_to_execute(customer_index(c_id, d_id, w_id), CUSTOMER_TABLE);
-    let (status, results) = coordinator.tx_exe().await;
-    if results.len() == 0 {
-        return true;
-    }
-    let customer_record: Customer = match serde_json::from_str(results[0].value()) {
-        Ok(s) => s,
-        Err(_) => Customer::default(),
-    };
+    // let (status, results) = coordinator.tx_exe().await;
+    // if results.len() == 0 {
+    //     return true;
+    // }
+    // let customer_record: Customer = match serde_json::from_str(results[0].value()) {
+    //     Ok(s) => s,
+    //     Err(_) => Customer::default(),
+    // };
     // FIXME: Currently, we use a random order_id to maintain the distributed transaction payload,
     // but need to search the largest o_id by o_w_id, o_d_id and o_c_id from the order table
     let order_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
@@ -386,7 +386,7 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     if results.len() == 0 {
         return true;
     }
-    let order_record: Order = match serde_json::from_str(results[0].value()) {
+    let order_record: Order = match serde_json::from_str(results[1].value()) {
         Ok(s) => s,
         Err(_) => Order::default(),
     };
@@ -437,10 +437,6 @@ async fn tx_stock_level(coordinator: &mut DtxCoordinator) -> bool {
         };
         let item_id = orderline_record.ol_i_id;
         coordinator.add_read_to_execute(item_id, STOCK_TABLE);
-    }
-    let (status, results) = coordinator.tx_exe().await;
-    if results.len() == 0 {
-        return true;
     }
     coordinator.tx_commit().await
 }
