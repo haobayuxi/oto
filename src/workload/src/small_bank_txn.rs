@@ -114,7 +114,7 @@ async fn transac_saving(coordinator: &mut DtxCoordinator) -> bool {
         coordinator.tx_abort().await;
         return false;
     }
-    let mut save_record: Checking = serde_json::from_str(result[0].value()).unwrap();
+    let mut save_record: Saving = serde_json::from_str(result[0].value()).unwrap();
     let value = u64_rand(0, 10);
     // if value > save_record.balance {
     //     coordinator.tx_abort().await;
