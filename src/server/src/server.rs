@@ -18,6 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.clone(),
         server_config.client_num * (config.client_addr.len() as u64),
         dtx_type,
+        server_config.geo,
     );
     server.init_and_run(db_type, dtx_type).await;
     Ok(())

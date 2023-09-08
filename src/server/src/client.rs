@@ -24,22 +24,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dtx_type = serde_yaml::from_str(&server_config.dtx_type).unwrap();
     let db_type: DbType = serde_yaml::from_str(&server_config.db_type).unwrap();
     let local_ts = Arc::new(RwLock::new(0));
-    let local_ts_tmp = local_ts.clone();
+    let geo = server_config.geo;
     let config = Config::default();
     // init throughput statistics rpc server
     // let coordinator_server = coordinator_rpc_server::new(
     //     config.client_addr.get(id as usize).unwrap().clone(),
     //     local_ts.clone(),
     // );
-    let addr_to_listen = config.client_addr.get(id as usize).unwrap().clone();
+    let addr_to_listen = if geo {
+        config.geo_client_addr.get(id as usize).unwrap().clone()
+    } else {
+        config.client_addr.get(id as usize).unwrap().clone()
+    };
     tokio::spawn(async move {
-        run_coordinator_server(addr_to_listen, local_ts_tmp).await;
+        run_coordinator_server(addr_to_listen).await;
     });
     if id == 0 {
         // init client
         println!("init throughput client");
-        let mut get_throughput_client =
-            ThroughputStatistics::new(config.client_public_addr.clone()).await;
+        let data_ips = if geo {
+            config.geo_client_public_addr.clone()
+        } else {
+            config.client_public_addr.clone()
+        };
+        let mut get_throughput_client = ThroughputStatistics::new(data_ips).await;
         tokio::spawn(async move {
             // loop {
             get_throughput_client.run().await;
@@ -52,9 +60,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let read_only = server_config.read_only;
     let txns_per_client = server_config.txns_per_client;
+
     for i in 0..client_num {
         let loca_ts_bk = local_ts.clone();
-        let server_addr = config.server_public_addr.clone();
+        let server_addr = if geo {
+            config.geo_server_public_addr.clone()
+        } else {
+            config.server_public_addr.clone()
+        };
         let sender = result_sender.clone();
         tokio::spawn(async move {
             let mut dtx_coordinator = DtxCoordinator::new(

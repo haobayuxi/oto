@@ -39,7 +39,7 @@ impl coordinator_rpc_server {
     }
 }
 
-pub async fn run_coordinator_server(addr_to_listen: String, local_ts: Arc<RwLock<u64>>) {
+pub async fn run_coordinator_server(addr_to_listen: String) {
     let rpc_server = coordinator_rpc_server::new(addr_to_listen);
 
     let addr = rpc_server.addr_to_listen.parse().unwrap();

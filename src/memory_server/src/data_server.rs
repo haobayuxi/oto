@@ -98,12 +98,19 @@ pub struct DataServer {
     config: Config,
     client_num: u64,
     dtx_type: DtxType,
+    geo: bool,
     //spanner
     // peer_senders: Vec<DataServiceClient<Channel>>,
 }
 
 impl DataServer {
-    pub fn new(server_id: u32, config: Config, client_num: u64, dtx_type: DtxType) -> Self {
+    pub fn new(
+        server_id: u32,
+        config: Config,
+        client_num: u64,
+        dtx_type: DtxType,
+        geo: bool,
+    ) -> Self {
         Self {
             server_id,
             executor_num: config.executor_num,
@@ -111,6 +118,7 @@ impl DataServer {
             config,
             client_num,
             dtx_type,
+            geo,
             // peer_senders: Vec::new(),
         }
     }
@@ -120,12 +128,20 @@ impl DataServer {
         executor_senders: Arc<HashMap<u64, UnboundedSender<CoordnatorMsg>>>,
     ) {
         // start server for client to connect
-        let listen_ip = self.config.server_addr[self.server_id as usize].clone();
+        let listen_ip = if self.geo {
+            self.config.geo_server_addr[self.server_id as usize].clone()
+        } else {
+            self.config.server_addr[self.server_id as usize].clone()
+        };
         println!("server listen ip {}", listen_ip);
         let server = RpcServer::new(self.executor_num, listen_ip, executor_senders);
         if self.dtx_type == DtxType::spanner && self.server_id == 2 {
             //
-            let mut data_ip = self.config.server_public_addr.clone();
+            let mut data_ip = if self.geo {
+                self.config.geo_server_public_addr.clone()
+            } else {
+                self.config.server_public_addr.clone()
+            };
             data_ip.pop();
             unsafe {
                 PEER = connect_to_peer(data_ip).await;
