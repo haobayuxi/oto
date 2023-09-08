@@ -85,11 +85,6 @@ impl Executor {
                                 let read_set = coor_msg.msg.read_set.clone();
                                 // need wait
                                 let local_clock = get_currenttime_millis();
-                                // println!(
-                                //     "ts={},committs={},localclock = {}
-                                // ",
-                                //     ts, MAX_COMMIT_TS, local_clock
-                                // );
                                 if self.dtx_type == DtxType::spanner {
                                     if ts > MAX_COMMIT_TS {
                                         // wait
@@ -100,7 +95,7 @@ impl Executor {
                                                 sleep(Duration::from_millis(wait_time)).await;
                                             }
                                             let (success, read_result) =
-                                                get_read_only(read_set.clone()).await;
+                                                get_read_only(read_set).await;
                                             reply.success = success;
                                             reply.read_set = read_result;
 
@@ -112,18 +107,17 @@ impl Executor {
                                         // local wait
                                         let wait_time = min(ts - MAX_COMMIT_TS, ts - local_clock);
                                         tokio::spawn(async move {
-                                            // println!("wait time {}", wait_time);
+                                            println!("wait time {}", wait_time);
                                             sleep(Duration::from_millis(wait_time)).await;
                                             let (success, read_result) =
-                                                get_read_only(read_set.clone()).await;
+                                                get_read_only(read_set).await;
                                             reply.success = success;
                                             reply.read_set = read_result;
 
                                             coor_msg.call_back.send(reply);
                                         });
                                     } else {
-                                        let (success, read_result) =
-                                            get_read_only(read_set.clone()).await;
+                                        let (success, read_result) = get_read_only(read_set).await;
                                         reply.success = success;
                                         reply.read_set = read_result;
 
