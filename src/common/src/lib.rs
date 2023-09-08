@@ -231,7 +231,7 @@ pub fn f64_rand(lower_bound: f64, upper_bound: f64, precision: f64) -> f64 {
 
 pub struct CoordnatorMsg {
     pub msg: Msg,
-    pub call_back: UnboundedSender<Msg>,
+    pub call_back: OneShotSender<Msg>,
 }
 
 pub fn get_txnid(txnid: u64) -> (u64, u64) {

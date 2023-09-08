@@ -19,7 +19,7 @@ use crate::tpcc_db::{
 async fn run_tpcc_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 100);
 
-    return tx_order_status(coordinator).await;
+    // return tx_order_status(coordinator).await;
     if op < 45 {
         //
         // println!("new order");
@@ -385,7 +385,7 @@ async fn tx_order_status(coordinator: &mut DtxCoordinator) -> bool {
     let order_id = u64_rand(1, NUM_CUSTOMER_PER_DISTRICT);
     coordinator.add_read_to_execute(order_index(order_id, d_id, w_id), ORDER_TABLE);
     let (status, results) = coordinator.tx_exe().await;
-    println!("success {} {:?}", status, results);
+    // println!("success {} {:?}", status, results);
     if !status || results.len() == 0 {
         return true;
     }

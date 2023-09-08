@@ -51,7 +51,7 @@ impl Executor {
         }
     }
 
-    async fn accept(&mut self, msg: Msg, call_back: UnboundedSender<Msg>) {
+    async fn accept(&mut self, msg: Msg, call_back: OneShotSender<Msg>) {
         unsafe {
             let data_clients = PEER.clone();
             tokio::spawn(async move {
@@ -85,26 +85,28 @@ impl Executor {
                                 let read_set = coor_msg.msg.read_set.clone();
                                 // need wait
                                 let local_clock = get_currenttime_millis();
-                                let call_back = coor_msg.call_back.clone();
                                 if self.dtx_type == DtxType::spanner {
                                     if ts > MAX_COMMIT_TS {
                                         // wait
                                         tokio::spawn(async move {
-                                            let mut max_commit_ts = MAX_COMMIT_TS;
-                                            // while ts > max_commit_ts {
-                                            let wait_time = ts - max_commit_ts;
-                                            // println!("ts{}, cts{}", ts, MAX_COMMIT_TS);
-                                            sleep(Duration::from_millis(wait_time)).await;
-                                            max_commit_ts = MAX_COMMIT_TS;
-                                            // }
+                                            while ts > MAX_COMMIT_TS {
+                                                let wait_time = ts - MAX_COMMIT_TS;
+                                                // println!("ts{}, cts{}", ts, MAX_COMMIT_TS);
+                                                sleep(Duration::from_millis(wait_time)).await;
+                                            }
                                             let (success, read_result) =
                                                 get_read_only(read_set).await;
-                                            println!("success {} {:?}", success, read_result);
                                             reply.success = success;
                                             reply.read_set = read_result;
 
-                                            call_back.send(reply);
+                                            coor_msg.call_back.send(reply);
                                         });
+                                    } else {
+                                        let (success, read_result) = get_read_only(read_set).await;
+                                        reply.success = success;
+                                        reply.read_set = read_result;
+
+                                        coor_msg.call_back.send(reply);
                                     }
                                 } else {
                                     if ts > MAX_COMMIT_TS && ts > local_clock {
@@ -118,7 +120,7 @@ impl Executor {
                                             reply.success = success;
                                             reply.read_set = read_result;
 
-                                            call_back.send(reply);
+                                            coor_msg.call_back.send(reply);
                                         });
                                     } else {
                                         let (success, read_result) = get_read_only(read_set).await;

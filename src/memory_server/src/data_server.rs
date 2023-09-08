@@ -68,7 +68,7 @@ pub async fn run_rpc_server(rpc_server: RpcServer) {
 #[tonic::async_trait]
 impl DataService for RpcServer {
     async fn communication(&self, request: Request<Msg>) -> Result<Response<Msg>, Status> {
-        let (callback_sender, mut receiver) = unbounded_channel::<Msg>();
+        let (callback_sender, mut receiver) = oneshot::channel::<Msg>();
         let msg = request.into_inner();
         let (cid, tid) = get_txnid(msg.txn_id);
         let executor_id = cid % self.executor_num;
@@ -77,16 +77,7 @@ impl DataService for RpcServer {
             call_back: callback_sender,
         };
         self.sender.get(&executor_id).unwrap().send(coor_msg);
-        let mut reply = Msg::default();
-        loop {
-            match receiver.recv().await {
-                Some(r) => {
-                    reply = r;
-                    break;
-                }
-                None => {}
-            }
-        }
+        let reply = receiver.await.unwrap();
         Ok(Response::new(reply))
     }
 }

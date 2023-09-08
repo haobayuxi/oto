@@ -163,7 +163,7 @@ impl DtxCoordinator {
                 let reply: Msg = client.communication(read).await.unwrap().into_inner();
                 success = reply.success;
                 result = reply.read_set;
-                println!("success {} {:?}", success, result);
+                // println!("success {} {:?}", success, result);
             } else {
                 if !self.write_to_execute.is_empty() {
                     let execute = Msg {
