@@ -91,12 +91,12 @@ impl Executor {
                                         // wait
                                         tokio::spawn(async move {
                                             let mut max_commit_ts = MAX_COMMIT_TS;
-                                            while ts > max_commit_ts {
-                                                let wait_time = ts - max_commit_ts;
-                                                // println!("ts{}, cts{}", ts, MAX_COMMIT_TS);
-                                                sleep(Duration::from_millis(wait_time)).await;
-                                                max_commit_ts = MAX_COMMIT_TS;
-                                            }
+                                            // while ts > max_commit_ts {
+                                            let wait_time = ts - max_commit_ts;
+                                            // println!("ts{}, cts{}", ts, MAX_COMMIT_TS);
+                                            sleep(Duration::from_millis(wait_time)).await;
+                                            max_commit_ts = MAX_COMMIT_TS;
+                                            // }
                                             let (success, read_result) =
                                                 get_read_only(read_set).await;
                                             reply.success = success;
