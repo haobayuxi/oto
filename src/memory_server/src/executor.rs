@@ -285,6 +285,12 @@ impl Executor {
                                 // mark as executed
                                 let txn_id = coor_msg.msg.txn_id;
                                 let (client_id, index) = get_txnid(txn_id);
+                                let mut last_index = TXNS[client_id as usize].len() - 1;
+                                while index >= last_index as u64 {
+                                    let node = Node::default();
+                                    TXNS[client_id as usize].push(node);
+                                    last_index += 1;
+                                }
                                 let node = &mut TXNS[client_id as usize][index as usize];
                                 node.executed = true;
                                 node.committed = true;
