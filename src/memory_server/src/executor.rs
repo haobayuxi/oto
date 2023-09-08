@@ -245,9 +245,10 @@ impl Executor {
                                 let node = &mut TXNS[client_id as usize][index as usize];
                                 node.txn = Some(coor_msg.msg);
                                 node.committed = true;
-                                node.callback = Some(coor_msg.call_back);
+                                coor_msg.call_back.send(reply);
+                                // node.callback = Some(coor_msg.call_back);
                                 // send commit txn to dep_graph
-                                self.send_commit_to_dep_graph.send(txn_id).await;
+                                // self.send_commit_to_dep_graph.send(txn_id).await;
 
                                 // println!("commit cid={},index={}", client_id, index);
                             } else {
