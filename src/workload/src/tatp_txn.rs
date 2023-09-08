@@ -11,7 +11,7 @@ use crate::tatp_db::{
 async fn run_tatp_transaction(coordinator: &mut DtxCoordinator) -> bool {
     let op = u64_rand(0, 99);
 
-    return tx_get_subscriber_data(coordinator).await;
+    // return tx_get_subscriber_data(coordinator).await;
     if op < 35 {
         //
         return tx_get_subscriber_data(coordinator).await;
