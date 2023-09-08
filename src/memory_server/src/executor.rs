@@ -99,6 +99,7 @@ impl Executor {
                                             // }
                                             let (success, read_result) =
                                                 get_read_only(read_set).await;
+                                            println!("success {} {:?}", success, read_result);
                                             reply.success = success;
                                             reply.read_set = read_result;
 
