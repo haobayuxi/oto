@@ -107,29 +107,29 @@ impl DepGraph {
                 let txn = node.txn.as_ref().unwrap();
 
                 let mut reply = Msg::default();
-                for read in txn.read_set.iter() {
-                    if read.table_id > 8 {
-                        println!("{} {:?}", txn.txn_id, txn.read_set);
-                    }
-                    let table = &mut DATA[read.table_id as usize];
-                    match table.get_mut(&read.key) {
-                        Some(rwlock) => {
-                            let guard = rwlock.write().await;
+                // for read in txn.read_set.iter() {
+                //     if read.table_id > 8 {
+                //         println!("{} {:?}", txn.txn_id, txn.read_set);
+                //     }
+                //     let table = &mut DATA[read.table_id as usize];
+                //     match table.get_mut(&read.key) {
+                //         Some(rwlock) => {
+                //             let guard = rwlock.write().await;
 
-                            let read_struct = ReadStruct {
-                                key: read.key,
-                                table_id: read.table_id,
-                                value: Some(guard.data.clone()),
-                                timestamp: Some(guard.ts),
-                            };
-                            reply.read_set.push(read_struct);
-                        }
-                        None => {
-                            reply.success = false;
-                            break;
-                        }
-                    }
-                }
+                //             let read_struct = ReadStruct {
+                //                 key: read.key,
+                //                 table_id: read.table_id,
+                //                 value: Some(guard.data.clone()),
+                //                 timestamp: Some(guard.ts),
+                //             };
+                //             reply.read_set.push(read_struct);
+                //         }
+                //         None => {
+                //             reply.success = false;
+                //             break;
+                //         }
+                //     }
+                // }
                 match node.callback.take() {
                     Some(callback) => {
                         callback.send(reply);
