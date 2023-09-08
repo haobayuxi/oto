@@ -13,7 +13,7 @@ use chrono::Local;
 use rand::*;
 use rpc::common::Msg;
 use serde::{Deserialize, Serialize};
-use tokio::sync::oneshot::Sender as OneShotSender;
+use tokio::sync::{mpsc::UnboundedSender, oneshot::Sender as OneShotSender};
 
 pub static GLOBAL_COMMITTED: AtomicUsize = ATOMIC_USIZE_INIT;
 
@@ -226,7 +226,7 @@ pub fn f64_rand(lower_bound: f64, upper_bound: f64, precision: f64) -> f64 {
 
 pub struct CoordnatorMsg {
     pub msg: Msg,
-    pub call_back: OneShotSender<Msg>,
+    pub call_back: UnboundedSender<Msg>,
 }
 
 pub fn get_txnid(txnid: u64) -> (u64, u64) {
