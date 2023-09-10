@@ -138,7 +138,7 @@ impl Executor {
                                     let txn_id = coor_msg.msg.txn_id;
                                     let (client_id, index) = get_txnid(txn_id);
                                     let mut last_index = TXNS[client_id as usize].len() - 1;
-                                    while index > last_index as u64 {
+                                    while index >= last_index as u64 {
                                         let node = Node::default();
                                         TXNS[client_id as usize].push(node);
                                         last_index += 1;
@@ -242,7 +242,7 @@ impl Executor {
                                 let txn_id = coor_msg.msg.txn_id;
                                 let (client_id, index) = get_txnid(txn_id);
 
-                                let node = &mut TXNS[client_id as usize][index as usize];
+                                let node: &mut Node = &mut TXNS[client_id as usize][index as usize];
                                 node.txn = Some(coor_msg.msg);
                                 node.committed = true;
                                 coor_msg.call_back.send(reply);
