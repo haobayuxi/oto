@@ -18,6 +18,7 @@ use tokio::sync::{mpsc::UnboundedSender, oneshot::Sender as OneShotSender};
 pub static GLOBAL_COMMITTED: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub static UNCERTAINTY: u64 = 7;
+pub static LOCAL_UNCERTAINTY: u64 = 1;
 
 pub static SUBSCRIBER_TABLE: u32 = 0;
 pub static SPECIAL_FACILITY_TABLE: u32 = 1;
@@ -242,4 +243,8 @@ pub fn get_txnid(txnid: u64) -> (u64, u64) {
 
 pub fn get_currenttime_millis() -> u64 {
     Local::now().timestamp_millis() as u64
+}
+
+pub fn get_currenttime_micros() -> u64 {
+    Local::now().timestamp_micros() as u64
 }

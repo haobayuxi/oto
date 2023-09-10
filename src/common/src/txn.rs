@@ -14,7 +14,10 @@ use tokio::time::sleep;
 use tokio::time::Duration;
 use tonic::transport::Channel;
 
-use crate::{get_currenttime_millis, GLOBAL_COMMITTED, UNCERTAINTY};
+use crate::{
+    get_currenttime_micros, get_currenttime_millis, GLOBAL_COMMITTED, LOCAL_UNCERTAINTY,
+    UNCERTAINTY,
+};
 use crate::{get_txnid, DtxType};
 use crate::{ip_addr_add_prefix, CID_LEN};
 
@@ -111,7 +114,11 @@ impl DtxCoordinator {
         self.delete.clear();
         self.read_only = read_only;
         if read_only {
-            self.commit_ts = get_currenttime_millis() + UNCERTAINTY;
+            self.commit_ts = if self.geo {
+                get_currenttime_millis() + UNCERTAINTY
+            } else {
+                get_currenttime_micros() + LOCAL_UNCERTAINTY
+            };
         } else {
             self.commit_ts = 0;
         }

@@ -180,7 +180,14 @@ impl DataServer {
         for i in 0..self.executor_num {
             let (sender, receiver) = unbounded_channel::<CoordnatorMsg>();
             self.executor_senders.insert(i, sender);
-            let mut exec = Executor::new(i, receiver, dtx_type, dep_sender.clone(), self.server_id);
+            let mut exec = Executor::new(
+                i,
+                receiver,
+                dtx_type,
+                dep_sender.clone(),
+                self.server_id,
+                self.geo,
+            );
             tokio::spawn(async move {
                 exec.run().await;
             });

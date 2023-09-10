@@ -1,4 +1,4 @@
-use common::{get_currenttime_millis, get_txnid, CoordnatorMsg, DtxType};
+use common::{get_currenttime_micros, get_currenttime_millis, get_txnid, CoordnatorMsg, DtxType};
 use rpc::common::{data_service_client::DataServiceClient, Msg, TxnOp};
 use std::{
     cmp::{max, min},
@@ -26,6 +26,7 @@ pub struct Executor {
     pub recv: UnboundedReceiver<CoordnatorMsg>,
     server_id: u32,
     dtx_type: DtxType,
+    geo: bool,
     // janus
     send_commit_to_dep_graph: Sender<u64>,
     // spanner
@@ -39,6 +40,7 @@ impl Executor {
         dtx_type: DtxType,
         sender: Sender<u64>,
         server_id: u32,
+        geo: bool,
         // peer_senders: Vec<DataServiceClient<Channel>>,
     ) -> Self {
         Self {
@@ -47,6 +49,7 @@ impl Executor {
             dtx_type,
             send_commit_to_dep_graph: sender,
             server_id,
+            geo,
             // peer_senders,
         }
     }
@@ -84,7 +87,11 @@ impl Executor {
                             {
                                 let read_set = coor_msg.msg.read_set.clone();
                                 // need wait
-                                let local_clock = get_currenttime_millis();
+                                let local_clock = if self.geo {
+                                    get_currenttime_millis()
+                                } else {
+                                    get_currenttime_micros()
+                                };
                                 if self.dtx_type == DtxType::spanner {
                                     if ts > MAX_COMMIT_TS {
                                         // wait
@@ -112,9 +119,14 @@ impl Executor {
                                     if ts > MAX_COMMIT_TS && ts > local_clock {
                                         // local wait
                                         let wait_time = min(ts - MAX_COMMIT_TS, ts - local_clock);
+                                        let geo = self.geo;
                                         tokio::spawn(async move {
                                             // println!("wait time {}", wait_time);
-                                            sleep(Duration::from_millis(wait_time)).await;
+                                            if geo {
+                                                sleep(Duration::from_millis(wait_time)).await;
+                                            } else {
+                                                sleep(Duration::from_micros(wait_time)).await;
+                                            }
                                             let (success, read_result) =
                                                 get_read_only(read_set).await;
                                             reply.success = success;
