@@ -137,7 +137,7 @@ impl Executor {
                                     // init node
                                     let txn_id = coor_msg.msg.txn_id;
                                     let (client_id, index) = get_txnid(txn_id);
-                                    let mut last_index = TXNS[client_id as usize].len() - 1;
+                                    let mut last_index = TXNS[client_id as usize].len();
                                     while index >= last_index as u64 {
                                         let node = Node::default();
                                         TXNS[client_id as usize].push(node);
@@ -180,17 +180,10 @@ impl Executor {
                                             coor_msg.msg.txn_id,
                                         )
                                         .await;
-                                        // if success {
-                                        // lock the backup
                                         reply.read_set.append(&mut read_write_set);
                                         reply.write_set = coor_msg.msg.write_set.clone();
                                         reply.success = success;
-                                        // coor_msg.call_back.send(reply);
                                         self.accept(reply, coor_msg.call_back).await;
-                                        // } else {
-                                        //     reply.success = false;
-                                        //     coor_msg.call_back.send(reply);
-                                        // }
                                     } else {
                                         coor_msg.call_back.send(reply);
                                     }
