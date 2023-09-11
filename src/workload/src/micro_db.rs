@@ -45,7 +45,7 @@ impl MicroQuery {
     pub fn new(read_only: bool) -> Self {
         let theta = if read_only { 0.0 } else { 0.8 };
         let req_per_query = if read_only { 2 } else { 4 };
-        let read_perc = if read_only { 100 } else { 95 };
+        let read_perc = 80;
         let zeta_2_theta = zeta(2, theta);
         let value: Vec<char> = vec!['a'; 40];
         let mut write_value = String::from("");
@@ -58,18 +58,17 @@ impl MicroQuery {
             table_size: MicroTableSize,
             read_perc,
             theta,
-            read_only: false,
+            read_only,
         }
     }
 
     pub fn generate(&mut self) -> (Vec<ReadStruct>, Vec<ReadStruct>) {
-        self.read_only = true;
         let mut read_set = Vec::new();
         let mut write_set = Vec::new();
         let mut keys = Vec::new();
+        let op = u64_rand(0, 1) == 0;
+        let read_only = if op || self.read_only { true } else { false };
         for _ in 0..self.req_per_query {
-            let op = u64_rand(1, 100);
-
             let key = self.zipf(self.table_size, self.theta);
 
             if keys.contains(&key) {
@@ -77,8 +76,7 @@ impl MicroQuery {
             } else {
                 keys.push(key);
             }
-
-            if op <= self.read_perc as u64 {
+            if read_only {
                 read_set.push(ReadStruct {
                     key,
                     value: None,
@@ -92,7 +90,6 @@ impl MicroQuery {
                     table_id: 0,
                     timestamp: None,
                 });
-                self.read_only = false;
             }
         }
         (read_set, write_set)
