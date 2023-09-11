@@ -161,9 +161,9 @@ impl Default for Config {
                 "192.168.1.72:10001".to_string(), //optane12
             ],
             geo_server_public_addr: vec![
-                "54.215.77.138:10001".to_string(),  //ca
-                "18.182.54.145:10001".to_string(),  //jp
-                "35.158.129.237:10001".to_string(), //Frankfurt
+                "54.67.65.56:10001".to_string(),   //ca
+                "54.92.36.220:10001".to_string(),  //jp
+                "18.193.150.27:10001".to_string(), //Frankfurt
             ],
             geo_server_addr: vec![
                 "172.31.6.187:10001".to_string(),  //ca
@@ -182,12 +182,12 @@ impl Default for Config {
                 "192.168.1.75:10001".to_string(), //optane15
             ],
             geo_client_public_addr: vec![
-                "54.176.255.221:10001".to_string(),
-                "54.199.235.18:10001".to_string(),
-                "3.74.230.29:10001".to_string(),
-                "54.176.255.221:20002".to_string(),
-                "54.199.235.18:20002".to_string(),
-                "3.74.230.29:20002".to_string(),
+                "54.241.135.222:10001".to_string(),
+                "54.95.228.225:10001".to_string(),
+                "18.185.144.36:10001".to_string(),
+                "54.241.135.222:20002".to_string(),
+                "54.95.228.225:20002".to_string(),
+                "18.185.144.36:20002".to_string(),
             ],
             geo_client_addr: vec![
                 "172.31.2.199:10001".to_string(),
